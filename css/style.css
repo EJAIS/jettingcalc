@@ -1,0 +1,356 @@
+/* style.css — Dellorto Jetting Calculator */
+/* Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0 */
+
+/* ── Reset & base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #f5f5f5;
+  --surface:   #ffffff;
+  --border:    #d0d0d0;
+  --text:      #1a1a1a;
+  --text-muted:#666666;
+  --accent:    #2e8b7a;
+  --accent-h:  #236b5e;
+  --danger:    #c0392b;
+  --input-bg:  #ffffff;
+  --header-bg: #1e2a2a;
+  --header-fg: #e8f4f2;
+  --row-even:  #f9f9f9;
+  --shadow:    0 2px 8px rgba(0,0,0,.08);
+}
+
+body.dark {
+  --bg:        #141a1a;
+  --surface:   #1e2a2a;
+  --border:    #2e4040;
+  --text:      #e0eeec;
+  --text-muted:#7aada6;
+  --accent:    #3eb89f;
+  --accent-h:  #50d0b5;
+  --danger:    #e05545;
+  --input-bg:  #162020;
+  --header-bg: #0e1616;
+  --header-fg: #a8d8d0;
+  --row-even:  #182424;
+  --shadow:    0 2px 8px rgba(0,0,0,.3);
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+header {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+header .subtitle {
+  font-size: 0.8rem;
+  opacity: .7;
+  margin-top: 2px;
+}
+
+.header-controls {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+button, .btn {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--accent-h); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--header-fg);
+  border: 1px solid var(--header-fg);
+  opacity: .8;
+}
+.btn-secondary:hover { opacity: 1; }
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.btn-ghost:hover { background: var(--accent); color: #fff; }
+
+.btn-icon {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.btn-icon:hover { color: var(--danger); }
+
+/* ── Main layout ───────────────────────────────────────────────────────────── */
+main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Card ──────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-header h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--accent);
+}
+
+.card-body { padding: 16px 18px; }
+
+/* ── Setup table ───────────────────────────────────────────────────────────── */
+.table-wrapper { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+thead th {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+tbody tr:nth-child(even) { background: var(--row-even); }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+
+tbody td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.maxhd-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+  text-align: right;
+  padding-right: 12px;
+  white-space: nowrap;
+}
+
+/* ── Form inputs inside table ──────────────────────────────────────────────── */
+.cell-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color .15s, background .15s;
+}
+
+.cell-input:hover {
+  border-color: var(--border);
+}
+
+.cell-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--input-bg);
+}
+
+.cell-input.num { width: 80px; text-align: right; }
+
+select.cell-input { width: auto; min-width: 70px; }
+option.custom-needle { font-style: italic; }
+
+/* ── Charts ────────────────────────────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .charts-grid { grid-template-columns: 1fr; }
+}
+
+.chart-wrap {
+  position: relative;
+  height: 300px;
+}
+
+/* ── Custom Needle section ─────────────────────────────────────────────────── */
+details.collapsible > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--accent);
+  user-select: none;
+}
+details.collapsible > summary::before {
+  content: '▶';
+  font-size: 10px;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+details.collapsible[open] > summary::before { transform: rotate(90deg); }
+details.collapsible > summary::-webkit-details-marker { display: none; }
+
+.cn-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cn-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.cn-form-grid input {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.cn-form-grid input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.cn-form-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+#cn-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#cn-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--row-even);
+  font-size: 12px;
+}
+
+#cn-list li.empty { color: var(--text-muted); font-style: italic; border: none; background: none; }
+.cn-name { font-weight: 700; color: var(--accent); min-width: 44px; }
+.cn-detail { flex: 1; color: var(--text-muted); font-family: monospace; }
+.btn-delete-needle { margin-left: auto; }
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+footer {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  text-align: center;
+  padding: 12px 16px;
+  font-size: 12px;
+  line-height: 1.8;
+  opacity: .85;
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+footer a:hover { text-decoration: underline; }
+
+/* ── Utility ───────────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}

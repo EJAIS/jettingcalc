@@ -7,6 +7,16 @@ Kein Build-Tool, kein Framework-Overhead – reines HTML/CSS/JavaScript, vollst�
 
 ---
 
+## Language
+
+**All language in this project is English — no exceptions:**
+- UI labels, buttons, tooltips, error messages
+- Code: variable names, function names, comments
+- Documentation: README, inline docs, commit messages
+- Chart axis labels and legends
+
+---
+
 ## Dateistruktur
 
 ```

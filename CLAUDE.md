@@ -698,7 +698,7 @@ Da die WebApp eine Portierung eines GPL v2-Werks ist, steht auch die WebApp unte
 Claude Code soll eine vollständige `README.md` generieren. Folgende Pflichtinhalte müssen enthalten sein:
 
 ### Kurzbeschreibung
-> Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for Dellorto carburetors (PHBN, PHBG, PHBL, PHBE, PHBH). Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
+> Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for dedicated Dellorto carburetors. Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
 
 ### Upstream-Copyright (muss wörtlich in der README stehen)
 ```

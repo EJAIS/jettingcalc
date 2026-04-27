@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dellorto Jetting Calculator</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Dellorto Jetting Calculator</h1>
+    <div class="subtitle">Web port of "Calculate Jetting for Dellorto Carbs v1.5"</div>
+  </div>
+  <div class="header-controls">
+    <button id="btn-load-demo" class="btn-secondary">Load Demo</button>
+    <button id="btn-reset" class="btn-secondary">Reset</button>
+    <button id="btn-darkmode" class="btn-secondary" title="Toggle dark mode">Dark Mode</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Setups Table ───────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Setups</h2>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Needle</th>
+            <th>Clip</th>
+            <th>Carb Ø</th>
+            <th>Needle Jet</th>
+            <th>Jet Type</th>
+            <th>Max HD</th>
+            <th>ND</th>
+            <th>HD</th>
+          </tr>
+        </thead>
+        <tbody id="setup-tbody">
+          <!-- Rendered by app.js -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Charts ─────────────────────────────────────────────────────────── -->
+  <div class="charts-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Needle Profile</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap">
+          <canvas id="needleChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Carb Profile</h2>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap">
+          <canvas id="carbChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Custom Needles ─────────────────────────────────────────────────── -->
+  <div class="card">
+    <details class="collapsible" id="custom-needle-section">
+      <summary>Custom Needles</summary>
+      <div class="card-body">
+        <form id="custom-needle-form" onsubmit="return false;">
+          <div class="cn-form-grid">
+            <label>
+              Type *
+              <input id="cn-type" type="text" maxlength="8" placeholder="e.g. K99" autocomplete="off">
+            </label>
+            <label>
+              a – max Ø *
+              <input id="cn-a" type="number" step="0.001" min="1" max="4" placeholder="mm">
+            </label>
+            <label>
+              b – min Ø *
+              <input id="cn-b" type="number" step="0.001" min="0.1" max="4" placeholder="mm">
+            </label>
+            <label>
+              c – taper start *
+              <input id="cn-c" type="number" step="0.1" min="1" max="80" placeholder="mm">
+            </label>
+            <label title="2nd taper: diameter at transition">
+              d – 2T diam
+              <input id="cn-d" type="number" step="0.001" min="1" max="4" placeholder="opt.">
+            </label>
+            <label title="2nd taper: position of transition">
+              e – 2T pos
+              <input id="cn-e" type="number" step="0.1" min="0" max="80" placeholder="opt.">
+            </label>
+            <label title="3rd taper: start position">
+              f – 3T pos
+              <input id="cn-f" type="number" step="0.1" min="0" max="80" placeholder="opt.">
+            </label>
+          </div>
+          <div class="cn-form-actions">
+            <button id="btn-save-needle" class="btn-primary">Save locally</button>
+            <button id="btn-submit-needle" class="btn-ghost">Submit to developer</button>
+          </div>
+        </form>
+
+        <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">
+          Saved custom needles <span style="font-style:italic;font-weight:400;">(marked with * in dropdown)</span>
+        </h3>
+        <ul id="cn-list"></ul>
+      </div>
+    </details>
+  </div>
+
+</main>
+
+<footer>
+  Based on "Calculate Jetting for Dellorto Carbs v1.5"<br>
+  Copyright (C) 2014 GUE (Global Underwater Explorers) –
+  Licensed under <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2.0</a><br>
+  Web port: <a href="https://github.com/EJAIS/jettingcalc">github.com/EJAIS/jettingcalc</a>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

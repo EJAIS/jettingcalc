@@ -46,7 +46,7 @@ Known-good values against the original Excel:
 This project is a web port of the Excel spreadsheet
 "Calculate Jetting for Dellorto Carbs v1.5"
 
-Copyright (C) 2014 GUE (Global Underwater Explorers)
+Copyright (C) 2014 GUE
 Licensed under the GNU General Public License v2.0
 
 The original spreadsheet is included unmodified at [/original/](original/) for reference and attribution purposes.

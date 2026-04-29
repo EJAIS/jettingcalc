@@ -237,12 +237,140 @@ option.custom-needle { font-style: italic; }
 
 @media (max-width: 720px) {
   .charts-grid { grid-template-columns: 1fr; }
+  .chart-wrap  { height: 260px; }
 }
 
 .chart-wrap {
   position: relative;
   height: 300px;
 }
+
+.chart-clickable {
+  cursor: pointer;
+}
+.chart-clickable:hover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: rgba(46, 139, 122, 0.06);
+  pointer-events: none;
+}
+
+.btn-expand {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.btn-expand:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ── Chart modal ───────────────────────────────────────────────────────────── */
+.chart-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-modal-backdrop[hidden] { display: none; }
+
+.chart-modal-box {
+  position: relative;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 20px;
+  width: 90vw;
+  max-width: 1200px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+}
+
+.chart-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+.chart-modal-close:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.chart-modal-canvas-wrap {
+  height: 80vh;
+  max-height: 700px;
+}
+
+/* ── Calculation Results section ──────────────────────────────────────────── */
+.cr-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.cr-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+.cr-table-wrap:last-child { margin-bottom: 0; }
+
+.cr-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 400px;
+  font-size: 13px;
+}
+
+.cr-table caption {
+  text-align: left;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 0 6px;
+  letter-spacing: .02em;
+}
+
+.cr-table thead th {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 6px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+.cr-table thead th:first-child { text-align: left; }
+
+.cr-table tbody td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cr-table tbody td:first-child { text-align: left; font-weight: 600; }
+
+.cr-table tbody tr:nth-child(even) { background: var(--row-even); }
+.cr-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 
 /* ── Custom Needle section ─────────────────────────────────────────────────── */
 details.collapsible > summary {
@@ -353,4 +481,75 @@ footer a:hover { text-decoration: underline; }
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+/* ── Mobile (≤ 600px) ──────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  /* Prevent any element from causing horizontal page overflow */
+  body { overflow-x: hidden; }
+
+  /* Header: stack title and controls vertically */
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  header h1 { font-size: 1.05rem; }
+  header .subtitle { font-size: 0.75rem; }
+
+  .header-controls { width: 100%; justify-content: flex-end; }
+  .header-controls button { padding: 6px 10px; font-size: 12px; }
+
+  /* Main: tighter padding */
+  main { padding: 12px 10px; gap: 16px; }
+
+  /* Charts: single column, taller minimum */
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-wrap  { height: 250px; }
+
+  /* Touch targets: 44px minimum height for all interactive table inputs */
+  .cell-input,
+  select.cell-input,
+  .cn-form-grid input {
+    min-height: 44px;
+    font-size: 16px; /* prevents iOS auto-zoom on focus */
+  }
+
+  /* Selects need explicit height too */
+  select.cell-input { min-height: 44px; }
+
+  /* Numeric inputs: slightly narrower on mobile but still tappable */
+  .cell-input.num { width: 68px; }
+
+  /* Setup table: tighter cell padding */
+  tbody td { padding: 2px 4px; }
+  thead th  { padding: 8px 6px; font-size: 10px; }
+
+  /* Modal: nearly full-screen */
+  .chart-modal-box {
+    width: 98vw;
+    border-radius: 6px;
+    padding: 14px;
+  }
+
+  .chart-modal-canvas-wrap {
+    height: 80vh;
+    max-height: none;
+  }
+
+  /* Custom needle form: 2-column grid on mobile instead of auto-fill */
+  .cn-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Summary tap target */
+  details.collapsible > summary {
+    padding: 14px 14px;
+    min-height: 44px;
+  }
+
+  /* Card body: tighter */
+  .card-body { padding: 12px 10px; }
 }

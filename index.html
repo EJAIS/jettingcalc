@@ -56,9 +56,10 @@
     <div class="card">
       <div class="card-header">
         <h2>Needle Profile</h2>
+        <button id="expand-needle" class="btn-expand" title="Expand chart">⛶</button>
       </div>
       <div class="card-body">
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-clickable" title="Click to expand" id="needle-wrap">
           <canvas id="needleChart"></canvas>
         </div>
       </div>
@@ -67,14 +68,35 @@
     <div class="card">
       <div class="card-header">
         <h2>Carb Profile</h2>
+        <button id="expand-carb" class="btn-expand" title="Expand chart">⛶</button>
       </div>
       <div class="card-body">
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-clickable" title="Click to expand" id="carb-wrap">
           <canvas id="carbChart"></canvas>
         </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- ── Chart modal ────────────────────────────────────────────────────── -->
+  <div id="chart-modal" class="chart-modal-backdrop" hidden>
+    <div class="chart-modal-box">
+      <button id="chart-modal-close" class="chart-modal-close" title="Close">✕</button>
+      <div class="chart-modal-canvas-wrap">
+        <canvas id="modal-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Calculation Results ───────────────────────────────────────────── -->
+  <div class="card">
+    <details class="collapsible" id="calc-results-section">
+      <summary>Calculation Results</summary>
+      <div class="card-body" id="calc-results-body">
+        <!-- Rendered by app.js -->
+      </div>
+    </details>
   </div>
 
   <!-- ── Custom Needles ─────────────────────────────────────────────────── -->
@@ -131,8 +153,7 @@
 
 <footer>
   Based on "Calculate Jetting for Dellorto Carbs v1.5"<br>
-  Copyright (C) 2014 GUE (Global Underwater Explorers) –
-  Licensed under <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2.0</a><br>
+  Copyright (C) 2014 GUE - Licensed under <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2.0</a><br>
   Web port: <a href="https://github.com/EJAIS/jettingcalc">github.com/EJAIS/jettingcalc</a>
 </footer>
 

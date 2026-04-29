@@ -3,7 +3,7 @@
 
 import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles } from './storage.js';
 import { calcSetup } from './calc.js';
-import { renderCharts } from './charts.js';
+import { renderCharts, openChartModal, closeChartModal, COLORS } from './charts.js';
 import { NEEDLE_DB } from './needledb.js';
 
 let setups = loadSetups();
@@ -84,9 +84,53 @@ function renderTable() {
   }).join('');
 }
 
+function renderCalcResults() {
+  const container = document.getElementById('calc-results-body');
+  if (!container) return;
+
+  const allNeedles = getAllNeedles();
+  const activeSetups = setups.filter(s => s.needleType);
+
+  if (activeSetups.length === 0) {
+    container.innerHTML = '<p class="cr-empty">No active setups to display.</p>';
+    return;
+  }
+
+  container.innerHTML = activeSetups.map(s => {
+    const result = calcSetup(s, allNeedles);
+    if (!result) return '';
+    const color = COLORS[s.id - 1];
+    const rows = result.curve.map(p => `
+      <tr>
+        <td>${Math.round(p.tp * 100)}%</td>
+        <td>${p.pos.toFixed(2)}</td>
+        <td>${p.diam.toFixed(3)}</td>
+        <td>${Math.round(p.hdEquiv)}</td>
+        <td>${Math.round(p.overall)}</td>
+      </tr>`).join('');
+    return `
+      <div class="cr-table-wrap">
+        <table class="cr-table">
+          <caption style="color:${color}">${s.name}</caption>
+          <thead>
+            <tr>
+              <th>Throttle</th>
+              <th>Needle Pos (mm)</th>
+              <th>Needle Ø (mm)</th>
+              <th>HD Equiv</th>
+              <th>Overall</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+}
+
 function updateUI() {
   renderTable();
   renderCharts(setups, getAllNeedles());
+  renderCalcResults();
 }
 
 // ── Field change handler ──────────────────────────────────────────────────────
@@ -176,9 +220,9 @@ function buildMailtoLink(needle) {
 // ── Demo data loader ──────────────────────────────────────────────────────────
 
 const DEMO_SETUPS = [
-  { id:1, name:'#1 Simonini Grund',    needleType:'K98', clipPos:3, carbSize:30, needleJet:262, jetType:'DP', nd:53, hd:175 },
-  { id:2, name:'#2 Simonini 6.6.23',   needleType:'K98', clipPos:1, carbSize:30, needleJet:268, jetType:'DQ', nd:53, hd:155 },
-  { id:3, name:'#3 Test',              needleType:'K98', clipPos:1, carbSize:30, needleJet:267, jetType:'DQ', nd:55, hd:155 },
+  { id:1, name:'#1 Demo-1', needleType:'K98', clipPos:3, carbSize:30, needleJet:262, jetType:'DP', nd:53, hd:175 },
+  { id:2, name:'#2 Demo-2', needleType:'K98', clipPos:1, carbSize:30, needleJet:268, jetType:'DQ', nd:53, hd:155 },
+  { id:3, name:'#3 Demo-3', needleType:'K98', clipPos:1, carbSize:30, needleJet:267, jetType:'DQ', nd:55, hd:155 },
   { id:4, name:'#4', needleType:null, clipPos:null, carbSize:null, needleJet:null, jetType:null, nd:null, hd:null },
   { id:5, name:'#5', needleType:null, clipPos:null, carbSize:null, needleJet:null, jetType:null, nd:null, hd:null },
 ];
@@ -266,4 +310,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
   updateDarkBtn();
+
+  // Chart expand modal — icon button and chart-wrap click both open the modal
+  document.getElementById('expand-needle')?.addEventListener('click', () => openChartModal('needle'));
+  document.getElementById('expand-carb')?.addEventListener('click',   () => openChartModal('carb'));
+  document.getElementById('needle-wrap')?.addEventListener('click',   () => openChartModal('needle'));
+  document.getElementById('carb-wrap')?.addEventListener('click',     () => openChartModal('carb'));
+  document.getElementById('chart-modal-close')?.addEventListener('click', closeChartModal);
+  document.getElementById('chart-modal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeChartModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeChartModal();
+  });
 });

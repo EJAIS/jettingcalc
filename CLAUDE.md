@@ -9,11 +9,31 @@ Kein Build-Tool, kein Framework-Overhead – reines HTML/CSS/JavaScript, vollst�
 
 ## Language
 
-**All language in this project is English — no exceptions:**
-- UI labels, buttons, tooltips, error messages
-- Code: variable names, function names, comments
-- Documentation: README, inline docs, commit messages
-- Chart axis labels and legends
+### Code, documentation & comments
+All code comments, function/variable names, README, and inline documentation
+are written in **English** without exception.
+
+### UI — bilingual EN / DE
+The app UI supports two languages: English (EN, default) and German (DE).
+Every visible string in the UI must be available in both languages.
+
+Rules for all future UI implementations:
+- Never hardcode visible text strings in HTML or JS
+- Every UI string goes into `js/i18n.js` under both `en` and `de` keys
+- Use `t('key')` to retrieve the current language string in JS
+- Use `data-i18n="key"` on HTML elements for static text content
+- Use `data-i18n-placeholder="key"` for input placeholder attributes
+- Use `data-i18n-title="key"` for tooltip/title attributes
+- After any dynamic DOM update that adds translatable text, call
+  `applyTranslations()` from i18n.js
+- Chart axis labels and legends must also go through `t('key')` —
+  re-render charts on language change
+
+### Language storage
+- localStorage key: `dellorto_lang`
+- Values: `'en'` (default) | `'de'`
+- Toggle button shows the TARGET language (clicking EN shows DE and vice versa)
+- `document.documentElement.lang` is updated on every language change
 
 ---
 
@@ -223,6 +243,8 @@ export const JET_OFFSETS = { "DP": 0, "DQ": 2, "ET": 2 };
 ### Konstanten (hardcoded im Excel)
 ```
 CLIP_SPACING = 1.2   mm (Abstand zwischen Klemmringnuten)
+CLIP_MIN     = 1     (Dellorto standard: 4 Nuten, Wertebereich 1–4)
+CLIP_MAX     = 4
 MIN_EXPOSED  = 26.4  mm (Mindestlänge der exponierten Nadel bei Leerlauf)
 ```
 
@@ -334,6 +356,8 @@ Throttle 0.35+: MIN(HD, hdEquiv)            → durch Hauptdüse begrenzt
 import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS } from './needledb.js';
 
 const CLIP_SPACING = 1.2;
+const CLIP_MIN = 1;          // Dellorto standard: 4 clip positions
+const CLIP_MAX = 4;
 const MIN_EXPOSED  = 26.4;
 const THROTTLE_POINTS = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
                           0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95,
@@ -426,6 +450,7 @@ export function calcNeedleProfile(needleType) {
    - Spalten: Name | Nadel | Clip | Vergaser Ø | Düse | Typ | max HD (berechnet) | ND | HD
    - Inline-Editierung: Klick auf Feld → Edit-Modus
    - Nadel-Auswahl als Dropdown (`<select>` aus NEEDLE_DB keys)
+   - Clip-Position: Dropdown oder Spinner, Wertebereich **1–4** (Dellorto standard: 4 Nuten)
    - Typ-Auswahl: DP / DQ / ET
 3. **"Needle Profile"-Graph** (Chart.js Line)
    - X-Achse: Nadelposition (mm, von 0 bis max c)
@@ -530,7 +555,7 @@ function renderTable() {
   setups.forEach((s, i) => {
     // Berechneten maxHD eintragen
     const result = s.needleType ? calcSetup(s) : null;
-    const maxHD = result ? result.maxHD.toFixed(2) : '–';
+    const maxHD = result ? Math.round(result.maxHD) : '–';
     document.getElementById(`row-${i}-maxhd`).textContent = maxHD;
   });
 }
@@ -579,9 +604,9 @@ const DEMO_SETUPS = [
 ```
 
 **Alle berechneten maxHD-Werte zur Verifikation:**
-- Setup 1: maxHD ≈ 166.49
-- Setup 2: maxHD ≈ 175.78
-- Setup 3: maxHD ≈ 174.25
+- Setup 1: maxHD = 166 (rounded)
+- Setup 2: maxHD = 176 (rounded)
+- Setup 3: maxHD = 174 (rounded)
 
 
 
@@ -698,7 +723,7 @@ Da die WebApp eine Portierung eines GPL v2-Werks ist, steht auch die WebApp unte
 Claude Code soll eine vollständige `README.md` generieren. Folgende Pflichtinhalte müssen enthalten sein:
 
 ### Kurzbeschreibung
-> Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for dedicated Dellorto carburetors. Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
+> Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for Dellorto carburetors (PHBN, PHBG, PHBL, PHBE, PHBH). Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
 
 ### Upstream-Copyright (muss wörtlich in der README stehen)
 ```

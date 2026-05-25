@@ -5,6 +5,7 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { renderCharts, openChartModal, closeChartModal, COLORS } from './charts.js';
 import { NEEDLE_DB } from './needledb.js';
+import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
 let setups = loadSetups();
 
@@ -22,7 +23,7 @@ function getAllNeedlesSorted() {
 function buildNeedleOptions(selectedType) {
   const keys = getAllNeedlesSorted();
   const custom = loadCustomNeedles().map(n => n.type);
-  return `<option value="">— select —</option>` +
+  return `<option value="">${t('setup.select')}</option>` +
     keys.map(k =>
       `<option value="${k}"${k === selectedType ? ' selected' : ''}${custom.includes(k) ? ' class="custom-needle"' : ''}>${k}${custom.includes(k) ? ' *' : ''}</option>`
     ).join('');
@@ -114,11 +115,11 @@ function renderCalcResults() {
           <caption style="color:${color}">${s.name}</caption>
           <thead>
             <tr>
-              <th>Throttle</th>
-              <th>Needle Pos (mm)</th>
-              <th>Needle Ø (mm)</th>
-              <th>HD Equiv</th>
-              <th>Overall</th>
+              <th>${t('col.throttle')}</th>
+              <th>${t('col.needlePos')}</th>
+              <th>${t('col.needleDiam')}</th>
+              <th>${t('col.hdEquiv')}</th>
+              <th>${t('col.overall')}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -160,26 +161,22 @@ function readNeedleForm() {
   };
   return {
     type: get('cn-type')?.toUpperCase(),
-    a: getNum('cn-a'),
-    b: getNum('cn-b'),
-    c: getNum('cn-c'),
-    d: getNum('cn-d'),
-    e: getNum('cn-e'),
-    f: getNum('cn-f'),
+    A: getNum('cn-A'),
+    B: getNum('cn-B'),
+    C: getNum('cn-C'),
+    D: getNum('cn-D'),
+    E: getNum('cn-E'),
+    F: getNum('cn-F'),
   };
 }
 
 function validateNeedle(needle, showAlert = true) {
   const errors = [];
-  if (!needle.type) errors.push('Needle type is required (e.g. K99).');
-  if (needle.a == null) errors.push('Field a (max diameter) is required.');
-  if (needle.b == null) errors.push('Field b (min diameter) is required.');
-  if (needle.c == null) errors.push('Field c (taper start) is required.');
-  if (NEEDLE_DB[needle.type]) errors.push(`"${needle.type}" already exists in the built-in database.`);
-  if ((needle.d != null) !== (needle.e != null))
-    errors.push('Fields d and e must both be filled or both be empty.');
-  if (needle.f != null && (needle.d == null || needle.e == null))
-    errors.push('Field f requires d and e to be set.');
+  if (!needle.type) errors.push(t('err.typeRequired'));
+  if (needle.A == null || needle.B == null || needle.C == null) errors.push(t('err.abcRequired'));
+  if (needle.type && NEEDLE_DB[needle.type]) errors.push(t('err.typeExists'));
+  if ((needle.D != null) !== (needle.E != null)) errors.push(t('err.deIncomplete'));
+  if (needle.F != null && (needle.D == null || needle.E == null)) errors.push(t('err.fRequiresDe'));
   if (errors.length && showAlert) alert(errors.join('\n'));
   return errors.length === 0;
 }
@@ -189,14 +186,14 @@ function renderCustomNeedleList() {
   if (!list) return;
   const custom = loadCustomNeedles();
   if (custom.length === 0) {
-    list.innerHTML = '<li class="empty">No custom needles saved.</li>';
+    list.innerHTML = `<li class="empty">${t('needle.empty')}</li>`;
     return;
   }
   list.innerHTML = custom.map(n => {
-    const tapers = n.f != null ? '3T' : n.e != null ? '2T' : '1T';
+    const tapers = n.F != null ? '3T' : n.E != null ? '2T' : '1T';
     return `<li>
       <span class="cn-name">${n.type}</span>
-      <span class="cn-detail">${tapers} · a=${n.a} b=${n.b} c=${n.c}${n.d != null ? ` d=${n.d} e=${n.e}` : ''}${n.f != null ? ` f=${n.f}` : ''}</span>
+      <span class="cn-detail">${tapers} · A=${n.A} B=${n.B} C=${n.C}${n.D != null ? ` D=${n.D} E=${n.E}` : ''}${n.F != null ? ` F=${n.F}` : ''}</span>
       <button class="btn-delete-needle" data-type="${n.type}" title="Delete">✕</button>
     </li>`;
   }).join('');
@@ -206,12 +203,12 @@ function buildMailtoLink(needle) {
   const subject = encodeURIComponent(`Custom Needle Submission: ${needle.type}`);
   const body = encodeURIComponent(
     `Needle Type: ${needle.type}\r\n` +
-    `a: ${needle.a}\r\n` +
-    `b: ${needle.b}\r\n` +
-    `c: ${needle.c}\r\n` +
-    `d (optional): ${needle.d ?? ''}\r\n` +
-    `e (optional): ${needle.e ?? ''}\r\n` +
-    `f (optional): ${needle.f ?? ''}\r\n` +
+    `A: ${needle.A}\r\n` +
+    `B: ${needle.B}\r\n` +
+    `C: ${needle.C}\r\n` +
+    `D (optional): ${needle.D ?? ''}\r\n` +
+    `E (optional): ${needle.E ?? ''}\r\n` +
+    `F (optional): ${needle.F ?? ''}\r\n` +
     `\r\nSource / Reference (optional):\r\n`
   );
   return `mailto:jetting@ejais.de?subject=${subject}&body=${body}`;
@@ -232,6 +229,7 @@ const DEMO_SETUPS = [
 document.addEventListener('DOMContentLoaded', () => {
   updateUI();
   renderCustomNeedleList();
+  applyTranslations();
 
   // Setup table changes (event delegation)
   document.getElementById('setup-tbody').addEventListener('change', e => {
@@ -301,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Dark mode toggle
   const btnDark = document.getElementById('btn-darkmode');
   const updateDarkBtn = () => {
-    if (btnDark) btnDark.textContent = document.body.classList.contains('dark') ? 'Light Mode' : 'Dark Mode';
+    if (btnDark) btnDark.textContent = document.body.classList.contains('dark') ? t('btn.lightMode') : t('btn.darkMode');
   };
   btnDark?.addEventListener('click', () => {
     document.body.classList.toggle('dark');
@@ -310,6 +308,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
   updateDarkBtn();
+
+  // Language toggle
+  document.getElementById('btn-lang')?.addEventListener('click', () => {
+    setLang(getLang() === 'en' ? 'de' : 'en');
+    updateUI();
+    renderCustomNeedleList();
+    updateDarkBtn();
+  });
 
   // Chart expand modal — icon button and chart-wrap click both open the modal
   document.getElementById('expand-needle')?.addEventListener('click', () => openChartModal('needle'));

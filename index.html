@@ -12,11 +12,12 @@
 <header>
   <div>
     <h1>Dellorto Jetting Calculator</h1>
-    <div class="subtitle">Web port of "Calculate Jetting for Dellorto Carbs v1.5"</div>
+    <div class="subtitle" data-i18n="app.subtitle">Web port of "Calculate Jetting for Dellorto Carbs v1.5"</div>
   </div>
   <div class="header-controls">
-    <button id="btn-load-demo" class="btn-secondary">Load Demo</button>
-    <button id="btn-reset" class="btn-secondary">Reset</button>
+    <button id="btn-lang" class="btn-secondary">DE</button>
+    <button id="btn-load-demo" class="btn-secondary" data-i18n="btn.loadDemo">Load Demo</button>
+    <button id="btn-reset" class="btn-secondary" data-i18n="btn.reset">Reset</button>
     <button id="btn-darkmode" class="btn-secondary" title="Toggle dark mode">Dark Mode</button>
   </div>
 </header>
@@ -26,21 +27,21 @@
   <!-- ── Setups Table ───────────────────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
-      <h2>Setups</h2>
+      <h2 data-i18n="section.setups">Setups</h2>
     </div>
     <div class="table-wrapper">
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Needle</th>
-            <th>Clip</th>
-            <th>Carb Ø</th>
-            <th>Needle Jet</th>
-            <th>Jet Type</th>
-            <th>Max HD</th>
-            <th>ND</th>
-            <th>HD</th>
+            <th data-i18n="col.name">Name</th>
+            <th data-i18n="col.needle">Needle</th>
+            <th data-i18n="col.clip">Clip</th>
+            <th data-i18n="col.carbSize">Carb Ø</th>
+            <th data-i18n="col.needleJet">Needle Jet</th>
+            <th data-i18n="col.jetType">Jet Type</th>
+            <th data-i18n="col.maxHD">Max HD</th>
+            <th data-i18n="col.nd">ND</th>
+            <th data-i18n="col.hd">HD</th>
           </tr>
         </thead>
         <tbody id="setup-tbody">
@@ -55,11 +56,11 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>Needle Profile</h2>
+        <h2 data-i18n="section.needleProfile">Needle Profile</h2>
         <button id="expand-needle" class="btn-expand" title="Expand chart">⛶</button>
       </div>
       <div class="card-body">
-        <div class="chart-wrap chart-clickable" title="Click to expand" id="needle-wrap">
+        <div class="chart-wrap chart-clickable" data-i18n-title="chart.expand" title="Click to expand" id="needle-wrap">
           <canvas id="needleChart"></canvas>
         </div>
       </div>
@@ -67,11 +68,11 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>Carb Profile</h2>
+        <h2 data-i18n="section.carbProfile">Carb Profile</h2>
         <button id="expand-carb" class="btn-expand" title="Expand chart">⛶</button>
       </div>
       <div class="card-body">
-        <div class="chart-wrap chart-clickable" title="Click to expand" id="carb-wrap">
+        <div class="chart-wrap chart-clickable" data-i18n-title="chart.expand" title="Click to expand" id="carb-wrap">
           <canvas id="carbChart"></canvas>
         </div>
       </div>
@@ -92,7 +93,7 @@
   <!-- ── Calculation Results ───────────────────────────────────────────── -->
   <div class="card">
     <details class="collapsible" id="calc-results-section">
-      <summary>Calculation Results</summary>
+      <summary data-i18n="section.calcResults">Calculation Results</summary>
       <div class="card-body" id="calc-results-body">
         <!-- Rendered by app.js -->
       </div>
@@ -102,48 +103,208 @@
   <!-- ── Custom Needles ─────────────────────────────────────────────────── -->
   <div class="card">
     <details class="collapsible" id="custom-needle-section">
-      <summary>Custom Needles</summary>
+      <summary data-i18n="section.customNeedles">Custom Needles</summary>
       <div class="card-body">
+
+        <!-- Needle schematic -->
+        <div class="needle-schematic-wrapper">
+        <svg width="100%" viewBox="0 0 680 385" role="img"
+             xmlns="http://www.w3.org/2000/svg">
+          <title>Dellorto needle schematic — measurement points ØA, ØB, C, ØD, E, F</title>
+          <desc>Cross-section of a full-featured Dellorto needle showing all six
+          official measurement parameters</desc>
+          <defs>
+            <marker id="ndl-arrow" viewBox="0 0 10 10" refX="8" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- center axis -->
+          <line x1="48" y1="180" x2="542" y2="180"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="8 5"/>
+
+          <!-- section dividers -->
+          <line x1="255" y1="106" x2="255" y2="254"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+          <line x1="360" y1="106" x2="360" y2="294"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+          <line x1="455" y1="112" x2="455" y2="327"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+
+          <!-- needle body -->
+          <polygon
+            points="60,130 255,130 360,135 455,152 535,152
+                     535,208 455,208 360,225 255,230 60,230"
+            fill="var(--accent)" fill-opacity="0.15"
+            stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+
+          <!-- taper junction dots -->
+          <circle cx="360" cy="135" r="3.5" fill="var(--accent)"/>
+          <circle cx="360" cy="225" r="3.5" fill="var(--accent)"/>
+          <circle cx="455" cy="152" r="3.5" fill="var(--accent)"/>
+          <circle cx="455" cy="208" r="3.5" fill="var(--accent)"/>
+
+          <!-- section labels -->
+          <text font-size="12" x="157" y="112" text-anchor="middle"
+                fill="var(--text-muted)">Shank</text>
+          <text font-size="12" x="307" y="112" text-anchor="middle"
+                fill="var(--text-muted)">Taper 1</text>
+          <text font-size="12" x="407" y="120" text-anchor="middle"
+                fill="var(--text-muted)">Taper 2</text>
+          <text font-size="12" x="495" y="130" text-anchor="middle"
+                fill="var(--text-muted)">Cyl. tip</text>
+
+          <!-- ØA: shank diameter (required) -->
+          <line x1="36" y1="130" x2="36" y2="230"
+                stroke="var(--accent)" stroke-width="1.5"
+                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+          <line x1="36" y1="130" x2="64" y2="130"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="36" y1="230" x2="64" y2="230"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="20" y="180" text-anchor="middle"
+                transform="rotate(-90 20 180)"
+                font-size="13" font-weight="500"
+                fill="var(--text)">ØA</text>
+
+          <!-- ØB: tip diameter (required) -->
+          <line x1="550" y1="152" x2="550" y2="208"
+                stroke="var(--accent)" stroke-width="1.5"
+                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+          <line x1="535" y1="152" x2="555" y2="152"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="535" y1="208" x2="555" y2="208"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="562" y="184" text-anchor="start"
+                font-size="13" font-weight="500"
+                fill="var(--text)">ØB</text>
+
+          <!-- ØD: diameter at taper junction — vertical leader from above (optional) -->
+          <line x1="360" y1="70" x2="360" y2="132"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="360" y="58" text-anchor="middle"
+                font-size="13" font-weight="500"
+                fill="var(--text-muted)">ØD</text>
+          <text x="360" y="70" text-anchor="middle"
+                font-size="12" fill="var(--text-muted)">(opt.)</text>
+
+          <!-- C: tip to taper-1 start (required) -->
+          <line x1="255" y1="242" x2="255" y2="257"
+                stroke="var(--accent)" stroke-width="1"/>
+          <line x1="535" y1="212" x2="535" y2="257"
+                stroke="var(--accent)" stroke-width="1"/>
+          <line x1="255" y1="251" x2="535" y2="251"
+                stroke="var(--accent)" stroke-width="1.5"
+                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+          <text x="395" y="268" text-anchor="middle"
+                font-size="13" font-weight="500"
+                fill="var(--text)">C</text>
+          <text x="395" y="280" text-anchor="middle"
+                font-size="12" fill="var(--text-muted)">from tip (mm)</text>
+
+          <!-- E: tip to taper-2 start (optional) -->
+          <line x1="360" y1="229" x2="360" y2="292"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="535" y1="257" x2="535" y2="292"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="360" y1="287" x2="535" y2="287"
+                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
+                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+          <text x="420" y="303" text-anchor="middle"
+                font-size="13" font-weight="500"
+                fill="var(--text-muted)">E</text>
+          <text x="420" y="315" text-anchor="middle"
+                font-size="12" fill="var(--text-muted)">from tip (opt.)</text>
+
+          <!-- F: cylindrical tip length (optional) -->
+          <line x1="455" y1="212" x2="455" y2="328"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="535" y1="292" x2="535" y2="328"
+                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="455" y1="322" x2="535" y2="322"
+                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
+                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+          <text x="495" y="338" text-anchor="middle"
+                font-size="13" font-weight="500"
+                fill="var(--text-muted)">F</text>
+          <text x="495" y="350" text-anchor="middle"
+                font-size="12" fill="var(--text-muted)">cyl. tip (opt.)</text>
+
+          <!-- legend -->
+          <line x1="388" y1="372" x2="406" y2="372"
+                stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="410" y="376" font-size="12"
+                fill="var(--text-muted)">Required</text>
+          <line x1="470" y1="372" x2="488" y2="372"
+                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"/>
+          <text x="492" y="376" font-size="12"
+                fill="var(--text-muted)">Optional (multi-taper only)</text>
+        </svg>
+        </div>
+
+        <!-- Field reference (collapsible) -->
+        <details class="collapsible" id="cn-field-ref" style="margin-bottom:12px">
+          <summary data-i18n="ref.toggle">Field reference</summary>
+          <div class="card-body" style="padding-top:10px">
+            <table class="cn-ref-table">
+              <thead>
+                <tr><th data-i18n="ref.col.param">Parameter</th><th data-i18n="ref.col.desc">Description</th><th data-i18n="ref.col.req">Required</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Type</td><td data-i18n="ref.type.desc">Needle code (e.g. K99, U26)</td><td>✅</td></tr>
+                <tr><td>ØA</td><td data-i18n="ref.A.desc">Shank diameter — cylindrical section (mm)</td><td>✅</td></tr>
+                <tr><td>ØB</td><td data-i18n="ref.B.desc">Tip diameter — minimum Ø at needle tip (mm)</td><td>✅</td></tr>
+                <tr><td>C</td><td data-i18n="ref.C.desc">Distance from tip to start of Taper 1 (mm)</td><td>✅</td></tr>
+                <tr><td>ØD</td><td data-i18n="ref.D.desc">Diameter at junction between Taper 1 &amp; 2 (mm)</td><td>⬜ opt.</td></tr>
+                <tr><td>E</td><td data-i18n="ref.E.desc">Distance from tip to start of Taper 2 (mm)</td><td>⬜ opt.</td></tr>
+                <tr><td>F</td><td data-i18n="ref.F.desc">Length of cylindrical section at tip (mm)</td><td>⬜ opt.</td></tr>
+              </tbody>
+            </table>
+            <p class="cn-ref-note" data-i18n="ref.note">ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = 68 mm.</p>
+          </div>
+        </details>
+
         <form id="custom-needle-form" onsubmit="return false;">
           <div class="cn-form-grid">
             <label>
-              Type *
-              <input id="cn-type" type="text" maxlength="8" placeholder="e.g. K99" autocomplete="off">
+              <span data-i18n="field.type">Type *</span>
+              <input id="cn-type" type="text" maxlength="8" data-i18n-placeholder="placeholder.type" placeholder="e.g. K99" autocomplete="off">
             </label>
             <label>
-              a – max Ø *
-              <input id="cn-a" type="number" step="0.001" min="1" max="4" placeholder="mm">
+              <span data-i18n="field.A">ØA – shank Ø *</span>
+              <input id="cn-A" type="number" step="0.001" min="1" max="4" data-i18n-placeholder="placeholder.mm" placeholder="mm">
             </label>
             <label>
-              b – min Ø *
-              <input id="cn-b" type="number" step="0.001" min="0.1" max="4" placeholder="mm">
+              <span data-i18n="field.B">ØB – tip Ø *</span>
+              <input id="cn-B" type="number" step="0.001" min="0.1" max="4" data-i18n-placeholder="placeholder.mm" placeholder="mm">
             </label>
             <label>
-              c – taper start *
-              <input id="cn-c" type="number" step="0.1" min="1" max="80" placeholder="mm">
+              <span data-i18n="field.C">C – from tip *</span>
+              <input id="cn-C" type="number" step="0.1" min="1" max="80" data-i18n-placeholder="placeholder.mm" placeholder="mm">
             </label>
-            <label title="2nd taper: diameter at transition">
-              d – 2T diam
-              <input id="cn-d" type="number" step="0.001" min="1" max="4" placeholder="opt.">
+            <label title="ØD: diameter at junction between Taper 1 and Taper 2">
+              <span data-i18n="field.D">ØD – junction Ø</span>
+              <input id="cn-D" type="number" step="0.001" min="1" max="4" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
-            <label title="2nd taper: position of transition">
-              e – 2T pos
-              <input id="cn-e" type="number" step="0.1" min="0" max="80" placeholder="opt.">
+            <label title="E: distance from tip to start of Taper 2">
+              <span data-i18n="field.E">E – from tip</span>
+              <input id="cn-E" type="number" step="0.1" min="0" max="80" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
-            <label title="3rd taper: start position">
-              f – 3T pos
-              <input id="cn-f" type="number" step="0.1" min="0" max="80" placeholder="opt.">
+            <label title="F: length of cylindrical section at tip">
+              <span data-i18n="field.F">F – cyl. tip</span>
+              <input id="cn-F" type="number" step="0.1" min="0" max="80" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
           </div>
           <div class="cn-form-actions">
-            <button id="btn-save-needle" class="btn-primary">Save locally</button>
-            <button id="btn-submit-needle" class="btn-ghost">Submit to developer</button>
+            <button id="btn-save-needle" class="btn-primary" data-i18n="btn.saveNeedle">Save locally</button>
+            <button id="btn-submit-needle" class="btn-ghost" data-i18n="btn.submitNeedle">Submit to developer</button>
           </div>
         </form>
 
-        <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;">
-          Saved custom needles <span style="font-style:italic;font-weight:400;">(marked with * in dropdown)</span>
-        </h3>
+        <h3 style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:8px;"
+            data-i18n="needle.savedTitle">Saved custom needles (marked with * in dropdown)</h3>
         <ul id="cn-list"></ul>
       </div>
     </details>
@@ -153,8 +314,9 @@
 
 <footer>
   Based on "Calculate Jetting for Dellorto Carbs v1.5"<br>
-  Copyright (C) 2014 GUE - Licensed under <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2.0</a><br>
-  Web port: <a href="https://github.com/EJAIS/jettingcalc">github.com/EJAIS/jettingcalc</a>
+  Copyright (C) 2014 GUE - Licensed under <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2.0</a>
+  <p data-i18n="footer.disclaimer">This tool is provided for informational purposes only. Calculations may contain errors — always verify jetting settings with a qualified mechanic. The author accepts no liability for engine damage, personal injury, or any other loss arising from the use of this software.</p>
+  <span data-i18n="footer.webport">Web port:</span> <a href="https://github.com/EJAIS/jettingcalc">github.com/EJAIS/jettingcalc</a>
 </footer>
 
 <script type="module" src="js/app.js"></script>

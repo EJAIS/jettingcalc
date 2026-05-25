@@ -397,6 +397,12 @@ details.collapsible > summary::before {
 details.collapsible[open] > summary::before { transform: rotate(90deg); }
 details.collapsible > summary::-webkit-details-marker { display: none; }
 
+.needle-schematic-wrapper {
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto 8px auto;
+}
+
 .cn-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
@@ -457,6 +463,39 @@ details.collapsible > summary::-webkit-details-marker { display: none; }
 .cn-name { font-weight: 700; color: var(--accent); min-width: 44px; }
 .cn-detail { flex: 1; color: var(--text-muted); font-family: monospace; }
 .btn-delete-needle { margin-left: auto; }
+
+/* ── Custom needle field-reference table ─────────────────────────────────── */
+.cn-ref-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.cn-ref-table th,
+.cn-ref-table td {
+  text-align: left;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.cn-ref-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-size: 11px;
+}
+.cn-ref-table td:first-child {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.cn-ref-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
 
 /* ── Footer ────────────────────────────────────────────────────────────────── */
 footer {

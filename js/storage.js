@@ -40,9 +40,9 @@ export function getAllNeedles() {
   const custom = loadCustomNeedles();
   const customMap = Object.fromEntries(
     custom.map(n => {
-      const entry = { a: n.a, b: n.b, c: n.c };
-      if (n.d != null && n.e != null) { entry.d = n.d; entry.e = n.e; }
-      if (n.f != null)                { entry.f = n.f; }
+      const entry = { A: n.A, B: n.B, C: n.C };
+      if (n.D != null && n.E != null) { entry.D = n.D; entry.E = n.E; }
+      if (n.F != null)                { entry.F = n.F; }
       return [n.type, entry];
     })
   );

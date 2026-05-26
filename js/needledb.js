@@ -219,3 +219,17 @@ export const JET_OFFSETS = {
   "AV": 0,   // PHBH — short type (reference)
   "AS": 2,   // PHBH — long type (+2mm)
 };
+
+// Carburetor family definitions — drives needle and atomizer filtering
+export const CARB_TYPES = {
+  VHSx: {
+    label:     'VHSx (VHSA / VHSB / VHSC / VHSH)',
+    needles:   'KU',
+    atomizers: ['DP', 'DQ'],
+  },
+  PHBH: {
+    label:     'PHBH',
+    needles:   'X',
+    atomizers: ['AV', 'AS'],
+  },
+};

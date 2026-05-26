@@ -12,6 +12,11 @@ const TRANSLATIONS = {
     'btn.darkMode':  'Dark Mode',
     'btn.lightMode': 'Light Mode',
 
+    // Carb type selector
+    'carbType.label': 'Carburetor Type',
+    'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
+    'carbType.PHBH':  'PHBH',
+
     // Setups table
     'section.setups':  'Setups',
     'col.name':        'Name',
@@ -21,10 +26,11 @@ const TRANSLATIONS = {
     'col.needleJet':   'Needle Jet',
     'col.jetType':       'Jet Type',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs',
-    'col.maxHD':       'Max HD',
+    'col.maxHD':         'Max HD',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— select —',
+    'msg.setupsReset': '{n} setup(s) cleared — needle type not compatible with selected carburetor.',
 
     // Charts
     'section.needleProfile': 'Needle Profile',
@@ -45,6 +51,7 @@ const TRANSLATIONS = {
 
     // Custom Needles
     'section.customNeedles': 'Custom Needles',
+    'field.carbType': 'Carb Type *',
     'field.type': 'Type *',
     'field.A':    'ØA – shank Ø *',
     'field.B':    'ØB – tip Ø *',
@@ -75,6 +82,7 @@ const TRANSLATIONS = {
     'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = 68 mm.',
 
     // Validation
+    'err.carbTypeRequired': 'Carb Type is required.',
     'err.typeRequired': 'Type is required.',
     'err.typeExists':   'Type already exists in the database.',
     'err.abcRequired':  'ØA, ØB and C are required.',
@@ -96,6 +104,11 @@ const TRANSLATIONS = {
     'btn.darkMode':  'Dunkelmodus',
     'btn.lightMode': 'Hellmodus',
 
+    // Carb type selector
+    'carbType.label': 'Vergaser-Typ',
+    'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
+    'carbType.PHBH':  'PHBH',
+
     // Setups table
     'section.setups':  'Setups',
     'col.name':        'Name',
@@ -105,10 +118,11 @@ const TRANSLATIONS = {
     'col.needleJet':   'Düse',
     'col.jetType':       'Düs. Typ',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB Vergaser · AV/AS = PHBH Vergaser',
-    'col.maxHD':       'Max HD',
+    'col.maxHD':         'Max HD',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— wählen —',
+    'msg.setupsReset': '{n} Setup(s) zurückgesetzt – Nadeltyp nicht kompatibel mit gewähltem Vergaser.',
 
     // Charts
     'section.needleProfile': 'Nadelprofil',
@@ -129,6 +143,7 @@ const TRANSLATIONS = {
 
     // Custom Needles
     'section.customNeedles': 'Eigene Nadeln',
+    'field.carbType': 'Vergaser-Typ *',
     'field.type': 'Typ *',
     'field.A':    'ØA – Schaft Ø *',
     'field.B':    'ØB – Spitzen Ø *',
@@ -159,6 +174,7 @@ const TRANSLATIONS = {
     'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = 68 mm.',
 
     // Validation
+    'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',
     'err.typeRequired': 'Typ ist erforderlich.',
     'err.typeExists':   'Typ bereits in der Datenbank vorhanden.',
     'err.abcRequired':  'ØA, ØB und C sind Pflichtfelder.',

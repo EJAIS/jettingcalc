@@ -30,20 +30,21 @@ export function calcSetup(setup, needleSource) {
   if (!needleType || !db[needleType]) return null;
 
   const needle = db[needleType];
-  const needleLength = NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
+  let needleLength = NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
+  if (needleType === 'X37') needleLength = 56.2;
   const needleOffset = JET_OFFSETS[jetType] ?? 0;
-  const tapers = needle.f ? 3 : needle.e ? 2 : 1;
+  const tapers = needle.F ? 3 : needle.E ? 2 : 1;
 
   // Taper slope (k) and diameter start point for taper 1
   const t1_k = tapers === 1
-    ? (needle.a - needle.b) / needle.c
-    : (needle.a - needle.d) / (needle.c - needle.e);
-  const t1_d = tapers === 1 ? needle.b : needle.d;
+    ? (needle.A - needle.B) / needle.C
+    : (needle.A - needle.D) / (needle.C - needle.E);
+  const t1_d = tapers === 1 ? needle.B : needle.D;
 
   // Taper slope for taper 2 (0 for single-taper needles)
   const t2_k = tapers === 1
     ? 0
-    : (needle.d - needle.b) / (needle.e - (needle.f || 0));
+    : (needle.D - needle.B) / (needle.E - (needle.F || 0));
 
   // Needle position at idle (Excel B7)
   const idlePos = needleLength - MIN_EXPOSED
@@ -53,14 +54,14 @@ export function calcSetup(setup, needleSource) {
 
   const curve = THROTTLE_POINTS.map(tp => {
     const pos = idlePos - tp * carbSize;
-    const e   = needle.e || 0;
-    const f   = needle.f || 0;
+    const e   = needle.E || 0;
+    const f   = needle.F || 0;
 
     let diam;
-    if (pos > needle.c)  diam = needle.a;
+    if (pos > needle.C)  diam = needle.A;
     else if (pos < 0)    diam = 0;
-    else if (pos < f)    diam = needle.b;
-    else if (pos <= e)   diam = t2_k * (pos - f) + needle.b;
+    else if (pos < f)    diam = needle.B;
+    else if (pos <= e)   diam = t2_k * (pos - f) + needle.B;
     else                 diam = t1_k * (pos - e) + t1_d;
 
     const hdEquiv = Math.sqrt(Math.max(0, needleJet ** 2 - (diam * 100) ** 2));
@@ -86,23 +87,23 @@ export function calcNeedleProfile(needleType, needleSource) {
   const needle = db[needleType];
   if (!needle) return [];
 
-  const tapers = needle.f ? 3 : needle.e ? 2 : 1;
+  const tapers = needle.F ? 3 : needle.E ? 2 : 1;
   const t1_k = tapers === 1
-    ? (needle.a - needle.b) / needle.c
-    : (needle.a - needle.d) / (needle.c - needle.e);
-  const t1_d = tapers === 1 ? needle.b : needle.d;
+    ? (needle.A - needle.B) / needle.C
+    : (needle.A - needle.D) / (needle.C - needle.E);
+  const t1_d = tapers === 1 ? needle.B : needle.D;
   const t2_k = tapers === 1
     ? 0
-    : (needle.d - needle.b) / (needle.e - (needle.f || 0));
+    : (needle.D - needle.B) / (needle.E - (needle.F || 0));
 
   const pts = [];
-  for (let pos = 0; pos <= needle.c + 2; pos += 0.5) {
-    const e = needle.e || 0;
-    const f = needle.f || 0;
+  for (let pos = 0; pos <= needle.C + 2; pos += 0.5) {
+    const e = needle.E || 0;
+    const f = needle.F || 0;
     let diam;
-    if (pos > needle.c)  diam = needle.a;
-    else if (pos < f)    diam = needle.b;
-    else if (pos <= e)   diam = t2_k * (pos - f) + needle.b;
+    if (pos > needle.C)  diam = needle.A;
+    else if (pos < f)    diam = needle.B;
+    else if (pos <= e)   diam = t2_k * (pos - f) + needle.B;
     else                 diam = t1_k * (pos - e) + t1_d;
     pts.push({ pos, diam });
   }

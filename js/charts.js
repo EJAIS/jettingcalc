@@ -2,6 +2,7 @@
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
 import { calcSetup } from './calc.js';
+import { t } from './i18n.js';
 
 let needleChart = null;
 let carbChart   = null;
@@ -48,13 +49,13 @@ export function renderCharts(setups, needleSource) {
       scales: {
         x: {
           type: 'linear',
-          title: { display: true, text: 'Throttle position' },
+          title: { display: true, text: t('chart.needleX') },
           min: 0,
           max: 1.15,
           ticks: { callback: v => (v * 100).toFixed(0) + '%' },
         },
         y: {
-          title: { display: true, text: 'Needle diameter (mm)' },
+          title: { display: true, text: t('chart.needleY') },
         },
       },
     },
@@ -94,13 +95,13 @@ export function renderCharts(setups, needleSource) {
       scales: {
         x: {
           type: 'linear',
-          title: { display: true, text: 'Throttle position' },
+          title: { display: true, text: t('chart.carbX') },
           min: 0,
           max: 1.15,
           ticks: { callback: v => (v * 100).toFixed(0) + '%' },
         },
         y: {
-          title: { display: true, text: 'Equivalent HD' },
+          title: { display: true, text: t('chart.carbY') },
         },
       },
     },

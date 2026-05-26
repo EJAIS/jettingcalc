@@ -72,14 +72,14 @@ const TRANSLATIONS = {
     'ref.col.param': 'Parameter',
     'ref.col.desc':  'Description',
     'ref.col.req':   'Required',
-    'ref.type.desc': 'Needle code (e.g. K99, U26)',
+    'ref.type.desc': 'Needle code (e.g. K99, U26, X7)',
     'ref.A.desc':    'Shank diameter — cylindrical section (mm)',
     'ref.B.desc':    'Tip diameter — minimum Ø at needle tip (mm)',
     'ref.C.desc':    'Distance from tip to start of Taper 1 (mm)',
     'ref.D.desc':    'Diameter at junction between Taper 1 & 2 (mm)',
     'ref.E.desc':    'Distance from tip to start of Taper 2 (mm)',
     'ref.F.desc':    'Length of cylindrical section at tip (mm)',
-    'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = 68 mm.',
+    'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = X = 68 mm. Exception: X37 = 56.2 mm.',
 
     // Validation
     'err.carbTypeRequired': 'Carb Type is required.',
@@ -164,14 +164,14 @@ const TRANSLATIONS = {
     'ref.col.param': 'Parameter',
     'ref.col.desc':  'Beschreibung',
     'ref.col.req':   'Pflicht',
-    'ref.type.desc': 'Nadelcode (z.B. K99, U26)',
+    'ref.type.desc': 'Nadelcode (z.B. K99, U26, X7)',
     'ref.A.desc':    'Schaftdurchmesser — zylindrischer Abschnitt (mm)',
     'ref.B.desc':    'Spitzendurchmesser — minimaler Ø an der Nadelspitze (mm)',
     'ref.C.desc':    'Abstand von Spitze zu Beginn Taper 1 (mm)',
     'ref.D.desc':    'Durchmesser am Übergang zwischen Taper 1 & 2 (mm)',
     'ref.E.desc':    'Abstand von Spitze zu Beginn Taper 2 (mm)',
     'ref.F.desc':    'Länge des zylindrischen Abschnitts an der Spitze (mm)',
-    'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = 68 mm.',
+    'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = X = 68 mm. Ausnahme: X37 = 56,2 mm.',
 
     // Validation
     'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',

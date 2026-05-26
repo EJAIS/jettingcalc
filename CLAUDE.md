@@ -231,7 +231,12 @@ export const NEEDLE_DB = {
 export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0 };
 
 // Needle-Jet Offset nach Düsentyp
-export const JET_OFFSETS = { "DP": 0, "DQ": 2, "ET": 2 };
+export const JET_OFFSETS = {
+  "DP": 0,   // VHSA/VHSB — short type (reference)
+  "DQ": 2,   // VHSA/VHSB — long type (+2mm)
+  "AV": 0,   // PHBH — short type (reference)
+  "AS": 2,   // PHBH — long type (+2mm)
+};
 ```
 
 ---
@@ -254,7 +259,7 @@ Excel: =B6 - B5 - (B3-1)*B4 + B18 + (B2-34)/2
 ```
 ```js
 const needleLength  = NEEDLE_LENGTHS[needleType[0]];       // K→73.5, U→68
-const needleOffset  = JET_OFFSETS[jetType];                // DP→0, DQ→2, ET→2
+const needleOffset  = JET_OFFSETS[jetType];                // DP/AV→0, DQ/AS→2
 const idlePos = needleLength - MIN_EXPOSED
               - (clipPos - 1) * CLIP_SPACING
               + needleOffset
@@ -451,7 +456,7 @@ export function calcNeedleProfile(needleType) {
    - Inline-Editierung: Klick auf Feld → Edit-Modus
    - Nadel-Auswahl als Dropdown (`<select>` aus NEEDLE_DB keys)
    - Clip-Position: Dropdown oder Spinner, Wertebereich **1–4** (Dellorto standard: 4 Nuten)
-   - Typ-Auswahl: DP / DQ / ET
+   - Typ-Auswahl: DP / DQ / AV / AS
 3. **"Needle Profile"-Graph** (Chart.js Line)
    - X-Achse: Nadelposition (mm, von 0 bis max c)
    - Y-Achse: Nadeldurchmesser (mm)

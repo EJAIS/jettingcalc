@@ -124,4 +124,9 @@ export const NEEDLE_DB = {
 export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0 };
 
 // Needle-jet offset by jet type
-export const JET_OFFSETS = { "DP": 0, "DQ": 2, "ET": 2 };
+export const JET_OFFSETS = {
+  "DP": 0,   // VHSA/VHSB — short type (reference)
+  "DQ": 2,   // VHSA/VHSB — long type (+2mm)
+  "AV": 0,   // PHBH — short type (reference)
+  "AS": 2,   // PHBH — long type (+2mm)
+};

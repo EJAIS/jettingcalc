@@ -24,6 +24,23 @@
 
 <main>
 
+  <!-- ── Carburetor Type Selector ──────────────────────────────────────── -->
+  <div id="carb-type-selector" class="carb-type-selector">
+    <span class="carb-type-label" data-i18n="carbType.label">Carburetor Type</span>
+    <div class="carb-type-radios">
+      <label class="carb-type-option">
+        <input type="radio" name="carbType" value="VHSx">
+        <span data-i18n="carbType.VHSx">VHSx (VHSA / VHSB / VHSC / VHSH)</span>
+      </label>
+      <label class="carb-type-option">
+        <input type="radio" name="carbType" value="PHBH">
+        <span data-i18n="carbType.PHBH">PHBH</span>
+      </label>
+    </div>
+  </div>
+
+  <div id="app-notice" class="app-notice" hidden></div>
+
   <!-- ── Setups Table ───────────────────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
@@ -38,7 +55,7 @@
             <th data-i18n="col.clip">Clip</th>
             <th data-i18n="col.carbSize">Carb Ø</th>
             <th data-i18n="col.needleJet">Needle Jet</th>
-            <th data-i18n="col.jetType">Jet Type</th>
+            <th data-i18n="col.jetType" data-i18n-title="col.jetType.title" title="Jet Type">Jet Type</th>
             <th data-i18n="col.maxHD">Max HD</th>
             <th data-i18n="col.nd">ND</th>
             <th data-i18n="col.hd">HD</th>
@@ -267,6 +284,13 @@
         </details>
 
         <form id="custom-needle-form" onsubmit="return false;">
+          <div class="cn-carb-type-row">
+            <span class="cn-carb-type-label" data-i18n="field.carbType">Carb Type *</span>
+            <div class="cn-radio-group">
+              <label><input type="radio" name="customCarbType" value="VHSx"> VHSx</label>
+              <label><input type="radio" name="customCarbType" value="PHBH"> PHBH</label>
+            </div>
+          </div>
           <div class="cn-form-grid">
             <label>
               <span data-i18n="field.type">Type *</span>

@@ -12,6 +12,11 @@ const TRANSLATIONS = {
     'btn.darkMode':  'Dark Mode',
     'btn.lightMode': 'Light Mode',
 
+    // Carb type selector
+    'carbType.label': 'Carburetor Type',
+    'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
+    'carbType.PHBH':  'PHBH',
+
     // Setups table
     'section.setups':  'Setups',
     'col.name':        'Name',
@@ -19,11 +24,13 @@ const TRANSLATIONS = {
     'col.clip':        'Clip',
     'col.carbSize':    'Carb Ø',
     'col.needleJet':   'Needle Jet',
-    'col.jetType':     'Jet Type',
-    'col.maxHD':       'Max HD',
+    'col.jetType':       'Jet Type',
+    'col.jetType.title': 'DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs',
+    'col.maxHD':         'Max HD',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— select —',
+    'msg.setupsReset': '{n} setup(s) cleared — needle type not compatible with selected carburetor.',
 
     // Charts
     'section.needleProfile': 'Needle Profile',
@@ -44,6 +51,7 @@ const TRANSLATIONS = {
 
     // Custom Needles
     'section.customNeedles': 'Custom Needles',
+    'field.carbType': 'Carb Type *',
     'field.type': 'Type *',
     'field.A':    'ØA – shank Ø *',
     'field.B':    'ØB – tip Ø *',
@@ -64,16 +72,17 @@ const TRANSLATIONS = {
     'ref.col.param': 'Parameter',
     'ref.col.desc':  'Description',
     'ref.col.req':   'Required',
-    'ref.type.desc': 'Needle code (e.g. K99, U26)',
+    'ref.type.desc': 'Needle code (e.g. K99, U26, X7)',
     'ref.A.desc':    'Shank diameter — cylindrical section (mm)',
     'ref.B.desc':    'Tip diameter — minimum Ø at needle tip (mm)',
     'ref.C.desc':    'Distance from tip to start of Taper 1 (mm)',
     'ref.D.desc':    'Diameter at junction between Taper 1 & 2 (mm)',
     'ref.E.desc':    'Distance from tip to start of Taper 2 (mm)',
     'ref.F.desc':    'Length of cylindrical section at tip (mm)',
-    'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = 68 mm.',
+    'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = X = 68 mm. Exception: X37 = 56.2 mm.',
 
     // Validation
+    'err.carbTypeRequired': 'Carb Type is required.',
     'err.typeRequired': 'Type is required.',
     'err.typeExists':   'Type already exists in the database.',
     'err.abcRequired':  'ØA, ØB and C are required.',
@@ -95,6 +104,11 @@ const TRANSLATIONS = {
     'btn.darkMode':  'Dunkelmodus',
     'btn.lightMode': 'Hellmodus',
 
+    // Carb type selector
+    'carbType.label': 'Vergaser-Typ',
+    'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
+    'carbType.PHBH':  'PHBH',
+
     // Setups table
     'section.setups':  'Setups',
     'col.name':        'Name',
@@ -102,11 +116,13 @@ const TRANSLATIONS = {
     'col.clip':        'Clip',
     'col.carbSize':    'Vergaser Ø',
     'col.needleJet':   'Düse',
-    'col.jetType':     'Düs. Typ',
-    'col.maxHD':       'Max HD',
+    'col.jetType':       'Düs. Typ',
+    'col.jetType.title': 'DP/DQ = VHSA/VHSB Vergaser · AV/AS = PHBH Vergaser',
+    'col.maxHD':         'Max HD',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— wählen —',
+    'msg.setupsReset': '{n} Setup(s) zurückgesetzt – Nadeltyp nicht kompatibel mit gewähltem Vergaser.',
 
     // Charts
     'section.needleProfile': 'Nadelprofil',
@@ -127,6 +143,7 @@ const TRANSLATIONS = {
 
     // Custom Needles
     'section.customNeedles': 'Eigene Nadeln',
+    'field.carbType': 'Vergaser-Typ *',
     'field.type': 'Typ *',
     'field.A':    'ØA – Schaft Ø *',
     'field.B':    'ØB – Spitzen Ø *',
@@ -147,16 +164,17 @@ const TRANSLATIONS = {
     'ref.col.param': 'Parameter',
     'ref.col.desc':  'Beschreibung',
     'ref.col.req':   'Pflicht',
-    'ref.type.desc': 'Nadelcode (z.B. K99, U26)',
+    'ref.type.desc': 'Nadelcode (z.B. K99, U26, X7)',
     'ref.A.desc':    'Schaftdurchmesser — zylindrischer Abschnitt (mm)',
     'ref.B.desc':    'Spitzendurchmesser — minimaler Ø an der Nadelspitze (mm)',
     'ref.C.desc':    'Abstand von Spitze zu Beginn Taper 1 (mm)',
     'ref.D.desc':    'Durchmesser am Übergang zwischen Taper 1 & 2 (mm)',
     'ref.E.desc':    'Abstand von Spitze zu Beginn Taper 2 (mm)',
     'ref.F.desc':    'Länge des zylindrischen Abschnitts an der Spitze (mm)',
-    'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = 68 mm.',
+    'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = X = 68 mm. Ausnahme: X37 = 56,2 mm.',
 
     // Validation
+    'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',
     'err.typeRequired': 'Typ ist erforderlich.',
     'err.typeExists':   'Typ bereits in der Datenbank vorhanden.',
     'err.abcRequired':  'ØA, ØB und C sind Pflichtfelder.',

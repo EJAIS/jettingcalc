@@ -5,6 +5,7 @@ import { NEEDLE_DB } from './needledb.js';
 
 const STORAGE_KEY        = 'dellorto_setups';
 const CUSTOM_NEEDLES_KEY = 'dellorto_custom_needles';
+const CARB_TYPE_KEY      = 'dellorto_carb_type';
 
 const DEFAULT_SETUPS = Array.from({ length: 5 }, (_, i) => ({
   id: i + 1,
@@ -36,8 +37,17 @@ export function saveCustomNeedles(needles) {
   localStorage.setItem(CUSTOM_NEEDLES_KEY, JSON.stringify(needles));
 }
 
-export function getAllNeedles() {
-  const custom = loadCustomNeedles();
+export function loadCarbType() {
+  return localStorage.getItem(CARB_TYPE_KEY) || 'VHSx';
+}
+
+export function saveCarbType(ct) {
+  localStorage.setItem(CARB_TYPE_KEY, ct);
+}
+
+export function getAllNeedles(carbType) {
+  const custom = loadCustomNeedles()
+    .filter(n => !carbType || n.carbType === carbType);
   const customMap = Object.fromEntries(
     custom.map(n => {
       const entry = { A: n.A, B: n.B, C: n.C };

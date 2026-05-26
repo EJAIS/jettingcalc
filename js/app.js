@@ -1,31 +1,47 @@
 // app.js — UI logic, event handling
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
-import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles } from './storage.js';
+import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles, loadCarbType, saveCarbType } from './storage.js';
 import { calcSetup } from './calc.js';
 import { renderCharts, openChartModal, closeChartModal, COLORS } from './charts.js';
-import { NEEDLE_DB } from './needledb.js';
+import { NEEDLE_DB, CARB_TYPES } from './needledb.js';
+import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
-let setups = loadSetups();
+let setups   = loadSetups();
+let carbType = loadCarbType();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function getAllNeedlesSorted() {
-  const all = getAllNeedles();
-  return Object.keys(all).sort((a, b) => {
-    // Sort K before U, then numerically
-    if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
-    return parseInt(a.slice(1)) - parseInt(b.slice(1));
-  });
+function needleSort(a, b) {
+  if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
+  return parseInt(a.slice(1)) - parseInt(b.slice(1));
+}
+
+function getNeedlesForCarbType(ct) {
+  const prefixes = CARB_TYPES[ct].needles;
+  return Object.keys(getAllNeedles(ct))
+    .filter(key => prefixes.includes(key[0]))
+    .sort(needleSort);
 }
 
 function buildNeedleOptions(selectedType) {
-  const keys = getAllNeedlesSorted();
-  const custom = loadCustomNeedles().map(n => n.type);
-  return `<option value="">— select —</option>` +
+  const keys = getNeedlesForCarbType(carbType);
+  const customTypes = loadCustomNeedles()
+    .filter(n => n.carbType === carbType)
+    .map(n => n.type);
+  return `<option value="">${t('setup.select')}</option>` +
     keys.map(k =>
-      `<option value="${k}"${k === selectedType ? ' selected' : ''}${custom.includes(k) ? ' class="custom-needle"' : ''}>${k}${custom.includes(k) ? ' *' : ''}</option>`
+      `<option value="${k}"${k === selectedType ? ' selected' : ''}${customTypes.includes(k) ? ' class="custom-needle"' : ''}>${k}${customTypes.includes(k) ? ' *' : ''}</option>`
     ).join('');
+}
+
+function showNotice(msg) {
+  const el = document.getElementById('app-notice');
+  if (!el) return;
+  el.textContent = msg;
+  el.removeAttribute('hidden');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.setAttribute('hidden', ''), 5000);
 }
 
 // ── Table rendering ───────────────────────────────────────────────────────────
@@ -34,7 +50,8 @@ function renderTable() {
   const tbody = document.getElementById('setup-tbody');
   if (!tbody) return;
 
-  const allNeedles = getAllNeedles();
+  const allNeedles    = getAllNeedles(carbType);
+  const validAtomizers = CARB_TYPES[carbType].atomizers;
 
   tbody.innerHTML = setups.map(s => {
     const result = s.needleType ? calcSetup(s, allNeedles) : null;
@@ -64,11 +81,10 @@ function renderTable() {
                value="${s.needleJet ?? ''}" min="100" max="400" placeholder="×10">
       </td>
       <td>
-        <select class="cell-input" data-id="${s.id}" data-field="jetType">
+        <select class="cell-input" data-id="${s.id}" data-field="jetType"
+                title="${t('col.jetType.title')}">
           <option value="">—</option>
-          <option value="DP"${s.jetType === 'DP' ? ' selected' : ''}>DP</option>
-          <option value="DQ"${s.jetType === 'DQ' ? ' selected' : ''}>DQ</option>
-          <option value="ET"${s.jetType === 'ET' ? ' selected' : ''}>ET</option>
+          ${validAtomizers.map(a => `<option value="${a}"${s.jetType === a ? ' selected' : ''}>${a}</option>`).join('')}
         </select>
       </td>
       <td class="maxhd-cell">${maxHD}</td>
@@ -88,7 +104,7 @@ function renderCalcResults() {
   const container = document.getElementById('calc-results-body');
   if (!container) return;
 
-  const allNeedles = getAllNeedles();
+  const allNeedles = getAllNeedles(carbType);
   const activeSetups = setups.filter(s => s.needleType);
 
   if (activeSetups.length === 0) {
@@ -114,11 +130,11 @@ function renderCalcResults() {
           <caption style="color:${color}">${s.name}</caption>
           <thead>
             <tr>
-              <th>Throttle</th>
-              <th>Needle Pos (mm)</th>
-              <th>Needle Ø (mm)</th>
-              <th>HD Equiv</th>
-              <th>Overall</th>
+              <th>${t('col.throttle')}</th>
+              <th>${t('col.needlePos')}</th>
+              <th>${t('col.needleDiam')}</th>
+              <th>${t('col.hdEquiv')}</th>
+              <th>${t('col.overall')}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -128,9 +144,40 @@ function renderCalcResults() {
 }
 
 function updateUI() {
+  document.querySelectorAll('input[name="carbType"]').forEach(r => {
+    r.checked = r.value === carbType;
+  });
   renderTable();
-  renderCharts(setups, getAllNeedles());
+  renderCharts(setups, getAllNeedles(carbType));
   renderCalcResults();
+}
+
+// ── Carb type change ──────────────────────────────────────────────────────────
+
+function handleCarbTypeChange(newCarbType) {
+  carbType = newCarbType;
+  saveCarbType(carbType);
+
+  const validPrefixes  = CARB_TYPES[carbType].needles;
+  const validAtomizers = CARB_TYPES[carbType].atomizers;
+
+  let resetCount = 0;
+  setups.forEach(s => {
+    let changed = false;
+    if (s.needleType && !validPrefixes.includes(s.needleType[0])) {
+      s.needleType = null;
+      changed = true;
+    }
+    if (s.jetType && !validAtomizers.includes(s.jetType)) {
+      s.jetType = null;
+      changed = true;
+    }
+    if (changed) resetCount++;
+  });
+
+  saveSetups(setups);
+  if (resetCount > 0) showNotice(t('msg.setupsReset').replace('{n}', resetCount));
+  updateUI();
 }
 
 // ── Field change handler ──────────────────────────────────────────────────────
@@ -154,32 +201,28 @@ function handleFieldChange(id, field, value) {
 
 function readNeedleForm() {
   const get = id => document.getElementById(id)?.value.trim();
-  const getNum = id => {
-    const v = get(id);
-    return v === '' ? null : parseFloat(v);
-  };
+  const getNum = id => { const v = get(id); return v === '' ? null : parseFloat(v); };
+  const carbTypeEl = document.querySelector('input[name="customCarbType"]:checked');
   return {
+    carbType: carbTypeEl?.value ?? null,
     type: get('cn-type')?.toUpperCase(),
-    a: getNum('cn-a'),
-    b: getNum('cn-b'),
-    c: getNum('cn-c'),
-    d: getNum('cn-d'),
-    e: getNum('cn-e'),
-    f: getNum('cn-f'),
+    A: getNum('cn-A'),
+    B: getNum('cn-B'),
+    C: getNum('cn-C'),
+    D: getNum('cn-D'),
+    E: getNum('cn-E'),
+    F: getNum('cn-F'),
   };
 }
 
 function validateNeedle(needle, showAlert = true) {
   const errors = [];
-  if (!needle.type) errors.push('Needle type is required (e.g. K99).');
-  if (needle.a == null) errors.push('Field a (max diameter) is required.');
-  if (needle.b == null) errors.push('Field b (min diameter) is required.');
-  if (needle.c == null) errors.push('Field c (taper start) is required.');
-  if (NEEDLE_DB[needle.type]) errors.push(`"${needle.type}" already exists in the built-in database.`);
-  if ((needle.d != null) !== (needle.e != null))
-    errors.push('Fields d and e must both be filled or both be empty.');
-  if (needle.f != null && (needle.d == null || needle.e == null))
-    errors.push('Field f requires d and e to be set.');
+  if (!needle.carbType) errors.push(t('err.carbTypeRequired'));
+  if (!needle.type) errors.push(t('err.typeRequired'));
+  if (needle.A == null || needle.B == null || needle.C == null) errors.push(t('err.abcRequired'));
+  if (needle.type && NEEDLE_DB[needle.type]) errors.push(t('err.typeExists'));
+  if ((needle.D != null) !== (needle.E != null)) errors.push(t('err.deIncomplete'));
+  if (needle.F != null && (needle.D == null || needle.E == null)) errors.push(t('err.fRequiresDe'));
   if (errors.length && showAlert) alert(errors.join('\n'));
   return errors.length === 0;
 }
@@ -189,14 +232,15 @@ function renderCustomNeedleList() {
   if (!list) return;
   const custom = loadCustomNeedles();
   if (custom.length === 0) {
-    list.innerHTML = '<li class="empty">No custom needles saved.</li>';
+    list.innerHTML = `<li class="empty">${t('needle.empty')}</li>`;
     return;
   }
   list.innerHTML = custom.map(n => {
-    const tapers = n.f != null ? '3T' : n.e != null ? '2T' : '1T';
+    const tapers = n.F != null ? '3T' : n.E != null ? '2T' : '1T';
     return `<li>
       <span class="cn-name">${n.type}</span>
-      <span class="cn-detail">${tapers} · a=${n.a} b=${n.b} c=${n.c}${n.d != null ? ` d=${n.d} e=${n.e}` : ''}${n.f != null ? ` f=${n.f}` : ''}</span>
+      ${n.carbType ? `<span class="cn-carb-badge">${n.carbType}</span>` : ''}
+      <span class="cn-detail">${tapers} · A=${n.A} B=${n.B} C=${n.C}${n.D != null ? ` D=${n.D} E=${n.E}` : ''}${n.F != null ? ` F=${n.F}` : ''}</span>
       <button class="btn-delete-needle" data-type="${n.type}" title="Delete">✕</button>
     </li>`;
   }).join('');
@@ -205,13 +249,14 @@ function renderCustomNeedleList() {
 function buildMailtoLink(needle) {
   const subject = encodeURIComponent(`Custom Needle Submission: ${needle.type}`);
   const body = encodeURIComponent(
+    `Carb Type: ${needle.carbType}\r\n` +
     `Needle Type: ${needle.type}\r\n` +
-    `a: ${needle.a}\r\n` +
-    `b: ${needle.b}\r\n` +
-    `c: ${needle.c}\r\n` +
-    `d (optional): ${needle.d ?? ''}\r\n` +
-    `e (optional): ${needle.e ?? ''}\r\n` +
-    `f (optional): ${needle.f ?? ''}\r\n` +
+    `A: ${needle.A}\r\n` +
+    `B: ${needle.B}\r\n` +
+    `C: ${needle.C}\r\n` +
+    `D (optional): ${needle.D ?? ''}\r\n` +
+    `E (optional): ${needle.E ?? ''}\r\n` +
+    `F (optional): ${needle.F ?? ''}\r\n` +
     `\r\nSource / Reference (optional):\r\n`
   );
   return `mailto:jetting@ejais.de?subject=${subject}&body=${body}`;
@@ -230,8 +275,25 @@ const DEMO_SETUPS = [
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize carb type radios from persisted state
+  document.querySelectorAll('input[name="carbType"]').forEach(r => {
+    r.checked = r.value === carbType;
+  });
+  document.querySelectorAll('input[name="customCarbType"]').forEach(r => {
+    r.checked = r.value === carbType;
+  });
+
   updateUI();
   renderCustomNeedleList();
+  applyTranslations();
+
+  // Carb type selector
+  document.getElementById('carb-type-selector')?.addEventListener('change', e => {
+    const r = e.target.closest('input[name="carbType"]');
+    if (!r) return;
+    handleCarbTypeChange(r.value);
+    applyTranslations();
+  });
 
   // Setup table changes (event delegation)
   document.getElementById('setup-tbody').addEventListener('change', e => {
@@ -240,11 +302,13 @@ document.addEventListener('DOMContentLoaded', () => {
     handleFieldChange(parseInt(el.dataset.id), el.dataset.field, el.value);
   });
 
-  // Load demo data
+  // Load demo data (demo uses K98/DP → VHSx)
   document.getElementById('btn-load-demo')?.addEventListener('click', () => {
     if (!confirm('Load demo setups? This will overwrite your current data.')) return;
     setups = structuredClone(DEMO_SETUPS);
     saveSetups(setups);
+    carbType = 'VHSx';
+    saveCarbType(carbType);
     updateUI();
   });
 
@@ -301,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Dark mode toggle
   const btnDark = document.getElementById('btn-darkmode');
   const updateDarkBtn = () => {
-    if (btnDark) btnDark.textContent = document.body.classList.contains('dark') ? 'Light Mode' : 'Dark Mode';
+    if (btnDark) btnDark.textContent = document.body.classList.contains('dark') ? t('btn.lightMode') : t('btn.darkMode');
   };
   btnDark?.addEventListener('click', () => {
     document.body.classList.toggle('dark');
@@ -310,6 +374,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
   updateDarkBtn();
+
+  // Language toggle
+  document.getElementById('btn-lang')?.addEventListener('click', () => {
+    setLang(getLang() === 'en' ? 'de' : 'en');
+    updateUI();
+    renderCustomNeedleList();
+    updateDarkBtn();
+  });
 
   // Chart expand modal — icon button and chart-wrap click both open the modal
   document.getElementById('expand-needle')?.addEventListener('click', () => openChartModal('needle'));

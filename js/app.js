@@ -18,9 +18,9 @@ function needleSort(a, b) {
 }
 
 function getNeedlesForCarbType(ct) {
-  const prefixes = CARB_TYPES[ct].needles;
-  return Object.keys(getAllNeedles(ct))
-    .filter(key => prefixes.includes(key[0]))
+  return Object.entries(getAllNeedles())
+    .filter(([, needle]) => needle.carbType === ct)
+    .map(([key]) => key)
     .sort(needleSort);
 }
 
@@ -50,7 +50,7 @@ function renderTable() {
   const tbody = document.getElementById('setup-tbody');
   if (!tbody) return;
 
-  const allNeedles    = getAllNeedles(carbType);
+  const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
 
   tbody.innerHTML = setups.map(s => {
@@ -104,7 +104,7 @@ function renderCalcResults() {
   const container = document.getElementById('calc-results-body');
   if (!container) return;
 
-  const allNeedles = getAllNeedles(carbType);
+  const allNeedles = getAllNeedles();
   const activeSetups = setups.filter(s => s.needleType);
 
   if (activeSetups.length === 0) {
@@ -148,7 +148,7 @@ function updateUI() {
     r.checked = r.value === carbType;
   });
   renderTable();
-  renderCharts(setups, getAllNeedles(carbType));
+  renderCharts(setups, getAllNeedles());
   renderCalcResults();
 }
 
@@ -158,13 +158,13 @@ function handleCarbTypeChange(newCarbType) {
   carbType = newCarbType;
   saveCarbType(carbType);
 
-  const validPrefixes  = CARB_TYPES[carbType].needles;
+  const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
 
   let resetCount = 0;
   setups.forEach(s => {
     let changed = false;
-    if (s.needleType && !validPrefixes.includes(s.needleType[0])) {
+    if (s.needleType && allNeedles[s.needleType]?.carbType !== carbType) {
       s.needleType = null;
       changed = true;
     }

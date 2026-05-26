@@ -65,11 +65,13 @@ function renderTable() {
                value="${s.needleJet ?? ''}" min="100" max="400" placeholder="×10">
       </td>
       <td>
-        <select class="cell-input" data-id="${s.id}" data-field="jetType">
+        <select class="cell-input" data-id="${s.id}" data-field="jetType"
+                title="${t('col.jetType.title')}">
           <option value="">—</option>
           <option value="DP"${s.jetType === 'DP' ? ' selected' : ''}>DP</option>
           <option value="DQ"${s.jetType === 'DQ' ? ' selected' : ''}>DQ</option>
-          <option value="ET"${s.jetType === 'ET' ? ' selected' : ''}>ET</option>
+          <option value="AV"${s.jetType === 'AV' ? ' selected' : ''}>AV</option>
+          <option value="AS"${s.jetType === 'AS' ? ' selected' : ''}>AS</option>
         </select>
       </td>
       <td class="maxhd-cell">${maxHD}</td>

@@ -92,6 +92,26 @@ const TRANSLATIONS = {
     // Footer
     'footer.disclaimer': 'This tool is provided for informational purposes only. Calculations may contain errors — always verify jetting settings with a qualified mechanic. The author accepts no liability for engine damage, personal injury, or any other loss arising from the use of this software.',
     'footer.webport': 'Web port:',
+
+    // Confirm dialogs and empty states
+    'msg.noActiveSetups':      'No active setups to display.',
+    'confirm.loadDemo':        'Load demo setups? This will overwrite your current data.',
+    'confirm.resetAll':        'Reset all setups to empty?',
+    'confirm.overwriteNeedle': '"${type}" already exists as a custom needle. Overwrite?',
+    'confirm.deleteNeedle':    'Delete custom needle "${type}"?',
+
+    // SVG needle schematic labels
+    'svg.shank':         'Shank',
+    'svg.taper1':        'Taper 1',
+    'svg.taper2':        'Taper 2',
+    'svg.cylTip':        'Cyl. tip',
+    'svg.fromTipMm':     'from tip (mm)',
+    'svg.fromTipOpt':    'from tip (opt.)',
+    'svg.cylTipOpt':     'cyl. tip (opt.)',
+    'svg.required':      'Required',
+    'svg.optionalMulti': 'Optional (multi-taper only)',
+    'svg.title':         'Dellorto needle schematic — measurement points ØA, ØB, C, ØD, E, F',
+    'svg.desc':          'Cross-section of a full-featured Dellorto needle showing all six official measurement parameters',
   },
 
   de: {
@@ -184,6 +204,26 @@ const TRANSLATIONS = {
     // Footer
     'footer.disclaimer': 'Dieses Tool dient ausschließlich zu Informationszwecken. Berechnungen können Fehler enthalten — Einstellungen stets von einem Fachmann überprüfen lassen. Der Autor haftet nicht für Motorschäden, Personenschäden oder sonstige Verluste, die aus der Nutzung dieser Software entstehen.',
     'footer.webport': 'Web-Port:',
+
+    // Confirm dialogs and empty states
+    'msg.noActiveSetups':      'Keine aktiven Setups vorhanden.',
+    'confirm.loadDemo':        'Demo-Setups laden? Aktuelle Daten werden überschrieben.',
+    'confirm.resetAll':        'Alle Setups zurücksetzen?',
+    'confirm.overwriteNeedle': '"${type}" existiert bereits als eigene Nadel. Überschreiben?',
+    'confirm.deleteNeedle':    'Eigene Nadel "${type}" löschen?',
+
+    // SVG needle schematic labels
+    'svg.shank':         'Schaft',
+    'svg.taper1':        'Konus 1',
+    'svg.taper2':        'Konus 2',
+    'svg.cylTip':        'Zyl. Spitze',
+    'svg.fromTipMm':     'von Spitze (mm)',
+    'svg.fromTipOpt':    'von Spitze (opt.)',
+    'svg.cylTipOpt':     'zyl. Spitze (opt.)',
+    'svg.required':      'Pflichtfeld',
+    'svg.optionalMulti': 'Optional (nur Mehrkonus-Nadeln)',
+    'svg.title':         'Dellorto Nadel-Schema — Messpunkte ØA, ØB, C, ØD, E, F',
+    'svg.desc':          'Querschnitt einer Dellorto-Nadel mit allen sechs offiziellen Messparametern',
   },
 };
 

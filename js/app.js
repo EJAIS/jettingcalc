@@ -18,9 +18,9 @@ function needleSort(a, b) {
 }
 
 function getNeedlesForCarbType(ct) {
-  const prefixes = CARB_TYPES[ct].needles;
-  return Object.keys(getAllNeedles(ct))
-    .filter(key => prefixes.includes(key[0]))
+  return Object.entries(getAllNeedles())
+    .filter(([, needle]) => needle.carbType === ct)
+    .map(([key]) => key)
     .sort(needleSort);
 }
 
@@ -50,7 +50,7 @@ function renderTable() {
   const tbody = document.getElementById('setup-tbody');
   if (!tbody) return;
 
-  const allNeedles    = getAllNeedles(carbType);
+  const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
 
   tbody.innerHTML = setups.map(s => {
@@ -104,11 +104,11 @@ function renderCalcResults() {
   const container = document.getElementById('calc-results-body');
   if (!container) return;
 
-  const allNeedles = getAllNeedles(carbType);
+  const allNeedles = getAllNeedles();
   const activeSetups = setups.filter(s => s.needleType);
 
   if (activeSetups.length === 0) {
-    container.innerHTML = '<p class="cr-empty">No active setups to display.</p>';
+    container.innerHTML = `<p class="cr-empty">${t('msg.noActiveSetups')}</p>`;
     return;
   }
 
@@ -148,7 +148,7 @@ function updateUI() {
     r.checked = r.value === carbType;
   });
   renderTable();
-  renderCharts(setups, getAllNeedles(carbType));
+  renderCharts(setups, getAllNeedles());
   renderCalcResults();
 }
 
@@ -158,13 +158,13 @@ function handleCarbTypeChange(newCarbType) {
   carbType = newCarbType;
   saveCarbType(carbType);
 
-  const validPrefixes  = CARB_TYPES[carbType].needles;
+  const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
 
   let resetCount = 0;
   setups.forEach(s => {
     let changed = false;
-    if (s.needleType && !validPrefixes.includes(s.needleType[0])) {
+    if (s.needleType && allNeedles[s.needleType]?.carbType !== carbType) {
       s.needleType = null;
       changed = true;
     }
@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load demo data (demo uses K98/DP → VHSx)
   document.getElementById('btn-load-demo')?.addEventListener('click', () => {
-    if (!confirm('Load demo setups? This will overwrite your current data.')) return;
+    if (!confirm(t('confirm.loadDemo'))) return;
     setups = structuredClone(DEMO_SETUPS);
     saveSetups(setups);
     carbType = 'VHSx';
@@ -314,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Reset all setups
   document.getElementById('btn-reset')?.addEventListener('click', () => {
-    if (!confirm('Reset all setups to empty?')) return;
+    if (!confirm(t('confirm.resetAll'))) return;
     setups = Array.from({ length: 5 }, (_, i) => ({
       id: i + 1, name: `#${i + 1}`,
       needleType: null, clipPos: null, carbSize: null,
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const custom = loadCustomNeedles();
     const existingIdx = custom.findIndex(n => n.type === needle.type);
     if (existingIdx >= 0) {
-      if (!confirm(`"${needle.type}" already exists as a custom needle. Overwrite?`)) return;
+      if (!confirm(t('confirm.overwriteNeedle').replace('${type}', needle.type))) return;
       custom[existingIdx] = needle;
     } else {
       custom.push(needle);
@@ -355,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = e.target.closest('.btn-delete-needle');
     if (!btn) return;
     const type = btn.dataset.type;
-    if (!confirm(`Delete custom needle "${type}"?`)) return;
+    if (!confirm(t('confirm.deleteNeedle').replace('${type}', type))) return;
     const custom = loadCustomNeedles().filter(n => n.type !== type);
     saveCustomNeedles(custom);
     renderCustomNeedleList();

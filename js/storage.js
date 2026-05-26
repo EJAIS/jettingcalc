@@ -45,12 +45,11 @@ export function saveCarbType(ct) {
   localStorage.setItem(CARB_TYPE_KEY, ct);
 }
 
-export function getAllNeedles(carbType) {
-  const custom = loadCustomNeedles()
-    .filter(n => !carbType || n.carbType === carbType);
+export function getAllNeedles() {
+  const custom = loadCustomNeedles();
   const customMap = Object.fromEntries(
     custom.map(n => {
-      const entry = { A: n.A, B: n.B, C: n.C };
+      const entry = { carbType: n.carbType, A: n.A, B: n.B, C: n.C };
       if (n.D != null && n.E != null) { entry.D = n.D; entry.E = n.E; }
       if (n.F != null)                { entry.F = n.F; }
       return [n.type, entry];

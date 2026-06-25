@@ -1,6 +1,6 @@
 # Dellorto Jetting Calculator
 
-Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for Dellorto carburetors (VHSA / VHSB / VHSC / VHSH and PHBH). Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
+Web port of *"Calculate Jetting for Dellorto Carbs v1.5"* — a browser-based jetting calculator for Dellorto carburetors (VHSA / VHSB / VHSC / VHSH, PHBH, and PHBL). Supports up to 5 parallel setups, visualizes the Needle Profile and Carb Profile as interactive charts, and allows saving custom needles locally. No server, no login, works fully offline.
 
 ## Usage
 
@@ -8,7 +8,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 
 > **Note:** Because the JS files use ES modules, browsers block them over `file://`. Serve locally with e.g. `python3 -m http.server 8080` and open `http://localhost:8080`.
 
-- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ) or **PHBH** (needles X, atomizers AV/AS). This filters the available needle and atomizer options throughout the app.
+- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), **PHBH** (needles X, atomizers AV/AS), or **PHBL** (needles D, atomizer AQ). This filters the available needle and atomizer options throughout the app.
 - Fill in up to 5 setups in the table (Needle, Clip 1–4, Carb Ø, Needle Jet, Jet Type, ND, HD). Max HD is calculated and displayed automatically.
 - The **Needle Profile** chart shows needle diameter vs. throttle position (0–115%) for each active setup.
 - The **Carb Profile** chart shows the blended equivalent flow (Overall HD) across the throttle range.
@@ -24,7 +24,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 ```
 index.html          Main UI
 css/style.css       Styling (dark mode capable)
-js/needledb.js      Static needle database (read-only, 180 needles: K, U, X types)
+js/needledb.js      Static needle database (read-only, 235 needles: K, U, X, D types)
 js/calc.js          Calculation engine (1:1 port from Excel formulas)
 js/storage.js       localStorage abstraction (setups + custom needles)
 js/charts.js        Chart.js diagram rendering

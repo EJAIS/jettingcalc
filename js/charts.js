@@ -12,10 +12,17 @@ let modalChart  = null;
 let needleConfig = null;
 let carbConfig   = null;
 
-export const COLORS = ['#2e8b7a', '#e07b39', '#6a5acd', '#c0392b', '#27ae60'];
+const COLORS_LIGHT = ['#c8102e', '#1b8a4a', '#44494f', '#8c8c8c', '#7a0a1a'];
+const COLORS_DARK  = ['#e0454f', '#1f9e58', '#e0b03a', '#7fb3d9', '#a83040'];
+
+export function getColors() {
+  return document.body.classList.contains('dark') ? COLORS_DARK : COLORS_LIGHT;
+}
 
 export function renderCharts(setups, needleSource) {
   const activeSetups = setups.filter(s => s.needleType);
+  const colors    = getColors();
+  const axisColor = document.body.classList.contains('dark') ? '#9aa0a8' : undefined;
 
   // --- Needle Profile ---
   // Use the actual throttle-travel range from calcSetup rather than the full needle geometry,
@@ -26,8 +33,8 @@ export function renderCharts(setups, needleSource) {
     return {
       label: s.name,
       data: result.curve.map(p => ({ x: p.tp, y: p.diam })),
-      borderColor: COLORS[s.id - 1],
-      backgroundColor: COLORS[s.id - 1] + '22',
+      borderColor: colors[s.id - 1],
+      backgroundColor: colors[s.id - 1] + '22',
       tension: 0.3,
       pointRadius: 2,
     };
@@ -49,13 +56,14 @@ export function renderCharts(setups, needleSource) {
       scales: {
         x: {
           type: 'linear',
-          title: { display: true, text: t('chart.needleX') },
+          title: { display: true, text: t('chart.needleX'), color: axisColor },
           min: 0,
           max: 1.15,
-          ticks: { callback: v => (v * 100).toFixed(0) + '%' },
+          ticks: { callback: v => (v * 100).toFixed(0) + '%', color: axisColor },
         },
         y: {
-          title: { display: true, text: t('chart.needleY') },
+          title: { display: true, text: t('chart.needleY'), color: axisColor },
+          ticks: { color: axisColor },
         },
       },
     },
@@ -71,8 +79,8 @@ export function renderCharts(setups, needleSource) {
     return {
       label: s.name,
       data: result.curve.map(p => ({ x: p.tp, y: p.overall })),
-      borderColor: COLORS[s.id - 1],
-      backgroundColor: COLORS[s.id - 1] + '22',
+      borderColor: colors[s.id - 1],
+      backgroundColor: colors[s.id - 1] + '22',
       tension: 0.3,
       pointRadius: 2,
     };
@@ -95,13 +103,14 @@ export function renderCharts(setups, needleSource) {
       scales: {
         x: {
           type: 'linear',
-          title: { display: true, text: t('chart.carbX') },
+          title: { display: true, text: t('chart.carbX'), color: axisColor },
           min: 0,
           max: 1.15,
-          ticks: { callback: v => (v * 100).toFixed(0) + '%' },
+          ticks: { callback: v => (v * 100).toFixed(0) + '%', color: axisColor },
         },
         y: {
-          title: { display: true, text: t('chart.carbY') },
+          title: { display: true, text: t('chart.carbY'), color: axisColor },
+          ticks: { color: axisColor },
         },
       },
     },

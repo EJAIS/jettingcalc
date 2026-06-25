@@ -5,35 +5,39 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #f5f5f5;
-  --surface:   #ffffff;
-  --border:    #d0d0d0;
-  --text:      #1a1a1a;
-  --text-muted:#666666;
-  --accent:    #2e8b7a;
-  --accent-h:  #236b5e;
-  --danger:    #c0392b;
-  --input-bg:  #ffffff;
-  --header-bg: #1e2a2a;
-  --header-fg: #e8f4f2;
-  --row-even:  #f9f9f9;
-  --shadow:    0 2px 8px rgba(0,0,0,.08);
+  --bg:          #f5f5f5;
+  --surface:     #ffffff;
+  --border:      #d0d0d0;
+  --text:        #2b2e35;
+  --text-muted:  #666666;
+  --accent:      #c8102e;
+  --accent-h:    #a00d24;
+  --danger:      #c0392b;
+  --input-bg:    #ffffff;
+  --header-bg:   #44494f;
+  --header-fg:   #f0f0f0;
+  --row-even:    #f9f9f9;
+  --shadow:      0 2px 8px rgba(0,0,0,.08);
+  --stripe-green: #1b8a4a;
+  --flag-mid:     #f0f0f0;
 }
 
 body.dark {
-  --bg:        #141a1a;
-  --surface:   #1e2a2a;
-  --border:    #2e4040;
-  --text:      #e0eeec;
-  --text-muted:#7aada6;
-  --accent:    #3eb89f;
-  --accent-h:  #50d0b5;
-  --danger:    #e05545;
-  --input-bg:  #162020;
-  --header-bg: #0e1616;
-  --header-fg: #a8d8d0;
-  --row-even:  #182424;
-  --shadow:    0 2px 8px rgba(0,0,0,.3);
+  --bg:          #2b2e35;
+  --surface:     #3a3e46;
+  --border:      #4a4e56;
+  --text:        #e8e8e8;
+  --text-muted:  #888888;
+  --accent:      #e0454f;
+  --accent-h:    #c8102e;
+  --danger:      #e05545;
+  --input-bg:    #2b2e35;
+  --header-bg:   #454a52;
+  --header-fg:   #eeeeee;
+  --row-even:    #30343a;
+  --shadow:      0 2px 8px rgba(0,0,0,.3);
+  --stripe-green: #1f9e58;
+  --flag-mid:     #e8e8e8;
 }
 
 body {
@@ -76,6 +80,27 @@ header .subtitle {
   flex-shrink: 0;
 }
 
+/* ── Header title + flag badge ─────────────────────────────────────────────── */
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.flag-badge {
+  display: flex;
+  width: 30px;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 0.5px solid rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+.flag-badge > div           { flex: 1; }
+.flag-badge > div:nth-child(1) { background: var(--stripe-green); }
+.flag-badge > div:nth-child(2) { background: var(--flag-mid); }
+.flag-badge > div:nth-child(3) { background: var(--accent); }
+
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
 button, .btn {
   cursor: pointer;
@@ -100,6 +125,13 @@ button, .btn {
   opacity: .8;
 }
 .btn-secondary:hover { opacity: 1; }
+
+body.dark .btn-secondary {
+  background: #454a52;
+  border-color: #5a5f68;
+  opacity: 1;
+}
+body.dark .btn-secondary:hover { background: #50565f; }
 
 .btn-danger {
   background: var(--danger);
@@ -319,7 +351,7 @@ option.custom-needle { font-style: italic; }
   position: absolute;
   inset: 0;
   border-radius: 4px;
-  background: rgba(46, 139, 122, 0.06);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
   pointer-events: none;
 }
 
@@ -338,6 +370,7 @@ option.custom-needle { font-style: italic; }
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
+body.dark .btn-expand { color: #9aa0a8; }
 
 /* ── Chart modal ───────────────────────────────────────────────────────────── */
 .chart-modal-backdrop {

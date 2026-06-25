@@ -3,7 +3,7 @@
 
 import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles, loadCarbType, saveCarbType } from './storage.js';
 import { calcSetup } from './calc.js';
-import { renderCharts, openChartModal, closeChartModal, COLORS } from './charts.js';
+import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
@@ -115,7 +115,7 @@ function renderCalcResults() {
   container.innerHTML = activeSetups.map(s => {
     const result = calcSetup(s, allNeedles);
     if (!result) return '';
-    const color = COLORS[s.id - 1];
+    const color = getColors()[s.id - 1];
     const rows = result.curve.map(p => `
       <tr>
         <td>${Math.round(p.tp * 100)}%</td>
@@ -174,6 +174,11 @@ function handleCarbTypeChange(newCarbType) {
     }
     if (changed) resetCount++;
   });
+
+  // Auto-select the atomizer when only one option exists for this carb type
+  if (validAtomizers.length === 1) {
+    setups.forEach(s => { if (s.jetType === null) s.jetType = validAtomizers[0]; });
+  }
 
   saveSetups(setups);
   if (resetCount > 0) showNotice(t('msg.setupsReset').replace('{n}', resetCount));

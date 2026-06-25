@@ -10,9 +10,16 @@
 <body>
 
 <header>
-  <div>
-    <h1>Dellorto Jetting Calculator</h1>
-    <div class="subtitle" data-i18n="app.subtitle">Web port of "Calculate Jetting for Dellorto Carbs v1.5"</div>
+  <div class="header-title">
+    <div class="flag-badge">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+    <div>
+      <h1>Dellorto Jetting Calculator</h1>
+      <div class="subtitle" data-i18n="app.subtitle">Web port of "Calculate Jetting for Dellorto Carbs v1.5"</div>
+    </div>
   </div>
   <div class="header-controls">
     <button id="btn-lang" class="btn-secondary">DE</button>
@@ -35,6 +42,10 @@
       <label class="carb-type-option">
         <input type="radio" name="carbType" value="PHBH">
         <span data-i18n="carbType.PHBH">PHBH</span>
+      </label>
+      <label class="carb-type-option">
+        <input type="radio" name="carbType" value="PHBL">
+        <span data-i18n="carbType.PHBL">PHBL</span>
       </label>
     </div>
   </div>
@@ -288,6 +299,7 @@
             <div class="cn-radio-group">
               <label><input type="radio" name="customCarbType" value="VHSx"> VHSx</label>
               <label><input type="radio" name="customCarbType" value="PHBH"> PHBH</label>
+              <label><input type="radio" name="customCarbType" value="PHBL"> PHBL</label>
             </div>
           </div>
           <div class="cn-form-grid">

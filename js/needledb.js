@@ -207,10 +207,49 @@ export const NEEDLE_DB = {
   "X86": { carbType: "PHBH", A: 2.50, B: 1.60, C: 29.00 },
   "X87": { carbType: "PHBH", A: 2.54, B: 1.40, C: 30.00 },
   "X88": { carbType: "PHBH", A: 2.50, B: 1.20, C: 28.00 },
+
+  // D-type needles (Dellorto PHBL)
+  // Source: Eurocarb, cross-verified against Stein-Dinse handbook
+  "D1":  { carbType: "PHBL", A: 2.45, B: 1.50, C: 15.4 },
+  "D3":  { carbType: "PHBL", A: 2.42, B: 1.50, C: 14 },
+  "D21": { carbType: "PHBL", A: 2.50, B: 1.80, C: 20.2 },
+  "D22": { carbType: "PHBL", A: 2.50, B: 1.40, C: 18 },
+  "D23": { carbType: "PHBL", A: 2.46, B: 1.00, C: 22 },
+  "D24": { carbType: "PHBL", A: 2.50, B: 0.60, C: 20 },
+  "D25": { carbType: "PHBL", A: 2.50, B: 1.40, C: 16 },
+  "D26": { carbType: "PHBL", A: 2.50, B: 1.40, C: 20 },
+  "D27": { carbType: "PHBL", A: 2.50, B: 1.80, C: 16 },
+  "D28": { carbType: "PHBL", A: 2.50, B: 1.80, C: 18 },
+  "D29": { carbType: "PHBL", A: 2.50, B: 1.80, C: 20 },
+  "D30": { carbType: "PHBL", A: 2.50, B: 0.60, C: 18 },
+  "D31": { carbType: "PHBL", A: 2.50, B: 0.60, C: 22 },
+  "D32": { carbType: "PHBL", A: 2.50, B: 1.00, C: 18 },
+  "D33": { carbType: "PHBL", A: 2.50, B: 1.00, C: 20 },
+  "D34": { carbType: "PHBL", A: 2.50, B: 1.00, C: 22 },
+  "D35": { carbType: "PHBL", A: 2.46, B: 1.40, C: 18 },
+  "D36": { carbType: "PHBL", A: 2.50, B: 1.40, C: 22 },
+  "D37": { carbType: "PHBL", A: 2.50, B: 1.40, C: 24 },
+  "D38": { carbType: "PHBL", A: 2.50, B: 1.00, C: 26 },
+  "D39": { carbType: "PHBL", A: 2.50, B: 0.95, C: 25 },
+  "D40": { carbType: "PHBL", A: 2.48, B: 1.00, C: 24 },
+  "D41": { carbType: "PHBL", A: 2.52, B: 1.00, C: 24.5 },
+  "D42": { carbType: "PHBL", A: 2.46, B: 0.60, C: 24, D: 2.295, E: 18 },
+  "D43": { carbType: "PHBL", A: 2.50, B: 0.60, C: 26, D: 2.227, E: 18 },
+  "D44": { carbType: "PHBL", A: 2.48, B: 1.60, C: 24 },
+  "D45": { carbType: "PHBL", A: 2.50, B: 0.60, C: 26, D: 2.227, E: 18 },
+  "D46": { carbType: "PHBL", A: 2.50, B: 1.00, C: 24 },
+  "D47": { carbType: "PHBL", A: 2.52, B: 1.40, C: 26 },
+  "D48": { carbType: "PHBL", A: 2.50, B: 0.80, C: 28 },
+  "D49": { carbType: "PHBL", A: 2.50, B: 1.40, C: 26 },
+  "D50": { carbType: "PHBL", A: 2.50, B: 0.80, C: 30 },
+  "D51": { carbType: "PHBL", A: 2.50, B: 1.40, C: 28 },
+  "D52": { carbType: "PHBL", A: 2.50, B: 1.00, C: 26 },
+  "D53": { carbType: "PHBL", A: 2.52, B: 1.00, C: 28 },
+  "D54": { carbType: "PHBL", A: 2.48, B: 1.40, C: 25 },
 };
 
 // Needle length by prefix
-export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0, "X": 68.0 };
+export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0, "X": 68.0, "D": 52.0 };
 
 // Needle-jet offset by jet type
 export const JET_OFFSETS = {
@@ -218,6 +257,7 @@ export const JET_OFFSETS = {
   "DQ": 2,   // VHSA/VHSB — long type (+2mm)
   "AV": 0,   // PHBH — short type (reference)
   "AS": 2,   // PHBH — long type (+2mm)
+  "AQ": 0,   // PHBL — single type, no pair
 };
 
 // Carburetor family definitions — drives needle and atomizer filtering
@@ -229,5 +269,9 @@ export const CARB_TYPES = {
   PHBH: {
     label:     'PHBH',
     atomizers: ['AV', 'AS'],
+  },
+  PHBL: {
+    label:     'PHBL',
+    atomizers: ['AQ'],
   },
 };

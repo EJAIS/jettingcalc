@@ -50,6 +50,14 @@ const TRANSLATIONS = {
     'col.hdEquiv':    'HD Equiv',
     'col.overall':    'Overall',
 
+    // Cutaway calculation
+    'cutaway.label':      'Recommended cutaway',
+    'cutaway.ratio':      'Needle-jet/main-jet ratio',
+    'cutaway.target':     'target: 0.6',
+    'cutaway.closest':    'closest stock slide',
+    'cutaway.warning':    '⚠ Ratio far from target — estimate unreliable',
+    'cutaway.disclaimer': 'Estimated using an unverified third-party heuristic (M. Forrest, dragonfly75.com). The 0.6 target ratio is not an official Dellorto specification and has no published derivation — treat this as a rough starting point, not a precise calculation. Confirm with real-world testing.',
+
     // Custom Needles
     'section.customNeedles': 'Custom Needles',
     'field.carbType': 'Carb Type *',
@@ -162,6 +170,14 @@ const TRANSLATIONS = {
     'col.needleDiam': 'Nadel Ø (mm)',
     'col.hdEquiv':    'HD Äquiv.',
     'col.overall':    'Gesamt',
+
+    // Cutaway calculation
+    'cutaway.label':      'Empfohlener Cutaway',
+    'cutaway.ratio':      'Verhältnis Mischrohr/Hauptdüse',
+    'cutaway.target':     'Ziel: 0.6',
+    'cutaway.closest':    'nächste Serienscheibe',
+    'cutaway.warning':    '⚠ Verhältnis weit vom Zielwert entfernt — Schätzung unzuverlässig',
+    'cutaway.disclaimer': 'Geschätzt anhand einer nicht verifizierten Drittquellen-Heuristik (M. Forrest, dragonfly75.com). Das Zielverhältnis 0.6 ist keine offizielle Dellorto-Spezifikation und hat keine veröffentlichte Herleitung — als groben Anhaltspunkt verstehen, nicht als präzise Berechnung. Mit Praxistests bestätigen.',
 
     // Custom Needles
     'section.customNeedles': 'Eigene Nadeln',

@@ -17,6 +17,10 @@ const TRANSLATIONS = {
     'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
     'carbType.PHBH':  'PHBH',
     'carbType.PHBL':  'PHBL',
+    'carbType.betaLabel': 'Beta Features',
+    'carbType.betaBadge': 'BETA',
+    'carbType.phblBetaDisclaimer': 'PHBL support is experimental. The needle-exposure formula (minExposed/clip spacing) was derived from K/U-type needles and has not been verified for D-type needles — calculations at high throttle positions may be unreliable, especially with larger clip positions or carb sizes near 26mm. Use with caution and verify against real-world testing.',
+    'carbType.phblBetaBanner': '⚠ Beta: PHBL calculations are experimental and not fully verified.',
 
     // Setups table
     'section.setups':  'Setups',
@@ -28,6 +32,7 @@ const TRANSLATIONS = {
     'col.jetType':       'Jet Type',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs · AQ = PHBL carbs',
     'col.maxHD':         'Max HD',
+    'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— select —',
@@ -50,13 +55,27 @@ const TRANSLATIONS = {
     'col.hdEquiv':    'HD Equiv',
     'col.overall':    'Overall',
 
+    // Carburetor cross-section card
+    'crosssection.title':       'Carburetor cross-section',
+    'crosssection.selectSetup': 'Setup',
+    'crosssection.throttle':    'Throttle position',
+    'crosssection.needlePos':   'Needle position',
+    'crosssection.needleDiam':  'Needle diameter',
+    'crosssection.annulus':     'Annulus cross-section',
+    'crosssection.bore':        'Bore',
+    'crosssection.needleJet':   'Needle jet',
+    'crosssection.needleClear':   'Needle fully clear of jet at this throttle position',
+    'crosssection.gapVisualNote': 'Highlighted line marks the bore (needle jet) diameter — annulus area shown below.',
+    'crosssection.empty':         'Select a setup with a needle to see the cross-section',
+
     // Cutaway calculation
     'cutaway.label':      'Recommended cutaway',
     'cutaway.ratio':      'Needle-jet/main-jet ratio',
     'cutaway.target':     'target: 0.6',
     'cutaway.closest':    'closest stock slide',
     'cutaway.warning':    '⚠ Ratio far from target — estimate unreliable',
-    'cutaway.disclaimer': 'Estimated using an unverified third-party heuristic (M. Forrest, dragonfly75.com). The 0.6 target ratio is not an official Dellorto specification and has no published derivation — treat this as a rough starting point, not a precise calculation. Confirm with real-world testing.',
+    'cutaway.disclaimer':   'Estimated using an unverified third-party heuristic (M. Forrest, dragonfly75.com). The 0.6 target ratio is not an official Dellorto specification and has no published derivation — treat this as a rough starting point, not a precise calculation. Confirm with real-world testing.',
+    'cutaway.colWarning':   'Ratio ({ratio}) is far from the 0.6 target — this estimate may be unreliable. See {section} for details.',
 
     // Custom Needles
     'section.customNeedles': 'Custom Needles',
@@ -89,6 +108,9 @@ const TRANSLATIONS = {
     'ref.E.desc':    'Distance from tip to start of Taper 2 (mm)',
     'ref.F.desc':    'Length of cylindrical section at tip (mm)',
     'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = X = 68 mm, D = 52 mm. Exception: X37 = 56.2 mm.',
+
+    // Field warnings (non-blocking)
+    'carbSize.phblWarning': 'PHBL carburetors are only manufactured up to 26mm (28mm aftermarket exists) — value may be unrealistic.',
 
     // Validation
     'err.carbTypeRequired': 'Carb Type is required.',
@@ -138,6 +160,10 @@ const TRANSLATIONS = {
     'carbType.VHSx':  'VHSx (VHSA / VHSB / VHSC / VHSH)',
     'carbType.PHBH':  'PHBH',
     'carbType.PHBL':  'PHBL',
+    'carbType.betaLabel': 'Beta-Features',
+    'carbType.betaBadge': 'BETA',
+    'carbType.phblBetaDisclaimer': 'Die PHBL-Unterstützung ist experimentell. Die Formel zur Nadel-Exposition (minExposed/Clip-Abstand) wurde aus K/U-Nadeln abgeleitet und ist für D-Nadeln nicht verifiziert — Berechnungen bei hohen Gasstellungen können unzuverlässig sein, besonders bei größeren Clip-Positionen oder Vergasergrößen nahe 26mm. Mit Vorsicht verwenden und durch Praxistests bestätigen.',
+    'carbType.phblBetaBanner': '⚠ Beta: PHBL-Berechnungen sind experimentell und nicht vollständig verifiziert.',
 
     // Setups table
     'section.setups':  'Setups',
@@ -149,6 +175,7 @@ const TRANSLATIONS = {
     'col.jetType':       'Düs. Typ',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB Vergaser · AV/AS = PHBH Vergaser · AQ = PHBL Vergaser',
     'col.maxHD':         'Max HD',
+    'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
     'setup.select':    '— wählen —',
@@ -171,13 +198,27 @@ const TRANSLATIONS = {
     'col.hdEquiv':    'HD Äquiv.',
     'col.overall':    'Gesamt',
 
+    // Carburetor cross-section card
+    'crosssection.title':       'Vergaser-Querschnitt',
+    'crosssection.selectSetup': 'Setup',
+    'crosssection.throttle':    'Gasstellung',
+    'crosssection.needlePos':   'Nadelposition',
+    'crosssection.needleDiam':  'Nadeldurchmesser',
+    'crosssection.annulus':     'Ringspalt-Querschnitt',
+    'crosssection.bore':        'Bohrung',
+    'crosssection.needleJet':   'Mischrohr',
+    'crosssection.needleClear':   'Nadel vollständig aus Mischrohr ausgefahren bei dieser Gasstellung',
+    'crosssection.gapVisualNote': 'Hervorgehobene Linie markiert den Mischrohrdurchmesser — Ringspalt-Querschnitt siehe unten.',
+    'crosssection.empty':         'Setup mit Nadel auswählen, um den Querschnitt zu sehen',
+
     // Cutaway calculation
     'cutaway.label':      'Empfohlener Cutaway',
     'cutaway.ratio':      'Verhältnis Mischrohr/Hauptdüse',
     'cutaway.target':     'Ziel: 0.6',
     'cutaway.closest':    'nächste Serienscheibe',
     'cutaway.warning':    '⚠ Verhältnis weit vom Zielwert entfernt — Schätzung unzuverlässig',
-    'cutaway.disclaimer': 'Geschätzt anhand einer nicht verifizierten Drittquellen-Heuristik (M. Forrest, dragonfly75.com). Das Zielverhältnis 0.6 ist keine offizielle Dellorto-Spezifikation und hat keine veröffentlichte Herleitung — als groben Anhaltspunkt verstehen, nicht als präzise Berechnung. Mit Praxistests bestätigen.',
+    'cutaway.disclaimer':   'Geschätzt anhand einer nicht verifizierten Drittquellen-Heuristik (M. Forrest, dragonfly75.com). Das Zielverhältnis 0.6 ist keine offizielle Dellorto-Spezifikation und hat keine veröffentlichte Herleitung — als groben Anhaltspunkt verstehen, nicht als präzise Berechnung. Mit Praxistests bestätigen.',
+    'cutaway.colWarning':   'Verhältnis ({ratio}) liegt weit vom Zielwert 0.6 entfernt — diese Schätzung kann unzuverlässig sein. Details siehe {section}.',
 
     // Custom Needles
     'section.customNeedles': 'Eigene Nadeln',
@@ -210,6 +251,9 @@ const TRANSLATIONS = {
     'ref.E.desc':    'Abstand von Spitze zu Beginn Taper 2 (mm)',
     'ref.F.desc':    'Länge des zylindrischen Abschnitts an der Spitze (mm)',
     'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = X = 68 mm, D = 52 mm. Ausnahme: X37 = 56,2 mm.',
+
+    // Field warnings (non-blocking)
+    'carbSize.phblWarning': 'PHBL-Vergaser werden nur bis 26mm gefertigt (28mm Aftermarket möglich) — Wert ggf. nicht realistisch.',
 
     // Validation
     'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',
@@ -269,6 +313,9 @@ export function applyTranslations() {
   });
   document.querySelectorAll('[data-i18n-title]').forEach(el => {
     el.title = t(el.getAttribute('data-i18n-title'));
+  });
+  document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
+    el.dataset.tooltip = t(el.getAttribute('data-i18n-tooltip'));
   });
   const btn = document.getElementById('btn-lang');
   if (btn) btn.textContent = currentLang === 'en' ? 'DE' : 'EN';

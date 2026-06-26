@@ -13,6 +13,7 @@
   --accent:      #c8102e;
   --accent-h:    #a00d24;
   --danger:      #c0392b;
+  --warning:     #b45309;
   --input-bg:    #ffffff;
   --header-bg:   #44494f;
   --header-fg:   #f0f0f0;
@@ -31,6 +32,7 @@ body.dark {
   --accent:      #e0454f;
   --accent-h:    #c8102e;
   --danger:      #e05545;
+  --warning:     #d4890a;
   --input-bg:    #2b2e35;
   --header-bg:   #454a52;
   --header-fg:   #eeeeee;
@@ -175,10 +177,39 @@ body.dark .btn-secondary:hover { background: #50565f; }
   flex-shrink: 0;
 }
 
-.carb-type-radios {
+.carb-type-main {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.carb-type-beta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+.beta-divider-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--warning);
+  flex-shrink: 0;
+}
+
+.beta-badge {
+  font-size: 9px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 3px;
+  padding: 1px 5px;
+  letter-spacing: .06em;
 }
 
 .carb-type-option {
@@ -208,6 +239,17 @@ body.dark .btn-secondary:hover { background: #50565f; }
   flex-shrink: 0;
 }
 
+/* Beta option uses warning amber instead of brand red */
+.carb-type-option.beta:has(input:checked) {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--warning);
+}
+
+.carb-type-option.beta input[type="radio"] {
+  accent-color: var(--warning);
+}
+
 /* ── App Notice ─────────────────────────────────────────────────────────────── */
 .app-notice {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
@@ -218,6 +260,17 @@ body.dark .btn-secondary:hover { background: #50565f; }
   font-size: 13px;
   margin-top: -8px;
 }
+
+/* ── PHBL beta banner (inside Setups card, below card-header) ───────────────── */
+.phbl-beta-banner {
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+  color: var(--warning);
+  padding: 7px 18px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.phbl-beta-banner[hidden] { display: none; }
 
 /* ── Main layout ───────────────────────────────────────────────────────────── */
 main {
@@ -265,7 +318,7 @@ main {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 700px;
+  min-width: 780px;
 }
 
 thead th {
@@ -295,6 +348,29 @@ tbody td {
   color: var(--accent);
   text-align: right;
   padding-right: 12px;
+  white-space: nowrap;
+}
+
+.cutaway-col-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+
+.cutaway-col-warn,
+.field-warn {
+  cursor: pointer;
+  color: var(--danger);
+  font-size: .85em;
+  margin-left: 2px;
+  user-select: none;
+}
+.cutaway-col-warn:hover,
+.field-warn:hover { opacity: .75; }
+
+.carbsize-cell {
   white-space: nowrap;
 }
 
@@ -507,7 +583,7 @@ body.dark .btn-expand { color: #9aa0a8; }
 .cutaway-target { color: var(--text-muted); font-size: .9em; }
 
 .cutaway-info {
-  cursor: help;
+  cursor: pointer;
   margin-left: auto;
   border: 1px solid var(--text-muted);
   border-radius: 50%;
@@ -520,6 +596,24 @@ body.dark .btn-expand { color: #9aa0a8; }
   color: var(--text-muted);
   flex-shrink: 0;
   user-select: none;
+}
+.cutaway-info:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+.tooltip-box {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(320px, 90vw);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: .82em;
+  line-height: 1.55;
+  box-shadow: 0 4px 20px rgba(0,0,0,.22);
+  pointer-events: none;
+  white-space: normal;
 }
 
 /* ── Custom Needle section ─────────────────────────────────────────────────── */
@@ -701,6 +795,146 @@ details.collapsible > summary::-webkit-details-marker { display: none; }
   color: var(--text-muted);
   margin: 0;
   line-height: 1.5;
+}
+
+/* ── Carburetor cross-section card ────────────────────────────────────────── */
+.cs-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.cs-setup-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.cs-select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.cs-select:focus { outline: none; border-color: var(--accent); }
+
+.cs-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.cs-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.cs-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.cs-slider-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.cs-throttle-value {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  min-width: 36px;
+  text-align: right;
+}
+
+.cs-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.cs-gap-note {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: italic;
+  text-align: center;
+  margin: -6px 0 10px;
+  padding: 0 8px;
+  line-height: 1.4;
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cs-needle-clear {
+  color: var(--accent);
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+  padding: 4px 0;
+  margin: 0 0 8px;
+}
+
+.cs-diagram-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cs-readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+  padding: 12px 0 4px;
+}
+
+.cs-readout-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cs-readout dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+}
+
+.cs-readout dd {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  margin: 0;
 }
 
 /* ── Footer ────────────────────────────────────────────────────────────────── */

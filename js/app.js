@@ -3,6 +3,7 @@
 
 import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles, loadCarbType, saveCarbType } from './storage.js';
 import { calcSetup } from './calc.js';
+import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
@@ -124,6 +125,32 @@ function renderCalcResults() {
         <td>${Math.round(p.hdEquiv)}</td>
         <td>${Math.round(p.overall)}</td>
       </tr>`).join('');
+
+    let cutawayHTML = '';
+    const needle = allNeedles[s.needleType];
+    if (isRoundSlide2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
+      const ca = calcCutaway(s.carbSize, s.hd, s.needleJet, needle.A);
+      const valueHTML = ca.ratioOk
+        ? `<span class="cutaway-value">~${ca.cutawayClamped.toFixed(1)} mm
+             <span class="cutaway-slide">(${t('cutaway.closest')}: <b>${snapToSlide(ca.cutawayClamped, carbType)}</b>)</span>
+           </span>`
+        : `<span class="cutaway-warning">${t('cutaway.warning')}</span>`;
+      cutawayHTML = `
+        <div class="cutaway-section">
+          <div class="cutaway-row">
+            <span class="cutaway-label">${t('cutaway.label')}</span>
+            ${valueHTML}
+            <span class="cutaway-info" title="${t('cutaway.disclaimer')}">ℹ</span>
+          </div>
+          <div class="cutaway-row">
+            <span class="cutaway-label">${t('cutaway.ratio')}</span>
+            <span class="cutaway-value${ca.ratioOk ? '' : ' cutaway-ratio-bad'}">
+              ${ca.ratio.toFixed(2)} <span class="cutaway-target">(${t('cutaway.target')})</span>
+            </span>
+          </div>
+        </div>`;
+    }
+
     return `
       <div class="cr-table-wrap">
         <table class="cr-table">
@@ -139,6 +166,7 @@ function renderCalcResults() {
           </thead>
           <tbody>${rows}</tbody>
         </table>
+        ${cutawayHTML}
       </div>`;
   }).join('');
 }

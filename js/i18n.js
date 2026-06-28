@@ -66,6 +66,7 @@ const TRANSLATIONS = {
     'crosssection.needleJet':   'Needle jet',
     'crosssection.needleClear':   'Needle fully clear of jet at this throttle position',
     'crosssection.gapVisualNote': 'Highlighted line marks the bore (needle jet) diameter — annulus area shown below.',
+    'crosssection.disclaimer':    'Schematic visualization for illustrating the calculation logic — not a precise technical drawing.',
     'crosssection.empty':         'Select a setup with a needle to see the cross-section',
 
     // Cutaway calculation
@@ -123,6 +124,8 @@ const TRANSLATIONS = {
     // Footer
     'footer.disclaimer': 'This tool is provided for informational purposes only. Calculations may contain errors — always verify jetting settings with a qualified mechanic. The author accepts no liability for engine damage, personal injury, or any other loss arising from the use of this software.',
     'footer.webport': 'Web port:',
+    'footer.gsfNote':      'This JettingCalc focuses on Dellorto carburetors used on classic geared scooters. Please support and use the {link}!',
+    'footer.gsfLinkText':  'German Scooter Forum',
 
     // Confirm dialogs and empty states
     'msg.noActiveSetups':      'No active setups to display.',
@@ -209,6 +212,7 @@ const TRANSLATIONS = {
     'crosssection.needleJet':   'Mischrohr',
     'crosssection.needleClear':   'Nadel vollständig aus Mischrohr ausgefahren bei dieser Gasstellung',
     'crosssection.gapVisualNote': 'Hervorgehobene Linie markiert den Mischrohrdurchmesser — Ringspalt-Querschnitt siehe unten.',
+    'crosssection.disclaimer':    'Schematische Visualisierung zur Veranschaulichung der Berechnungslogik — kein technischer Anspruch auf Genauigkeit.',
     'crosssection.empty':         'Setup mit Nadel auswählen, um den Querschnitt zu sehen',
 
     // Cutaway calculation
@@ -266,6 +270,8 @@ const TRANSLATIONS = {
     // Footer
     'footer.disclaimer': 'Dieses Tool dient ausschließlich zu Informationszwecken. Berechnungen können Fehler enthalten — Einstellungen stets von einem Fachmann überprüfen lassen. Der Autor haftet nicht für Motorschäden, Personenschäden oder sonstige Verluste, die aus der Nutzung dieser Software entstehen.',
     'footer.webport': 'Web-Port:',
+    'footer.gsfNote':      'Dieser JettingCalc fokussiert sich auf Dellorto-Vergaser, welche auf klassischen Schaltrollern zum Einsatz kommen. Bitte unterstützt und nutzt das {link}!',
+    'footer.gsfLinkText':  'German Scooter Forum',
 
     // Confirm dialogs and empty states
     'msg.noActiveSetups':      'Keine aktiven Setups vorhanden.',
@@ -317,6 +323,11 @@ export function applyTranslations() {
   document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
     el.dataset.tooltip = t(el.getAttribute('data-i18n-tooltip'));
   });
+  const gsfNote = document.getElementById('footer-gsf-note');
+  if (gsfNote) {
+    const gsfLink = `<a href="https://www.germanscooterforum.de/" target="_blank" rel="noopener noreferrer">${t('footer.gsfLinkText')}</a>`;
+    gsfNote.innerHTML = t('footer.gsfNote').replace('{link}', gsfLink);
+  }
   const btn = document.getElementById('btn-lang');
   if (btn) btn.textContent = currentLang === 'en' ? 'DE' : 'EN';
 }

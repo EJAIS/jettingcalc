@@ -889,6 +889,19 @@ details.collapsible > summary::-webkit-details-marker { display: none; }
   margin-right: auto;
 }
 
+.cs-disclaimer {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-style: italic;
+  text-align: center;
+  margin: -4px 0 10px;
+  padding: 0 8px;
+  line-height: 1.4;
+  max-width: 340px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .cs-needle-clear {
   color: var(--accent);
   font-size: 11px;
@@ -949,10 +962,20 @@ footer {
 }
 
 footer a {
-  color: var(--accent);
+  color: #e0454f;  /* fixed: footer bg is always dark, so pin to dark-mode accent */
   text-decoration: none;
 }
-footer a:hover { text-decoration: underline; }
+footer a:hover { color: #ea7a82; text-decoration: underline; }
+
+.footer-gsf-logo {
+  max-height: 40px;
+  width: auto;
+  display: inline-block;
+  vertical-align: middle;
+  margin-top: 4px;
+  opacity: .85;
+  border-radius: 3px;
+}
 
 /* ── Utility ───────────────────────────────────────────────────────────────── */
 .toolbar {

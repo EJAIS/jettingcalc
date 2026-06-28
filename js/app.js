@@ -362,24 +362,26 @@ function csPolyPoints(prof, pos, { CX, SX, SY, YC }) {
   return `${right} ${left}`;
 }
 
-// Compute bore-boundary indicator paths.
-// The orange stripe is a fixed 5px band centered exactly on the bore line (CX ± BORE_HALF).
-// This is the SAME x-coordinate used by both the grey wall inner edge and the bore reference
-// line — one shared value, zero gap possible.
-// The stripe has no clip path so it spans both sides of the boundary,
-// reading as "highlighted wall edge" not "floating element."
+// Compute annulus gap fill paths.
+// Fills the radial space between the needle surface and the bore wall at YC.
+// MIN_GAP (SVG units) ensures the indicator stays visible even when the needle
+// nearly fills the bore (e.g. shank at idle with tiny clearance).
 function csGapPaths(diam, { CX, SX, YC, BORE_HALF, HBAND }) {
   if (diam <= 0) return { gapR: 'M 0,0', gapL: 'M 0,0', showGap: false };
   const nRpx = (diam / 2) * SX;
   if (nRpx >= BORE_HALF) return { gapR: 'M 0,0', gapL: 'M 0,0', showGap: false };
 
-  const SW = 2.5;                                            // half-width: 5px total stripe
-  const bL = CX - BORE_HALF;                                // bore line left  (shared x)
-  const bR = CX + BORE_HALF;                                // bore line right (shared x)
+  const MIN_GAP = 2.5;                                      // floor: always renders ≥ this wide
+  const nReff = Math.min(nRpx, BORE_HALF - MIN_GAP);       // visual needle radius (with floor)
+
   const y1 = (YC - HBAND).toFixed(1), y2 = (YC + HBAND).toFixed(1);
+  const nR = (CX + nReff).toFixed(1);   // needle right edge (visual)
+  const bR = (CX + BORE_HALF).toFixed(1);
+  const nL = (CX - nReff).toFixed(1);   // needle left edge (visual)
+  const bL = (CX - BORE_HALF).toFixed(1);
   return {
-    gapR: `M ${(bR - SW).toFixed(1)},${y1} H ${(bR + SW).toFixed(1)} V ${y2} H ${(bR - SW).toFixed(1)} Z`,
-    gapL: `M ${(bL - SW).toFixed(1)},${y1} H ${(bL + SW).toFixed(1)} V ${y2} H ${(bL - SW).toFixed(1)} Z`,
+    gapR: `M ${nR},${y1} H ${bR} V ${y2} H ${nR} Z`,
+    gapL: `M ${bL},${y1} H ${nL} V ${y2} H ${bL} Z`,
     showGap: true,
   };
 }
@@ -416,7 +418,9 @@ function buildCrossSectionSVG(setup, result, idx) {
   const { CX, BORE_HALF, JT, JB } = consts;
   const prof   = csNeedleProf(needle);
 
-  const W = 240, H = 310;
+  // W=280: extra 40 SVG units on right gives labels a 74-unit column
+  // (right jet wall ends at x=184; body rect right edge now at x=258)
+  const W = 280, H = 310;
   const CTOP = 12, CBOT = 298, BTOP = 36, JWALL = 30;
 
   const polyPoints             = csPolyPoints(prof, pos, consts);
@@ -461,9 +465,9 @@ function buildCrossSectionSVG(setup, result, idx) {
     <path id="cs-gap-r" d="${gapR}"/>
     <path id="cs-gap-l" d="${gapL}"/>
   </g>
-  ${lbl(CX + BORE_HALF + JWALL + 3, JT + 15, `Ø ${njMM.toFixed(2)} mm`)}
-  ${lbl(CX + BORE_HALF + JWALL + 3, JT + 26, t('crosssection.needleJet'), 'start', 'crosssection.needleJet')}
-  ${lbl(CX + 47, BTOP + 13, t('crosssection.bore'), 'start', 'crosssection.bore')}
+  ${lbl(W - 22 - 5, JT + 15, `Ø ${njMM.toFixed(2)} mm`, 'end')}
+  ${lbl(W - 22 - 5, JT + 26, t('crosssection.needleJet'), 'end', 'crosssection.needleJet')}
+  ${lbl(W - 22 - 5, BTOP + 13, t('crosssection.bore'), 'end', 'crosssection.bore')}
   ${lbl(CX - 47, BTOP + 13, setup.needleType, 'end')}
 </svg>`;
 }
@@ -500,6 +504,7 @@ function updateCrossSectionDiagram() {
   diag.innerHTML = `
     <div class="cs-diagram-wrap">${svgHTML}</div>
     <p class="cs-gap-note" data-i18n="crosssection.gapVisualNote">${t('crosssection.gapVisualNote')}</p>
+    <p class="cs-disclaimer" data-i18n="crosssection.disclaimer">${t('crosssection.disclaimer')}</p>
     <p id="cs-needle-clear-msg" class="cs-needle-clear" data-i18n="crosssection.needleClear"
        style="${needleClear ? '' : 'display:none'}">${t('crosssection.needleClear')}</p>
     <dl class="cs-readout">
@@ -517,6 +522,17 @@ function updateCrossSectionDiagram() {
       </div>
     </dl>`;
   applyTranslations();
+
+  // Diagnostic: log label right-edge vs SVG right-edge in CSS px (check console)
+  requestAnimationFrame(() => {
+    const svgEl = diag.querySelector('svg');
+    if (!svgEl) return;
+    const svgR = svgEl.getBoundingClientRect().right;
+    diag.querySelectorAll('svg text').forEach(t => {
+      const tR = t.getBoundingClientRect().right;
+      console.log(`[CS label] "${t.textContent.trim()}"  textRight=${tR.toFixed(1)}  svgRight=${svgR.toFixed(1)}  overflow=${(tR - svgR).toFixed(1)}px`);
+    });
+  });
 }
 
 // Attribute-only update -- called on slider input for smooth live feedback

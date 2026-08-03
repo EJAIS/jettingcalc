@@ -38,6 +38,27 @@ ursprünglichen 2014er GUE-Excel).
   `js/needledb.js` ("Source: Eurocarb, cross-verified against Stein-Dinse
   handbook").
 
+### `CLIP_SPACING` = 1.2 mm (D-Nadeln)
+
+- **Datum:** 2026-08
+- **Methode:** volle Spannweite über alle 4 Clip-Positionen an einem
+  26 mm PHBL gemessen: 3.6 mm / 3 = 1.2 mm.
+- **Befund:** bestätigt identisch zum Excel-Originalwert (VHSx).
+
+### `NEEDLE_LENGTHS["D"]` = 52.0 mm
+
+- **Datum:** 2026-08
+- **Methode:** Direktmessung der Gesamtlänge einer D-Nadel.
+- **Befund:** bestätigt.
+
+### `minExposed` (`MIN_EXPOSED_BY_CARB_TYPE` in `js/calc.js`)
+
+- **PHBL:** 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel
+  und AQ-Mischrohr (idlePos 31.70 mm bei Clip 1), gegen eine unabhängige
+  Messkette gegengeprüft. Siehe Verifikationswert in `js/calc.js`.
+- **PHBH:** 26.4 mm — weiterhin von VHSx geerbt, NICHT unabhängig
+  verifiziert.
+
 ---
 
 ## Noch zu verifizieren
@@ -45,6 +66,11 @@ ursprünglichen 2014er GUE-Excel).
 - X-Type-Nadeln (PHBH, Serie 9477) — noch nicht gegen eine externe Quelle
   gegengeprüft.
 - U-Type-Nadeln — noch nicht gegen eine externe Quelle gegengeprüft.
-- Berechnungskonstanten in `js/calc.js` (`CLIP_SPACING`, `MIN_EXPOSED`,
-  Blend-Tabelle) — bislang nur gegen die Original-Excel-Formeln verifiziert,
-  nicht gegen eine unabhängige Zweitquelle.
+- Berechnungskonstanten in `js/calc.js` (Blend-Tabelle) — bislang nur gegen
+  die Original-Excel-Formeln verifiziert, nicht gegen eine unabhängige
+  Zweitquelle.
+- `minExposed` für PHBH — weiterhin ungeprüft von VHSx geerbt (s.o.).
+- Vergasergrößen-Term `(carbSize − 34)/2` für PHBL — Koeffizient ½ von VHSx
+  geerbt, für PHBL nicht bestätigt; zur Klärung ist eine zweite
+  idlePos-Messung bei einer anderen PHBL-Bohrungsgröße nötig (z.B. 20 oder
+  22 mm).

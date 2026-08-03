@@ -32,6 +32,7 @@ const TRANSLATIONS = {
     'col.jetType':       'Jet Type',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs · AQ = PHBL carbs',
     'col.maxHD':         'Max HD',
+    'col.maxHD.tooltip': 'Equivalent main jet at 100 % throttle (WOT).',
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
@@ -54,6 +55,7 @@ const TRANSLATIONS = {
     'col.needleDiam': 'Needle Ø (mm)',
     'col.hdEquiv':    'HD Equiv',
     'col.overall':    'Overall',
+    'calc.extrapolationNote': '* Values above 100 % throttle are extrapolation — the bore is fully open at 100 %, so these points have no tuning significance.',
 
     // Carburetor cross-section card
     'crosssection.title':       'Carburetor cross-section',
@@ -64,6 +66,7 @@ const TRANSLATIONS = {
     'crosssection.annulus':     'Annulus cross-section',
     'crosssection.bore':        'Bore',
     'crosssection.needleJet':   'Needle jet',
+    'crosssection.extrapolationNote': 'Above 100 % — extrapolated range',
     'crosssection.needleClear':   'Needle fully clear of jet at this throttle position',
     'crosssection.gapVisualNote': 'Highlighted line marks the bore (needle jet) diameter — annulus area shown below.',
     'crosssection.disclaimer':    'Schematic visualization for illustrating the calculation logic — not a precise technical drawing.',
@@ -114,7 +117,7 @@ const TRANSLATIONS = {
     'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = X = 68 mm, D = 52 mm. Exception: X37 = 56.2 mm.',
 
     // Field warnings (non-blocking)
-    'carbSize.phblWarning': 'PHBL carburetors are only manufactured up to 26mm (28mm aftermarket exists) — value may be unrealistic.',
+    'carbSize.rangeWarning': '{carbType} carburetors are factory-made from {min} to {max} mm — this value is outside that range. Fine for a bored-out carb, otherwise check the entry.',
 
     // Validation
     'err.carbTypeRequired': 'Carb Type is required.',
@@ -182,6 +185,7 @@ const TRANSLATIONS = {
     'col.jetType':       'Düs. Typ',
     'col.jetType.title': 'DP/DQ = VHSA/VHSB Vergaser · AV/AS = PHBH Vergaser · AQ = PHBL Vergaser',
     'col.maxHD':         'Max HD',
+    'col.maxHD.tooltip': 'Äquivalente Hauptdüse bei 100 % Gasstellung (Vollgas).',
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
@@ -204,6 +208,7 @@ const TRANSLATIONS = {
     'col.needleDiam': 'Nadel Ø (mm)',
     'col.hdEquiv':    'HD Äquiv.',
     'col.overall':    'Gesamt',
+    'calc.extrapolationNote': '* Werte über 100 % Gasstellung sind Extrapolation — die Bohrung ist bei 100 % vollständig geöffnet, diese Punkte haben keine Abstimmungsaussage.',
 
     // Carburetor cross-section card
     'crosssection.title':       'Vergaser-Querschnitt',
@@ -214,6 +219,7 @@ const TRANSLATIONS = {
     'crosssection.annulus':     'Ringspalt-Querschnitt',
     'crosssection.bore':        'Bohrung',
     'crosssection.needleJet':   'Mischrohr',
+    'crosssection.extrapolationNote': 'Über 100 % — extrapolierter Bereich',
     'crosssection.needleClear':   'Nadel vollständig aus Mischrohr ausgefahren bei dieser Gasstellung',
     'crosssection.gapVisualNote': 'Hervorgehobene Linie markiert den Mischrohrdurchmesser — Ringspalt-Querschnitt siehe unten.',
     'crosssection.disclaimer':    'Schematische Visualisierung zur Veranschaulichung der Berechnungslogik — kein technischer Anspruch auf Genauigkeit.',
@@ -264,7 +270,7 @@ const TRANSLATIONS = {
     'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = X = 68 mm, D = 52 mm. Ausnahme: X37 = 56,2 mm.',
 
     // Field warnings (non-blocking)
-    'carbSize.phblWarning': 'PHBL-Vergaser werden nur bis 26mm gefertigt (28mm Aftermarket möglich) — Wert ggf. nicht realistisch.',
+    'carbSize.rangeWarning': '{carbType}-Vergaser werden ab Werk von {min} bis {max} mm gebaut — dieser Wert liegt außerhalb. Bei aufgebohrtem Vergaser in Ordnung, sonst bitte Eingabe prüfen.',
 
     // Validation
     'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',

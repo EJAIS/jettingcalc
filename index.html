@@ -78,7 +78,14 @@
             <th data-i18n="col.carbSize">Carb Ø</th>
             <th data-i18n="col.needleJet">Needle Jet</th>
             <th data-i18n="col.jetType" data-i18n-title="col.jetType.title" title="Jet Type">Jet Type</th>
-            <th data-i18n="col.maxHD">Max HD</th>
+            <th>
+              <span data-i18n="col.maxHD">Max HD</span>
+              <span class="cutaway-info"
+                    data-i18n-tooltip="col.maxHD.tooltip"
+                    data-tooltip=""
+                    role="button" tabindex="0"
+                    aria-label="Max HD info">ℹ</span>
+            </th>
             <th data-i18n="col.cutaway">Cutaway</th>
             <th data-i18n="col.nd">ND</th>
             <th data-i18n="col.hd">HD</th>
@@ -89,6 +96,9 @@
         </tbody>
       </table>
     </div>
+    <datalist id="carb-size-options">
+      <!-- Rendered by app.js -->
+    </datalist>
   </div>
 
   <!-- ── Charts ─────────────────────────────────────────────────────────── -->
@@ -382,6 +392,7 @@
           </div>
           <input type="range" id="cs-throttle-slider" class="cs-slider"
                  min="0" max="115" step="5" value="0">
+          <p id="cs-extrap-note" class="cs-extrap-note" data-i18n="crosssection.extrapolationNote" hidden>Above 100 % — extrapolated range</p>
         </div>
       </div>
       <div id="cross-section-diagram"></div>

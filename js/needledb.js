@@ -261,6 +261,15 @@ export const JET_OFFSETS = {
   "AQ": 0,   // PHBL — single type, no pair
 };
 
+// Factory bore sizes (mm) per carburetor family — suggestions only, custom/bored-out values remain allowed.
+// Source: Eurocarb (official Dellorto distributor, dellorto.co.uk) and dellorto.it.
+// VHSx = union of VHSA (28/30/32), VHSB (34/36/37/38/39), VHSC (39.5), VHSH (30).
+export const CARB_BORE_SIZES = {
+  VHSx: [28, 30, 32, 34, 36, 37, 38, 39, 39.5],
+  PHBH: [26, 28, 30],
+  PHBL: [20, 22, 24, 25, 26],
+};
+
 // Carburetor family definitions — drives needle and atomizer filtering
 export const CARB_TYPES = {
   VHSx: {

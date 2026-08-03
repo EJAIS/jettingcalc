@@ -447,12 +447,26 @@ export function calcSetup(setup) {
     return { tp, pos, diam, hdEquiv, overall };
   });
 
-  const maxHD = Math.max(...curve.map(p => p.hdEquiv));
+  // "max HD" is evaluated at 100% throttle (WOT), matching the original
+  // spreadsheet — NOT the maximum across the whole curve, since hdEquiv
+  // keeps rising into the 100–115% extrapolated range.
+  const wot = curve.find(p => Math.abs(p.tp - 1.0) < 1e-9);
+  const maxHD = wot ? wot.hdEquiv : Math.max(...curve.map(p => p.hdEquiv));
 
   return { idlePos, tapers, t1_k, t1_d, t2_k, curve, maxHD };
 }
+```
 
-export function calcNeedleProfile(needleType) {
+**Deliberate deviation from the original Excel (max HD, 2026-08):** The original
+spreadsheet's Chart sheet has a copy-paste bug — cells G5, G6 and G7 (max HD for
+setups 1–3) all reference `'Calc Data 1'!$C$45` absolutely, so setups 2 and 3 are
+actually computed from setup 1's needle diameter at 100% throttle instead of
+their own. This is why the Excel shows 166 / 176 / 174 for the three demo
+setups instead of the correct 166 / 166 / 165. Our port intentionally uses
+each setup's own curve (`'Calc Data N'` equivalent) and does NOT reproduce
+this bug.
+
+```js
   const needle = NEEDLE_DB[needleType];
   if (!needle) return [];
   const pts = [];
@@ -638,10 +652,16 @@ const DEMO_SETUPS = [
 ];
 ```
 
-**Alle berechneten maxHD-Werte zur Verifikation:**
+**Alle berechneten maxHD-Werte zur Verifikation (unsere Implementierung, je Setup
+eigene Kurve bei 100% Gasstellung):**
 - Setup 1: maxHD = 166 (rounded)
-- Setup 2: maxHD = 176 (rounded)
-- Setup 3: maxHD = 174 (rounded)
+- Setup 2: maxHD = 166 (rounded)
+- Setup 3: maxHD = 165 (rounded)
+
+Die Original-Excel zeigt stattdessen 166 / 176 / 174 — bedingt durch den oben
+beschriebenen Copy-Paste-Fehler (G5/G6/G7 referenzieren alle absolut
+`'Calc Data 1'!$C$45`, statt je Setup die eigene Calc-Data-Tabelle). Das ist
+kein Portierungsfehler, sondern eine bewusste Korrektur.
 
 
 

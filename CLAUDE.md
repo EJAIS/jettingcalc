@@ -239,6 +239,17 @@ export const JET_OFFSETS = {
 };
 ```
 
+**Korrektur der K-Nadel-Werte (2026-08-03):** 19 K-Nadeln enthielten fehlerhafte A/B/C/D/E-Werte
+(vermutlich Übernahmefehler aus einer minderwertigen Quelle im ursprünglichen 2014er GUE-Excel).
+Die Werte wurden gegen die offizielle Eurocarb-Spezifikation (2015 Update) korrigiert und zusätzlich
+gegen das Stein-Dinse Dellorto-Handbuch gegengeprüft. Betroffen: K12, K13, K14, K15, K16, K18, K54,
+K57, K58, K61, K62, K65, K68, K69, K78, K79, K83, K84, K86. Außerdem wurde die fälschlich als "K90"
+geführte Nadel (A:2.5, B:1.75, C:42) zu "K96" umbenannt — "K90" ist keine reale Dellorto-Bezeichnung
+und existiert nicht mehr in `NEEDLE_DB`. Neu hinzugefügt: K97 (A:2.50, B:1.80, C:44.5). Details siehe
+[KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md). Bestehende gespeicherte Setups mit
+`needleType: "K90"` werden beim Laden automatisch und geräuschlos auf `"K96"` migriert
+(`storage.js` → `loadSetups()`), da die zugrunde liegende Geometrie identisch ist.
+
 ---
 
 ## Berechnungs-Engine – calc.js

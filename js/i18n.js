@@ -88,6 +88,9 @@ const TRANSLATIONS = {
     'field.D':    'ØD – junction Ø',
     'field.E':    'E – from tip',
     'field.F':    'F – cyl. tip',
+    'field.needleLengthType': 'Needle length type',
+    'field.needleLengthType.K': 'K-type (73.5mm)',
+    'field.needleLengthType.U': 'U-type (68.0mm)',
     'placeholder.type': 'e.g. K99',
     'placeholder.mm':   'mm',
     'placeholder.opt':  'opt.',
@@ -120,6 +123,7 @@ const TRANSLATIONS = {
     'err.abcRequired':  'ØA, ØB and C are required.',
     'err.deIncomplete': 'ØD and E must both be filled or both empty.',
     'err.fRequiresDe':  'F requires ØD and E to be set.',
+    'err.lengthTypeRequired': 'Needle length type (K/U) is required for VHSx.',
 
     // Footer
     'footer.disclaimer': 'This tool is provided for informational purposes only. Calculations may contain errors — always verify jetting settings with a qualified mechanic. The author accepts no liability for engine damage, personal injury, or any other loss arising from the use of this software.',
@@ -234,6 +238,9 @@ const TRANSLATIONS = {
     'field.D':    'ØD – Übergang Ø',
     'field.E':    'E – von Spitze',
     'field.F':    'F – zyl. Spitze',
+    'field.needleLengthType': 'Nadellänge-Typ',
+    'field.needleLengthType.K': 'K-Typ (73,5mm)',
+    'field.needleLengthType.U': 'U-Typ (68,0mm)',
     'placeholder.type': 'z.B. K99',
     'placeholder.mm':   'mm',
     'placeholder.opt':  'opt.',
@@ -266,6 +273,7 @@ const TRANSLATIONS = {
     'err.abcRequired':  'ØA, ØB und C sind Pflichtfelder.',
     'err.deIncomplete': 'ØD und E müssen beide ausgefüllt oder beide leer sein.',
     'err.fRequiresDe':  'F erfordert ØD und E.',
+    'err.lengthTypeRequired': 'Nadellänge-Typ (K/U) ist für VHSx erforderlich.',
 
     // Footer
     'footer.disclaimer': 'Dieses Tool dient ausschließlich zu Informationszwecken. Berechnungen können Fehler enthalten — Einstellungen stets von einem Fachmann überprüfen lassen. Der Autor haftet nicht für Motorschäden, Personenschäden oder sonstige Verluste, die aus der Nutzung dieser Software entstehen.',

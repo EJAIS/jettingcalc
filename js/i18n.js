@@ -19,7 +19,7 @@ const TRANSLATIONS = {
     'carbType.PHBL':  'PHBL',
     'carbType.betaLabel': 'Beta Features',
     'carbType.betaBadge': 'BETA',
-    'carbType.phblBetaDisclaimer': 'PHBL support is experimental. The needle-exposure formula (minExposed/clip spacing) was derived from K/U-type needles and has not been verified for D-type needles — calculations at high throttle positions may be unreliable, especially with larger clip positions or carb sizes near 26mm. Use with caution and verify against real-world testing.',
+    'carbType.phblBetaDisclaimer': 'PHBL support is experimental. The needle-exposure constant (16.3 mm) was measured on a 26 mm PHBL with a D36 needle and AQ atomizer. It is not yet confirmed whether the carburetor-size scaling term applies to PHBL — needle positions for smaller PHBL sizes (20–24 mm) may deviate by up to ~3 mm. Verify against real-world testing.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL calculations are experimental and not fully verified.',
 
     // Setups table
@@ -169,7 +169,7 @@ const TRANSLATIONS = {
     'carbType.PHBL':  'PHBL',
     'carbType.betaLabel': 'Beta-Features',
     'carbType.betaBadge': 'BETA',
-    'carbType.phblBetaDisclaimer': 'Die PHBL-Unterstützung ist experimentell. Die Formel zur Nadel-Exposition (minExposed/Clip-Abstand) wurde aus K/U-Nadeln abgeleitet und ist für D-Nadeln nicht verifiziert — Berechnungen bei hohen Gasstellungen können unzuverlässig sein, besonders bei größeren Clip-Positionen oder Vergasergrößen nahe 26mm. Mit Vorsicht verwenden und durch Praxistests bestätigen.',
+    'carbType.phblBetaDisclaimer': 'Die PHBL-Unterstützung ist experimentell. Die Konstante für die Nadel-Exposition (16,3 mm) wurde an einem 26-mm-PHBL mit D36-Nadel und AQ-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für PHBL gilt, ist noch nicht bestätigt — bei kleineren PHBL-Größen (20–24 mm) kann die Nadelposition um bis zu ~3 mm abweichen. Durch Praxistests bestätigen.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL-Berechnungen sind experimentell und nicht vollständig verifiziert.',
 
     // Setups table

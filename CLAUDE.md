@@ -261,7 +261,22 @@ und existiert nicht mehr in `NEEDLE_DB`. Neu hinzugefügt: K97 (A:2.50, B:1.80, 
 CLIP_SPACING = 1.2   mm (Abstand zwischen Klemmringnuten)
 CLIP_MIN     = 1     (Dellorto standard: 4 Nuten, Wertebereich 1–4)
 CLIP_MAX     = 4
-MIN_EXPOSED  = 26.4  mm (Mindestlänge der exponierten Nadel bei Leerlauf)
+MIN_EXPOSED  = 26.4  mm (Mindestlänge der exponierten Nadel bei Leerlauf, VHSx/K-U-Nadeln)
+```
+
+**MIN_EXPOSED ist seit 2026-08 familienspezifisch** (nicht mehr ein globaler
+Wert). `calc.js` hält eine Lookup-Tabelle `MIN_EXPOSED_BY_CARB_TYPE`, die
+über die `carbType`-Eigenschaft der jeweiligen Nadel aufgelöst wird (nicht
+über den Nadel-Namens-Präfix, und nicht über die globale Vergaser-Typ-Einstellung
+aus localStorage):
+
+```
+VHSx: 26.4 mm — Original-GUE-Excel-Wert (K/U-Nadeln)
+PHBH: 26.4 mm — von VHSx geerbt, NICHT unabhängig verifiziert
+PHBL: 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel und
+                AQ-Mischrohr (idlePos 31.70 mm bei Clip 1), gegen eine
+                unabhängige Messkette gegengeprüft. Siehe
+                KONSTANTEN_VERIFIKATION.md.
 ```
 
 ### Formel: Nadelposition bei Leerlauf (Excel-Zelle B7)
@@ -271,13 +286,15 @@ Excel: =B6 - B5 - (B3-1)*B4 + B18 + (B2-34)/2
 ```js
 const needleLength  = NEEDLE_LENGTHS[needleType[0]];       // K→73.5, U→68
 const needleOffset  = JET_OFFSETS[jetType];                // DP/AV→0, DQ/AS→2
-const idlePos = needleLength - MIN_EXPOSED
+const minExposed    = MIN_EXPOSED_BY_CARB_TYPE[needle.carbType] ?? MIN_EXPOSED_DEFAULT;
+const idlePos = needleLength - minExposed
               - (clipPos - 1) * CLIP_SPACING
               + needleOffset
               + (carbSize - 34) / 2;
 ```
 
-**Verifikation:** K98, Clip 3, Carb 30, DP → 73.5 - 26.4 - 2.4 + 0 + (-2) = 42.7 ✓
+**Verifikation (VHSx):** K98, Clip 3, Carb 30, DP → 73.5 - 26.4 - 2.4 + 0 + (-2) = 42.7 ✓
+**Verifikation (PHBL):** D36, Clip 1, Carb 26, AQ → 52.0 - 16.3 - 0 + 0 + (-4) = 31.7 ✓
 
 ### Formel: Anzahl Taper (Excel-Zelle B14)
 ```
@@ -374,7 +391,8 @@ import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS } from './needledb.js';
 const CLIP_SPACING = 1.2;
 const CLIP_MIN = 1;          // Dellorto standard: 4 clip positions
 const CLIP_MAX = 4;
-const MIN_EXPOSED  = 26.4;
+const MIN_EXPOSED_BY_CARB_TYPE = { VHSx: 26.4, PHBH: 26.4, PHBL: 16.3 };
+const MIN_EXPOSED_DEFAULT = 26.4;
 const THROTTLE_POINTS = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
                           0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95,
                           1.0, 1.05, 1.1, 1.15];
@@ -399,7 +417,8 @@ export function calcSetup(setup) {
   const t1_d = tapers === 1 ? needle.b : needle.d;
   const t2_k = tapers === 1 ? 0 : (needle.d - needle.b) / (needle.e - (needle.f || 0));
 
-  const idlePos = needleLength - MIN_EXPOSED
+  const minExposed = MIN_EXPOSED_BY_CARB_TYPE[needle.carbType] ?? MIN_EXPOSED_DEFAULT;
+  const idlePos = needleLength - minExposed
     - (clipPos - 1) * CLIP_SPACING
     + needleOffset
     + (carbSize - 34) / 2;

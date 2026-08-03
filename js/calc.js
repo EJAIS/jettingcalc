@@ -5,7 +5,19 @@
 import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS } from './needledb.js';
 
 const CLIP_SPACING = 1.2;   // mm between clip groove positions
-const MIN_EXPOSED  = 26.4;  // mm minimum exposed needle length at idle
+
+// Minimum exposed needle length at idle (mm), by carburetor family.
+// VHSx: 26.4 — from the original GUE spreadsheet (K/U needles).
+// PHBL: 16.3 — measured 2026-08 on a 26 mm PHBL with D36 needle + AQ
+//              atomizer (idlePos 31.7 mm at clip 1, cross-verified against
+//              an independent measurement chain).
+// PHBH: 26.4 — inherited from VHSx, NOT independently verified.
+const MIN_EXPOSED_BY_CARB_TYPE = {
+  VHSx: 26.4,
+  PHBH: 26.4,
+  PHBL: 16.3,
+};
+const MIN_EXPOSED_DEFAULT = 26.4;
 
 const THROTTLE_POINTS = [
   0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
@@ -47,7 +59,8 @@ export function calcSetup(setup, needleSource) {
     : (needle.D - needle.B) / (needle.E - (needle.F || 0));
 
   // Needle position at idle (Excel B7)
-  const idlePos = needleLength - MIN_EXPOSED
+  const minExposed = MIN_EXPOSED_BY_CARB_TYPE[needle.carbType] ?? MIN_EXPOSED_DEFAULT;
+  const idlePos = needleLength - minExposed
     - (clipPos - 1) * CLIP_SPACING
     + needleOffset
     + (carbSize - 34) / 2;

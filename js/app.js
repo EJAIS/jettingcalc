@@ -250,12 +250,38 @@ function handleFieldChange(id, field, value) {
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
 
+// Total needle length by carb family — mirrors NEEDLE_LENGTHS in needledb.js.
+// VHSx is ambiguous (covers both K- and U-type needles with different lengths),
+// so it is resolved separately via the cnLengthType radio selection.
+const CARB_TYPE_NEEDLE_LENGTH = {
+  PHBH: 68.0,
+  PHBL: 52.0,
+};
+const VHSX_LENGTH_BY_TYPE = { K: 73.5, U: 68.0 };
+
+function updateLengthTypeVisibility() {
+  const row = document.getElementById('cn-length-type-row');
+  const carbTypeEl = document.querySelector('input[name="customCarbType"]:checked');
+  if (row) row.hidden = carbTypeEl?.value !== 'VHSx';
+}
+
 function readNeedleForm() {
   const get = id => document.getElementById(id)?.value.trim();
   const getNum = id => { const v = get(id); return v === '' ? null : parseFloat(v); };
   const carbTypeEl = document.querySelector('input[name="customCarbType"]:checked');
+  const carbType = carbTypeEl?.value ?? null;
+  const lengthTypeEl = document.querySelector('input[name="cnLengthType"]:checked');
+
+  let length = null;
+  if (carbType === 'VHSx') {
+    length = lengthTypeEl ? VHSX_LENGTH_BY_TYPE[lengthTypeEl.value] : null;
+  } else if (carbType) {
+    length = CARB_TYPE_NEEDLE_LENGTH[carbType] ?? null;
+  }
+
   return {
-    carbType: carbTypeEl?.value ?? null,
+    carbType,
+    length,
     type: get('cn-type')?.toUpperCase(),
     A: getNum('cn-A'),
     B: getNum('cn-B'),
@@ -269,6 +295,7 @@ function readNeedleForm() {
 function validateNeedle(needle, showAlert = true) {
   const errors = [];
   if (!needle.carbType) errors.push(t('err.carbTypeRequired'));
+  if (needle.carbType === 'VHSx' && needle.length == null) errors.push(t('err.lengthTypeRequired'));
   if (!needle.type) errors.push(t('err.typeRequired'));
   if (needle.A == null || needle.B == null || needle.C == null) errors.push(t('err.abcRequired'));
   if (needle.type && NEEDLE_DB[needle.type]) errors.push(t('err.typeExists'));
@@ -595,10 +622,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('input[name="customCarbType"]').forEach(r => {
     r.checked = r.value === carbType;
   });
+  updateLengthTypeVisibility();
 
   updateUI();
   renderCustomNeedleList();
   applyTranslations();
+
+  // Custom needle form: toggle K/U length-type selector for VHSx
+  document.getElementById('custom-needle-form')?.addEventListener('change', e => {
+    if (e.target.name === 'customCarbType') updateLengthTypeVisibility();
+  });
 
   // Carb type selector
   document.getElementById('carb-type-selector')?.addEventListener('change', e => {
@@ -658,6 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCustomNeedleList();
     updateUI();
     document.getElementById('custom-needle-form').reset();
+    updateLengthTypeVisibility();
   });
 
   // Submit needle via mailto

@@ -30,7 +30,7 @@ export function calcSetup(setup, needleSource) {
   if (!needleType || !db[needleType]) return null;
 
   const needle = db[needleType];
-  let needleLength = NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
+  let needleLength = needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
   if (needleType === 'X37') needleLength = 56.2;
   const needleOffset = JET_OFFSETS[jetType] ?? 0;
   const tapers = needle.F ? 3 : needle.E ? 2 : 1;

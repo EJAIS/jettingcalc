@@ -21,7 +21,21 @@ const DEFAULT_SETUPS = Array.from({ length: 5 }, (_, i) => ({
 
 export function loadSetups() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : structuredClone(DEFAULT_SETUPS);
+  if (!raw) return structuredClone(DEFAULT_SETUPS);
+
+  const setups = JSON.parse(raw);
+  let migrated = false;
+  setups.forEach(s => {
+    if (s.needleType === 'K90') {
+      s.needleType = 'K96';
+      migrated = true;
+    }
+  });
+  if (migrated) {
+    console.info('[storage] Migrated setup(s) from retired needle type K90 to K96.');
+    saveSetups(setups);
+  }
+  return setups;
 }
 
 export function saveSetups(setups) {
@@ -50,6 +64,7 @@ export function getAllNeedles() {
   const customMap = Object.fromEntries(
     custom.map(n => {
       const entry = { carbType: n.carbType, A: n.A, B: n.B, C: n.C };
+      if (n.length != null)           { entry.length = n.length; }
       if (n.D != null && n.E != null) { entry.D = n.D; entry.E = n.E; }
       if (n.F != null)                { entry.F = n.F; }
       return [n.type, entry];

@@ -74,3 +74,31 @@ ursprünglichen 2014er GUE-Excel).
   geerbt, für PHBL nicht bestätigt; zur Klärung ist eine zweite
   idlePos-Messung bei einer anderen PHBL-Bohrungsgröße nötig (z.B. 20 oder
   22 mm).
+
+## Priorität MITTEL
+
+### Schiebertyp der VHS-Familie (Flach- vs. Rundschieber)
+- Eurocarb beschreibt die VHSA/VHSB/VHSC-Familie als "Flat slide smooth
+  oval bore design"; der Dellorto-Produkteintrag für den VHSH nennt
+  "Flat throttle valve".
+- Die Cutaway-Berechnung ist ausdrücklich auf Rundschieber-Vergaser
+  kalibriert, `ROUND_SLIDE_2STROKE` enthält aktuell aber auch VHSx.
+- Gegenargument: Die Cutaway-Empfehlung wurde an einem realen Setup
+  verifiziert (Schieber 40 bestätigt), was gegen eine grobe
+  Fehlanwendung spricht.
+- Status: offen — vor einer Änderung am Cutaway-Scope praktisch klären
+  (Schieberform am realen VHS-Vergaser prüfen).
+- **Bis dahin bewusst KEINE Änderung am Cutaway-Scope.**
+
+### Gasstellungsbereich über 100 % (105/110/115 %)
+- Bei tp = 1,0 ist der Schieber um genau eine Bohrungsweite angehoben, die
+  Bohrung also vollständig freigelegt; darüber ändert sich der Luftdurchsatz
+  nicht mehr.
+- Der Bereich stammt unverändert aus der GUE-Excel und ist dort nur in den
+  Calc-Tabellen vorhanden; die max-HD-Berechnung nutzt ausdrücklich 100 %.
+- Offen: ob reale VHSx/PHBH/PHBL-Schieber überhaupt über die volle
+  Bohrungsöffnung hinaus fahren.
+- Praktisch prüfbar: Schieberhub bei voll gezogenem Gaszug messen und mit
+  der Bohrungsweite vergleichen. Hub > Bohrung ⇒ echter Überhub.
+- Bis dahin: Daten beibehalten, aber in UI und Charts als Extrapolation
+  gekennzeichnet.

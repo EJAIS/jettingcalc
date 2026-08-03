@@ -5,7 +5,7 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
-import { NEEDLE_DB, CARB_TYPES } from './needledb.js';
+import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
 let setups   = loadSetups();
@@ -34,6 +34,26 @@ function buildNeedleOptions(selectedType) {
     keys.map(k =>
       `<option value="${k}"${k === selectedType ? ' selected' : ''}${customTypes.includes(k) ? ' class="custom-needle"' : ''}>${k}${customTypes.includes(k) ? ' *' : ''}</option>`
     ).join('');
+}
+
+function carbSizeWarning(carbSize) {
+  const sizes = CARB_BORE_SIZES[carbType];
+  if (!sizes || carbSize == null || carbSize === '') return '';
+  const min = Math.min(...sizes);
+  const max = Math.max(...sizes);
+  if (carbSize >= min && carbSize <= max) return '';
+  const msg = t('carbSize.rangeWarning')
+    .replace('{carbType}', carbType)
+    .replace('{min}', min)
+    .replace('{max}', max);
+  return `<span class="field-warn" data-tooltip="${msg}" role="button" tabindex="0" aria-label="${msg}">⚠</span>`;
+}
+
+function renderCarbSizeOptions() {
+  const list = document.getElementById('carb-size-options');
+  if (!list) return;
+  const sizes = CARB_BORE_SIZES[carbType] ?? [];
+  list.innerHTML = sizes.map(v => `<option value="${v}"></option>`).join('');
 }
 
 function showNotice(msg) {
@@ -88,8 +108,9 @@ function renderTable() {
       </td>
       <td class="carbsize-cell">
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="carbSize"
-               value="${s.carbSize ?? ''}" min="10" max="50" placeholder="mm">
-        ${carbType === 'PHBL' && s.carbSize > 26 ? `<span class="field-warn" data-tooltip="${t('carbSize.phblWarning')}" role="button" tabindex="0" aria-label="${t('carbSize.phblWarning')}">⚠</span>` : ''}
+               value="${s.carbSize ?? ''}" min="10" max="50" step="0.5" placeholder="mm"
+               list="carb-size-options">
+        ${carbSizeWarning(s.carbSize)}
       </td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="needleJet"
@@ -132,14 +153,17 @@ function renderCalcResults() {
     const result = calcSetup(s, allNeedles);
     if (!result) return '';
     const color = getColors()[s.id - 1];
-    const rows = result.curve.map(p => `
-      <tr>
-        <td>${Math.round(p.tp * 100)}%</td>
+    const rows = result.curve.map(p => {
+      const extrap = p.tp > 1.0 + 1e-9;
+      return `
+      <tr${extrap ? ' class="cr-row-extrap"' : ''}>
+        <td>${Math.round(p.tp * 100)}%${extrap ? '*' : ''}</td>
         <td>${p.pos.toFixed(2)}</td>
         <td>${p.diam.toFixed(3)}</td>
         <td>${Math.round(p.hdEquiv)}</td>
         <td>${Math.round(p.overall)}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     let cutawayHTML = '';
     const needle = allNeedles[s.needleType];
@@ -181,6 +205,7 @@ function renderCalcResults() {
           </thead>
           <tbody>${rows}</tbody>
         </table>
+        <p class="cr-extrap-note">${t('calc.extrapolationNote')}</p>
         ${cutawayHTML}
       </div>`;
   }).join('');
@@ -192,6 +217,7 @@ function updateUI() {
   });
   const banner = document.getElementById('phbl-beta-banner');
   if (banner) banner.hidden = carbType !== 'PHBL';
+  renderCarbSizeOptions();
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -509,6 +535,7 @@ function updateCrossSectionDiagram() {
 
   const throttlePct = slider ? parseInt(slider.value) : 0;
   if (tpDisp) tpDisp.textContent = `${throttlePct}%`;
+  document.getElementById('cs-extrap-note')?.toggleAttribute('hidden', throttlePct <= 100);
 
   const setup = setups.find(s => s.id === parseInt(sel.value));
   if (!setup?.needleType) {
@@ -571,6 +598,7 @@ function updateCrossSectionLive() {
 
   const throttlePct = slider ? parseInt(slider.value) : 0;
   if (tpDisp) tpDisp.textContent = `${throttlePct}%`;
+  document.getElementById('cs-extrap-note')?.toggleAttribute('hidden', throttlePct <= 100);
 
   const setup = setups.find(s => s.id === parseInt(sel.value));
   if (!setup?.needleType) return;

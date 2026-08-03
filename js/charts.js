@@ -19,6 +19,34 @@ export function getColors() {
   return document.body.classList.contains('dark') ? COLORS_DARK : COLORS_LIGHT;
 }
 
+// Dashes the portion of a line beyond 100 % throttle (x = 1.0), which is
+// extrapolated data absent from the original spreadsheet's tuning range.
+function extrapolationSegment(ctx) {
+  return ctx.p0.parsed.x >= 1.0 ? [5, 4] : undefined;
+}
+
+// Draws a thin marker line at x = 1.0 (100 % throttle) so the boundary
+// between real and extrapolated data is visible on both charts.
+const throttleBoundaryPlugin = {
+  id: 'throttleBoundary',
+  beforeDatasetsDraw(chart) {
+    const xScale = chart.scales.x;
+    if (!xScale) return;
+    const x = xScale.getPixelForValue(1.0);
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = document.body.classList.contains('dark') ? '#5a6169' : '#c9cdd2';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
 export function renderCharts(setups, needleSource) {
   const activeSetups = setups.filter(s => s.needleType);
   const colors    = getColors();
@@ -37,11 +65,13 @@ export function renderCharts(setups, needleSource) {
       backgroundColor: colors[s.id - 1] + '22',
       tension: 0.3,
       pointRadius: 2,
+      segment: { borderDash: extrapolationSegment },
     };
   }).filter(Boolean);
 
   needleConfig = {
     type: 'line',
+    plugins: [throttleBoundaryPlugin],
     data: { datasets: needleDatasets },
     options: {
       responsive: true,
@@ -83,11 +113,13 @@ export function renderCharts(setups, needleSource) {
       backgroundColor: colors[s.id - 1] + '22',
       tension: 0.3,
       pointRadius: 2,
+      segment: { borderDash: extrapolationSegment },
     };
   }).filter(Boolean);
 
   carbConfig = {
     type: 'line',
+    plugins: [throttleBoundaryPlugin],
     data: { datasets: carbDatasets },
     options: {
       responsive: true,
@@ -142,6 +174,12 @@ export function openChartModal(which) {
       callback: v => (v * 100).toFixed(0) + '%',
     };
   }
+  // Restore the extrapolation-segment callback and boundary-marker plugin,
+  // both function-valued and therefore lost by JSON serialization.
+  modalConfig.data.datasets.forEach(ds => {
+    ds.segment = { borderDash: extrapolationSegment };
+  });
+  modalConfig.plugins = [throttleBoundaryPlugin];
   modalConfig.options.responsive = true;
   modalConfig.options.maintainAspectRatio = false;
   // On mobile, move legend to bottom to avoid overlapping the chart area

@@ -547,6 +547,15 @@ body.dark .btn-expand { color: #9aa0a8; }
 .cr-table tbody tr:nth-child(even) { background: var(--row-even); }
 .cr-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 
+.cr-row-extrap { opacity: .55; font-style: italic; }
+
+.cr-extrap-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* ── Cutaway recommendation ────────────────────────────────────────────────── */
 .cutaway-section {
   margin-top: .6rem;
@@ -876,6 +885,13 @@ details.collapsible > summary::-webkit-details-marker { display: none; }
   width: 100%;
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+.cs-extrap-note {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted);
 }
 
 .cs-gap-note {

@@ -90,7 +90,11 @@ export function calcSetup(setup, needleSource) {
     return { tp, pos, diam, hdEquiv, overall };
   });
 
-  const maxHD = Math.max(...curve.map(p => p.hdEquiv));
+  // "max HD" is evaluated at 100 % throttle (WOT), matching the original
+  // spreadsheet — NOT the maximum across the whole curve. Values beyond
+  // 100 % are extrapolation and must not influence this figure.
+  const wot = curve.find(p => Math.abs(p.tp - 1.0) < 1e-9);
+  const maxHD = wot ? wot.hdEquiv : Math.max(...curve.map(p => p.hdEquiv));
 
   return { idlePos, tapers, t1_k, t1_d, t2_k, curve, maxHD };
 }

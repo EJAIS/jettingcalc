@@ -61,6 +61,28 @@ ursprünglichen 2014er GUE-Excel).
 
 ---
 
+## Priorität HOCH
+
+### X-Nadel-Länge und minExposed (PHBH) — gekoppelt
+- `NEEDLE_LENGTHS["X"] = 68.0` beruht auf einer fehlerhaften Analogie zu
+  U-Nadeln (U gehört zu PHBE/VHSA, nicht PHBH). Eurocarb gibt für die
+  X-Nadel (Teilenr. 9477) 55 mm an — Snippet-Evidenz, die Seite ist per
+  robots.txt nicht direkt abrufbar.
+- Die Fußnote der Eurocarb-Tabelle „X37 has a length of 56.2" ergibt bei
+  55 mm Basislänge Sinn (+1,2 mm); das Stein-Dinse-Handbuch führt diese
+  Abweichung nicht — Quellenwiderspruch offen.
+- `MIN_EXPOSED_BY_CARB_TYPE.PHBH = 26.4` ist von VHSx übernommen und
+  unverifiziert.
+- Beide Konstanten sind gekoppelt: Nur die Länge zu korrigieren führt bei
+  allen 1044 geprüften X-Kombinationen zu negativer Nadelposition bei
+  100 % Gas. Aktuell heben sich beide Fehler teilweise auf
+  (Netto-Abweichung ca. 4–5 mm bei idlePos).
+- Wie verifizieren: Messung an einem realen PHBH analog zum PHBL-Vorgehen
+  (M1 = Nadelspitze relativ zum Mischrohrsitz, M2 = Einbauhöhe der
+  Mischrohrmündung über dem Bund; idlePos = M2 − M1), plus Gesamtlänge
+  einer X-Nadel mit dem Messschieber.
+- Status: offen — bis dahin PHBH im Beta-Bereich, Werte unverändert.
+
 ## Noch zu verifizieren
 
 - X-Type-Nadeln (PHBH, Serie 9477) — noch nicht gegen eine externe Quelle

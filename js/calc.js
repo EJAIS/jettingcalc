@@ -98,31 +98,3 @@ export function calcSetup(setup, needleSource) {
 
   return { idlePos, tapers, t1_k, t1_d, t2_k, curve, maxHD };
 }
-
-export function calcNeedleProfile(needleType, needleSource) {
-  const db = needleSource || NEEDLE_DB;
-  const needle = db[needleType];
-  if (!needle) return [];
-
-  const tapers = needle.F ? 3 : needle.E ? 2 : 1;
-  const t1_k = tapers === 1
-    ? (needle.A - needle.B) / needle.C
-    : (needle.A - needle.D) / (needle.C - needle.E);
-  const t1_d = tapers === 1 ? needle.B : needle.D;
-  const t2_k = tapers === 1
-    ? 0
-    : (needle.D - needle.B) / (needle.E - (needle.F || 0));
-
-  const pts = [];
-  for (let pos = 0; pos <= needle.C + 2; pos += 0.5) {
-    const e = needle.E || 0;
-    const f = needle.F || 0;
-    let diam;
-    if (pos > needle.C)  diam = needle.A;
-    else if (pos < f)    diam = needle.B;
-    else if (pos <= e)   diam = t2_k * (pos - f) + needle.B;
-    else                 diam = t1_k * (pos - e) + t1_d;
-    pts.push({ pos, diam });
-  }
-  return pts;
-}

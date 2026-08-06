@@ -39,13 +39,19 @@
         <input type="radio" name="carbType" value="VHSx">
         <span data-i18n="carbType.VHSx">VHSx (VHSA / VHSB / VHSC / VHSH)</span>
       </label>
-      <label class="carb-type-option">
-        <input type="radio" name="carbType" value="PHBH">
-        <span data-i18n="carbType.PHBH">PHBH</span>
-      </label>
     </div>
     <div class="carb-type-beta">
       <span class="beta-divider-label" data-i18n="carbType.betaLabel">Beta Features</span>
+      <label class="carb-type-option beta">
+        <input type="radio" name="carbType" value="PHBH">
+        <span data-i18n="carbType.PHBH">PHBH</span>
+        <span class="beta-badge" data-i18n="carbType.betaBadge">BETA</span>
+      </label>
+      <span class="cutaway-info"
+            data-i18n-tooltip="carbType.phbhBetaDisclaimer"
+            data-tooltip=""
+            role="button" tabindex="0"
+            aria-label="PHBH beta disclaimer">ℹ</span>
       <label class="carb-type-option beta">
         <input type="radio" name="carbType" value="PHBL">
         <span data-i18n="carbType.PHBL">PHBL</span>
@@ -66,8 +72,7 @@
     <div class="card-header">
       <h2 data-i18n="section.setups">Setups</h2>
     </div>
-    <div id="phbl-beta-banner" class="phbl-beta-banner" hidden
-         data-i18n="carbType.phblBetaBanner">⚠ Beta: PHBL calculations are experimental and not fully verified.</div>
+    <div id="carb-beta-banner" class="carb-beta-banner" hidden></div>
     <div class="table-wrapper">
       <table>
         <thead>

@@ -279,6 +279,16 @@ PHBL: 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel und
                 KONSTANTEN_VERIFIKATION.md.
 ```
 
+**Beta-Status PHBH und PHBL (seit 2026-08):** Beide Vergasertypen stehen in
+der UI in der "Beta Features"-Gruppe (BETA-Badge, eigener Info-Tooltip,
+Warnbanner im Setups-Bereich). VHSx bleibt allein in der primären Gruppe.
+Für PHBH sind zwei gekoppelte Konstanten unverifiziert und dürfen NICHT
+unabhängig voneinander korrigiert werden: `NEEDLE_LENGTHS["X"] = 68.0` (beruht
+auf einer fehlerhaften Analogie zu U-Nadeln; Eurocarb nennt 55 mm für die
+X-Nadel, Teilenr. 9477) und `MIN_EXPOSED_BY_CARB_TYPE.PHBH = 26.4` (von VHSx
+geerbt). Details und Verifikationsplan siehe KONSTANTEN_VERIFIKATION.md,
+Abschnitt "Priorität HOCH".
+
 ### Formel: Nadelposition bei Leerlauf (Excel-Zelle B7)
 ```
 Excel: =B6 - B5 - (B3-1)*B4 + B18 + (B2-34)/2

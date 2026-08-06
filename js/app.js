@@ -13,6 +13,15 @@ let carbType = loadCarbType();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function needleSort(a, b) {
   if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1;
   return parseInt(a.slice(1)) - parseInt(b.slice(1));
@@ -31,9 +40,10 @@ function buildNeedleOptions(selectedType) {
     .filter(n => n.carbType === carbType)
     .map(n => n.type);
   return `<option value="">${t('setup.select')}</option>` +
-    keys.map(k =>
-      `<option value="${k}"${k === selectedType ? ' selected' : ''}${customTypes.includes(k) ? ' class="custom-needle"' : ''}>${k}${customTypes.includes(k) ? ' *' : ''}</option>`
-    ).join('');
+    keys.map(k => {
+      const esc = escapeHtml(k);
+      return `<option value="${esc}"${k === selectedType ? ' selected' : ''}${customTypes.includes(k) ? ' class="custom-needle"' : ''}>${esc}${customTypes.includes(k) ? ' *' : ''}</option>`;
+    }).join('');
 }
 
 function carbSizeWarning(carbSize) {
@@ -82,7 +92,7 @@ function renderTable() {
     const needle = allNeedles[s.needleType];
     if (isRoundSlide2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
       const ca    = calcCutaway(s.carbSize, s.hd, s.needleJet, needle.A);
-      const slide = snapToSlide(ca.cutawayClamped, carbType);
+      const slide = ca.cutawayClamped != null ? snapToSlide(ca.cutawayClamped, carbType) : '—';
       if (ca.ratioOk) {
         cutawayCell = `<span class="cutaway-col-value">${slide}</span>`;
       } else {
@@ -95,7 +105,7 @@ function renderTable() {
     <tr>
       <td>
         <input type="text" class="cell-input" data-id="${s.id}" data-field="name"
-               value="${s.name}" title="Setup name">
+               value="${escapeHtml(s.name)}" title="Setup name">
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="needleType">
@@ -193,7 +203,7 @@ function renderCalcResults() {
     return `
       <div class="cr-table-wrap">
         <table class="cr-table">
-          <caption style="color:${color}">${s.name}</caption>
+          <caption style="color:${color}">${escapeHtml(s.name)}</caption>
           <thead>
             <tr>
               <th>${t('col.throttle')}</th>
@@ -211,12 +221,22 @@ function renderCalcResults() {
   }).join('');
 }
 
+// Beta-banner translation key by carb type — carb types not listed here show no banner.
+const BETA_BANNER_KEY = {
+  PHBH: 'carbType.phbhBetaBanner',
+  PHBL: 'carbType.phblBetaBanner',
+};
+
 function updateUI() {
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
     r.checked = r.value === carbType;
   });
-  const banner = document.getElementById('phbl-beta-banner');
-  if (banner) banner.hidden = carbType !== 'PHBL';
+  const banner = document.getElementById('carb-beta-banner');
+  if (banner) {
+    const key = BETA_BANNER_KEY[carbType];
+    banner.hidden = !key;
+    if (key) banner.textContent = t(key);
+  }
   renderCarbSizeOptions();
   renderTable();
   renderCharts(setups, getAllNeedles());
@@ -341,11 +361,12 @@ function renderCustomNeedleList() {
   }
   list.innerHTML = custom.map(n => {
     const tapers = n.F != null ? '3T' : n.E != null ? '2T' : '1T';
+    const typeEsc = escapeHtml(n.type);
     return `<li>
-      <span class="cn-name">${n.type}</span>
-      ${n.carbType ? `<span class="cn-carb-badge">${n.carbType}</span>` : ''}
+      <span class="cn-name">${typeEsc}</span>
+      ${n.carbType ? `<span class="cn-carb-badge">${escapeHtml(n.carbType)}</span>` : ''}
       <span class="cn-detail">${tapers} · A=${n.A} B=${n.B} C=${n.C}${n.D != null ? ` D=${n.D} E=${n.E}` : ''}${n.F != null ? ` F=${n.F}` : ''}</span>
-      <button class="btn-delete-needle" data-type="${n.type}" title="Delete">✕</button>
+      <button class="btn-delete-needle" data-type="${typeEsc}" title="Delete">✕</button>
     </li>`;
   }).join('');
 }
@@ -448,7 +469,7 @@ function renderCrossSection() {
   const prevId = sel.value ? parseInt(sel.value) : null;
 
   sel.innerHTML = setups.map(s =>
-    `<option value="${s.id}">${s.name}</option>`
+    `<option value="${s.id}">${escapeHtml(s.name)}</option>`
   ).join('');
 
   // Default: restore previous selection, or fall back to first setup with a needle
@@ -521,7 +542,7 @@ function buildCrossSectionSVG(setup, result, idx) {
   ${lbl(W - 22 - 5, JT + 15, `Ø ${njMM.toFixed(2)} mm`, 'end')}
   ${lbl(W - 22 - 5, JT + 26, t('crosssection.needleJet'), 'end', 'crosssection.needleJet')}
   ${lbl(W - 22 - 5, BTOP + 13, t('crosssection.bore'), 'end', 'crosssection.bore')}
-  ${lbl(CX - 47, BTOP + 13, setup.needleType, 'end')}
+  ${lbl(CX - 47, BTOP + 13, escapeHtml(setup.needleType), 'end')}
 </svg>`;
 }
 

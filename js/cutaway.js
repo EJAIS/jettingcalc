@@ -31,6 +31,12 @@ export function calcCutaway(carbSize, mainJetNum, needleJetNum, needleA) {
   const needleArea  = Math.PI * Math.pow(needleA / 2, 2);
   const annulusArea = njHoleArea - needleArea;
   const ratio       = annulusArea / mainArea;
+
+  // Needle shank meets or exceeds the needle-jet bore — no annulus left to flow through.
+  if (!(annulusArea > 0)) {
+    return { cutawayRaw: null, cutawayClamped: null, ratio, ratioOk: false };
+  }
+
   const cutawayRaw  = (0.14 * carbSize * mainArea) / (1.87 * annulusArea);
   const min = carbSize / 10;
   const max = carbSize / 4;

@@ -261,8 +261,8 @@ body.dark .btn-secondary:hover { background: #50565f; }
   margin-top: -8px;
 }
 
-/* ── PHBL beta banner (inside Setups card, below card-header) ───────────────── */
-.phbl-beta-banner {
+/* ── Beta carb-type banner (inside Setups card, below card-header) ──────────── */
+.carb-beta-banner {
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   border-bottom: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
   color: var(--warning);
@@ -270,7 +270,7 @@ body.dark .btn-secondary:hover { background: #50565f; }
   font-size: 12px;
   font-weight: 500;
 }
-.phbl-beta-banner[hidden] { display: none; }
+.carb-beta-banner[hidden] { display: none; }
 
 /* ── Main layout ───────────────────────────────────────────────────────────── */
 main {

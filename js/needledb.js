@@ -261,11 +261,29 @@ export const JET_OFFSETS = {
   "AQ": 0,   // PHBL — single type, no pair
 };
 
+// Factory atomizer sizes (needle jet, ×10mm) per jetType — suggestions
+// only, matches the JET_OFFSETS keys above.
+// Source: Eurocarb (dellorto.co.uk) for AQ/AV/AS, Stein-Dinse (DE) for DP/DQ.
+export const ATOMIZER_SIZES = {
+  AQ: [260, 262, 264, 265, 266, 268, 269, 270],
+  AV: [260, 262, 264, 266, 268, 270, 272, 274, 276, 280, 290, 300],
+  AS: [260, 262, 264, 266, 268, 270, 272, 274],
+  DP: [258, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 276],
+  DQ: [258, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274],
+};
+
 // Factory bore sizes (mm) per carburetor family — suggestions only, custom/bored-out values remain allowed.
 // Source: Eurocarb (official Dellorto distributor, dellorto.co.uk) and dellorto.it.
 // VHSx = union of VHSA (28/30/32), VHSB (34/36/37/38/39), VHSC (39.5), VHSH (30).
+// Grouped for <select> optgroups — VHSC (39.5) stays part of the "VHSB" group,
+// there is no separate VHSC group.
+export const VHSX_BORE_GROUPS = [
+  { label: 'VHSA / VHSH', sizes: [28, 30, 32] },
+  { label: 'VHSB',        sizes: [34, 36, 37, 38, 39, 39.5] },
+];
+
 export const CARB_BORE_SIZES = {
-  VHSx: [28, 30, 32, 34, 36, 37, 38, 39, 39.5],
+  VHSx: [...new Set(VHSX_BORE_GROUPS.flatMap(g => g.sizes))],
   PHBH: [26, 28, 30],
   PHBL: [20, 22, 24, 25, 26],
 };

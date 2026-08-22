@@ -153,7 +153,24 @@ body.dark .btn-secondary:hover { background: #50565f; }
   padding: 2px 6px;
   font-size: 12px;
 }
-.btn-icon:hover { color: var(--danger); }
+.btn-icon:hover { color: var(--accent); }
+.btn-icon-danger:hover { color: var(--danger); }
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.row-actions .btn-icon { font-size: 16px; padding: 2px 4px; }
+.row-actions .btn-icon:disabled { opacity: .3; cursor: not-allowed; }
+.row-actions .btn-icon:disabled:hover { color: var(--text-muted); }
+
+.row-flash { animation: row-flash-fade 1.2s ease-out; }
+@keyframes row-flash-fade {
+  0%   { background-color: color-mix(in srgb, var(--accent) 25%, transparent); }
+  100% { background-color: transparent; }
+}
 
 /* ── Carb Type Selector ─────────────────────────────────────────────────────── */
 .carb-type-selector {
@@ -359,16 +376,14 @@ tbody td {
   white-space: nowrap;
 }
 
-.cutaway-col-warn,
-.field-warn {
+.cutaway-col-warn {
   cursor: pointer;
   color: var(--danger);
   font-size: .85em;
   margin-left: 2px;
   user-select: none;
 }
-.cutaway-col-warn:hover,
-.field-warn:hover { opacity: .75; }
+.cutaway-col-warn:hover { opacity: .75; }
 
 .carbsize-cell {
   white-space: nowrap;

@@ -5,7 +5,7 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
-import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES } from './needledb.js';
+import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
 let setups   = loadSetups();
@@ -46,24 +46,27 @@ function buildNeedleOptions(selectedType) {
     }).join('');
 }
 
-function carbSizeWarning(carbSize) {
-  const sizes = CARB_BORE_SIZES[carbType];
-  if (!sizes || carbSize == null || carbSize === '') return '';
-  const min = Math.min(...sizes);
-  const max = Math.max(...sizes);
-  if (carbSize >= min && carbSize <= max) return '';
-  const msg = t('carbSize.rangeWarning')
-    .replace('{carbType}', carbType)
-    .replace('{min}', min)
-    .replace('{max}', max);
-  return `<span class="field-warn" data-tooltip="${msg}" role="button" tabindex="0" aria-label="${msg}">⚠</span>`;
+function buildCarbSizeOptions(selectedSize) {
+  const opts = [`<option value="">${t('setup.select')}</option>`];
+  if (carbType === 'VHSx') {
+    for (const group of VHSX_BORE_GROUPS) {
+      opts.push(`<optgroup label="${escapeHtml(group.label)}">`);
+      opts.push(...group.sizes.map(v =>
+        `<option value="${v}"${String(v) === String(selectedSize) ? ' selected' : ''}>${v}</option>`));
+      opts.push('</optgroup>');
+    }
+  } else {
+    const sizes = CARB_BORE_SIZES[carbType] ?? [];
+    opts.push(...sizes.map(v =>
+      `<option value="${v}"${String(v) === String(selectedSize) ? ' selected' : ''}>${v}</option>`));
+  }
+  return opts.join('');
 }
 
-function renderCarbSizeOptions() {
-  const list = document.getElementById('carb-size-options');
-  if (!list) return;
-  const sizes = CARB_BORE_SIZES[carbType] ?? [];
-  list.innerHTML = sizes.map(v => `<option value="${v}"></option>`).join('');
+function buildNeedleJetOptions(jetType, selectedValue) {
+  const sizes = jetType ? (ATOMIZER_SIZES[jetType] ?? []) : [];
+  return `<option value="">${t('setup.select')}</option>` +
+    sizes.map(v => `<option value="${v}"${String(v) === String(selectedValue) ? ' selected' : ''}>${v}</option>`).join('');
 }
 
 function showNotice(msg) {
@@ -102,7 +105,7 @@ function renderTable() {
     }
 
     return `
-    <tr>
+    <tr data-row-id="${s.id}">
       <td>
         <input type="text" class="cell-input" data-id="${s.id}" data-field="name"
                value="${escapeHtml(s.name)}" title="Setup name">
@@ -117,20 +120,20 @@ function renderTable() {
                value="${s.clipPos ?? ''}" min="1" max="4" placeholder="1–4">
       </td>
       <td class="carbsize-cell">
-        <input type="number" class="cell-input num" data-id="${s.id}" data-field="carbSize"
-               value="${s.carbSize ?? ''}" min="10" max="50" step="0.5" placeholder="mm"
-               list="carb-size-options">
-        ${carbSizeWarning(s.carbSize)}
-      </td>
-      <td>
-        <input type="number" class="cell-input num" data-id="${s.id}" data-field="needleJet"
-               value="${s.needleJet ?? ''}" min="100" max="400" placeholder="×10">
+        <select class="cell-input" data-id="${s.id}" data-field="carbSize">
+          ${buildCarbSizeOptions(s.carbSize)}
+        </select>
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="jetType"
                 title="${t('col.jetType.title')}">
           <option value="">—</option>
           ${validAtomizers.map(a => `<option value="${a}"${s.jetType === a ? ' selected' : ''}>${a}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select class="cell-input" data-id="${s.id}" data-field="needleJet">
+          ${buildNeedleJetOptions(s.jetType, s.needleJet)}
         </select>
       </td>
       <td class="maxhd-cell">${maxHD}</td>
@@ -142,6 +145,16 @@ function renderTable() {
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
                value="${s.hd ?? ''}" min="0" max="300" placeholder="HD">
+      </td>
+      <td class="row-actions">
+        <button type="button" class="btn-icon" data-action="duplicate-row"
+                data-id="${s.id}" data-tooltip="${t('action.duplicateRow')}"
+                aria-label="${t('action.duplicateRow')}"
+                ${!s.needleType ? 'disabled' : ''}>⧉</button>
+        <button type="button" class="btn-icon btn-icon-danger" data-action="reset-row"
+                data-id="${s.id}" data-tooltip="${t('action.resetRow')}"
+                aria-label="${t('action.resetRow')}"
+                ${!s.needleType ? 'disabled' : ''}>↺</button>
       </td>
     </tr>`;
   }).join('');
@@ -237,7 +250,6 @@ function updateUI() {
     banner.hidden = !key;
     if (key) banner.textContent = t(key);
   }
-  renderCarbSizeOptions();
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -262,6 +274,10 @@ function handleCarbTypeChange(newCarbType) {
     }
     if (s.jetType && !validAtomizers.includes(s.jetType)) {
       s.jetType = null;
+      changed = true;
+    }
+    if (s.carbSize != null && !CARB_BORE_SIZES[carbType]?.includes(s.carbSize)) {
+      s.carbSize = null;
       changed = true;
     }
     if (changed) resetCount++;
@@ -290,8 +306,56 @@ function handleFieldChange(id, field, value) {
     setups[idx][field] = value === '' ? null : value;
   }
 
+  if (field === 'jetType') {
+    const validSizes = value ? (ATOMIZER_SIZES[value] ?? []) : [];
+    if (setups[idx].needleJet != null && !validSizes.includes(setups[idx].needleJet)) {
+      setups[idx].needleJet = null;
+    }
+  }
+
   saveSetups(setups);
   updateUI();
+}
+
+function resetRow(id) {
+  const idx = setups.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  if (!confirm(t('confirm.resetRow').replace('{name}', setups[idx].name))) return;
+  setups[idx] = {
+    id, name: `#${id}`,
+    needleType: null, clipPos: null, carbSize: null,
+    needleJet: null, jetType: null, nd: null, hd: null,
+  };
+  saveSetups(setups);
+  updateUI();
+}
+
+function duplicateRow(id) {
+  const source = setups.find(s => s.id === id);
+  if (!source || !source.needleType) return;
+
+  const target = setups.find(s => s.id !== id && s.needleType == null);
+  if (!target) {
+    showNotice(t('msg.noEmptyRowToDuplicate'));
+    return;
+  }
+
+  const targetIdx = setups.findIndex(s => s.id === target.id);
+  setups[targetIdx] = {
+    ...structuredClone(source),
+    id: target.id,
+    name: source.name + t('duplicate.suffix'),
+  };
+  saveSetups(setups);
+  updateUI();
+  flashRow(target.id);
+}
+
+function flashRow(id) {
+  const row = document.querySelector(`#setup-tbody tr[data-row-id="${id}"]`);
+  if (!row) return;
+  row.classList.add('row-flash');
+  setTimeout(() => row.classList.remove('row-flash'), 1200);
 }
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
@@ -695,6 +759,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = e.target.closest('[data-id][data-field]');
     if (!el) return;
     handleFieldChange(parseInt(el.dataset.id), el.dataset.field, el.value);
+  });
+
+  // Setup table row actions (event delegation)
+  document.getElementById('setup-tbody').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn || btn.disabled) return;
+    const id = parseInt(btn.dataset.id, 10);
+    if (btn.dataset.action === 'reset-row') resetRow(id);
+    if (btn.dataset.action === 'duplicate-row') duplicateRow(id); // wired in next step
   });
 
   // Cross-section setup selector and throttle slider

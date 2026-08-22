@@ -38,8 +38,13 @@ const TRANSLATIONS = {
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
+    'col.actions':     'Actions',
     'setup.select':    '— select —',
     'msg.setupsReset': '{n} setup(s) cleared — needle type not compatible with selected carburetor.',
+    'msg.noEmptyRowToDuplicate': 'All 5 rows are in use — reset one first to duplicate into it.',
+    'action.resetRow':     'Reset this row',
+    'action.duplicateRow': 'Duplicate this row',
+    'duplicate.suffix':    ' (Copy)',
 
     // Charts
     'section.needleProfile': 'Needle Profile',
@@ -118,9 +123,6 @@ const TRANSLATIONS = {
     'ref.F.desc':    'Length of cylindrical section at tip (mm)',
     'ref.note':      'ØD, E and F are only required for multi-taper needles. Needle type prefix determines total length: K = 73.5 mm, U = X = 68 mm, D = 52 mm. Exception: X37 = 56.2 mm.',
 
-    // Field warnings (non-blocking)
-    'carbSize.rangeWarning': '{carbType} carburetors are factory-made from {min} to {max} mm — this value is outside that range. Fine for a bored-out carb, otherwise check the entry.',
-
     // Validation
     'err.carbTypeRequired': 'Carb Type is required.',
     'err.typeRequired': 'Type is required.',
@@ -140,6 +142,7 @@ const TRANSLATIONS = {
     'msg.noActiveSetups':      'No active setups to display.',
     'confirm.loadDemo':        'Load demo setups? This will overwrite your current data.',
     'confirm.resetAll':        'Reset all setups to empty?',
+    'confirm.resetRow':        'Reset "{name}"?',
     'confirm.overwriteNeedle': '"${type}" already exists as a custom needle. Overwrite?',
     'confirm.deleteNeedle':    'Delete custom needle "${type}"?',
 
@@ -193,8 +196,13 @@ const TRANSLATIONS = {
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
+    'col.actions':     'Aktionen',
     'setup.select':    '— wählen —',
     'msg.setupsReset': '{n} Setup(s) zurückgesetzt – Nadeltyp nicht kompatibel mit gewähltem Vergaser.',
+    'msg.noEmptyRowToDuplicate': 'Alle 5 Zeilen sind belegt — bitte zuerst eine Zeile zurücksetzen, um dorthin zu duplizieren.',
+    'action.resetRow':     'Diese Zeile zurücksetzen',
+    'action.duplicateRow': 'Diese Zeile duplizieren',
+    'duplicate.suffix':    ' (Kopie)',
 
     // Charts
     'section.needleProfile': 'Nadelprofil',
@@ -273,9 +281,6 @@ const TRANSLATIONS = {
     'ref.F.desc':    'Länge des zylindrischen Abschnitts an der Spitze (mm)',
     'ref.note':      'ØD, E und F sind nur für Mehrkonus-Nadeln erforderlich. Das Typkürzel bestimmt die Gesamtlänge: K = 73,5 mm, U = X = 68 mm, D = 52 mm. Ausnahme: X37 = 56,2 mm.',
 
-    // Field warnings (non-blocking)
-    'carbSize.rangeWarning': '{carbType}-Vergaser werden ab Werk von {min} bis {max} mm gebaut — dieser Wert liegt außerhalb. Bei aufgebohrtem Vergaser in Ordnung, sonst bitte Eingabe prüfen.',
-
     // Validation
     'err.carbTypeRequired': 'Vergaser-Typ ist erforderlich.',
     'err.typeRequired': 'Typ ist erforderlich.',
@@ -295,6 +300,7 @@ const TRANSLATIONS = {
     'msg.noActiveSetups':      'Keine aktiven Setups vorhanden.',
     'confirm.loadDemo':        'Demo-Setups laden? Aktuelle Daten werden überschrieben.',
     'confirm.resetAll':        'Alle Setups zurücksetzen?',
+    'confirm.resetRow':        '„{name}" zurücksetzen?',
     'confirm.overwriteNeedle': '"${type}" existiert bereits als eigene Nadel. Überschreiben?',
     'confirm.deleteNeedle':    'Eigene Nadel "${type}" löschen?',
 

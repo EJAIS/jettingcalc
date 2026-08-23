@@ -5,7 +5,7 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
-import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES } from './needledb.js';
+import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 
 let setups   = loadSetups();
@@ -69,6 +69,22 @@ function buildNeedleJetOptions(jetType, selectedValue) {
     sizes.map(v => `<option value="${v}"${String(v) === String(selectedValue) ? ' selected' : ''}>${v}</option>`).join('');
 }
 
+// Single source of truth for clip-position count, shared by every caller
+// that needs it (table dropdown, needleType-change clamp) so the
+// custom-needle-vs-official fallback logic only lives in one place.
+// `allNeedles` (from getAllNeedles()) already merges each custom needle's
+// own `clips` field over NEEDLE_DB — see storage.js.
+function resolveClipCount(needleType, allNeedles) {
+  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
+}
+
+function buildClipPosOptions(needleType, selectedValue, allNeedles) {
+  const count = needleType ? resolveClipCount(needleType, allNeedles) : 0;
+  const positions = Array.from({ length: count }, (_, i) => i + 1);
+  return `<option value="">${t('setup.select')}</option>` +
+    positions.map(p => `<option value="${p}"${String(p) === String(selectedValue) ? ' selected' : ''}>${p}</option>`).join('');
+}
+
 function showNotice(msg) {
   const el = document.getElementById('app-notice');
   if (!el) return;
@@ -116,8 +132,9 @@ function renderTable() {
         </select>
       </td>
       <td>
-        <input type="number" class="cell-input num" data-id="${s.id}" data-field="clipPos"
-               value="${s.clipPos ?? ''}" min="1" max="4" placeholder="1–4">
+        <select class="cell-input" data-id="${s.id}" data-field="clipPos">
+          ${buildClipPosOptions(s.needleType, s.clipPos, allNeedles)}
+        </select>
       </td>
       <td class="carbsize-cell">
         <select class="cell-input" data-id="${s.id}" data-field="carbSize">
@@ -270,6 +287,7 @@ function handleCarbTypeChange(newCarbType) {
     let changed = false;
     if (s.needleType && allNeedles[s.needleType]?.carbType !== carbType) {
       s.needleType = null;
+      s.clipPos = null; // clip count is needle-specific; stale value would be meaningless
       changed = true;
     }
     if (s.jetType && !validAtomizers.includes(s.jetType)) {
@@ -310,6 +328,13 @@ function handleFieldChange(id, field, value) {
     const validSizes = value ? (ATOMIZER_SIZES[value] ?? []) : [];
     if (setups[idx].needleJet != null && !validSizes.includes(setups[idx].needleJet)) {
       setups[idx].needleJet = null;
+    }
+  }
+
+  if (field === 'needleType') {
+    const maxClips = value ? resolveClipCount(value, getAllNeedles()) : 0;
+    if (setups[idx].clipPos != null && setups[idx].clipPos > maxClips) {
+      setups[idx].clipPos = null;
     }
   }
 
@@ -399,6 +424,7 @@ function readNeedleForm() {
     D: getNum('cn-D'),
     E: getNum('cn-E'),
     F: getNum('cn-F'),
+    clips: getNum('cn-clips') ?? 4,
   };
 }
 
@@ -661,17 +687,6 @@ function updateCrossSectionDiagram() {
       </div>
     </dl>`;
   applyTranslations();
-
-  // Diagnostic: log label right-edge vs SVG right-edge in CSS px (check console)
-  requestAnimationFrame(() => {
-    const svgEl = diag.querySelector('svg');
-    if (!svgEl) return;
-    const svgR = svgEl.getBoundingClientRect().right;
-    diag.querySelectorAll('svg text').forEach(t => {
-      const tR = t.getBoundingClientRect().right;
-      console.log(`[CS label] "${t.textContent.trim()}"  textRight=${tR.toFixed(1)}  svgRight=${svgR.toFixed(1)}  overflow=${(tR - svgR).toFixed(1)}px`);
-    });
-  });
 }
 
 // Attribute-only update -- called on slider input for smooth live feedback
@@ -767,7 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btn || btn.disabled) return;
     const id = parseInt(btn.dataset.id, 10);
     if (btn.dataset.action === 'reset-row') resetRow(id);
-    if (btn.dataset.action === 'duplicate-row') duplicateRow(id); // wired in next step
+    if (btn.dataset.action === 'duplicate-row') duplicateRow(id);
   });
 
   // Cross-section setup selector and throttle slider

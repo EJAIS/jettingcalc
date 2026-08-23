@@ -8,40 +8,49 @@ Open `index.html` in any modern browser. No build step, no server required.
 
 > **Note:** Because the JS files use ES modules, browsers block them over `file://`. Serve locally with e.g. `python3 -m http.server 8080` and open `http://localhost:8080`.
 
-- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), **PHBH** (needles X, atomizers AV/AS), or **PHBL** (needles D, atomizer AQ). This filters the available needle and atomizer options throughout the app.
-- Fill in up to 5 setups in the table (Needle, Clip 1–4, Carb Ø, Needle Jet, Jet Type, ND, HD). Max HD is calculated and displayed automatically.
+- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), or, under **Beta Features**, **PHBH** (needles X, atomizers AV/AS) and **PHBL** (needles D, atomizer AQ). PHBH and PHBL are experimental — see the ℹ disclaimer next to each and the warning banner shown in the Setups section. This filters the available needle and atomizer options throughout the app.
+- Fill in up to 5 setups in the table (Needle, Clip, Carb Ø, Jet Type, Needle Jet, ND, HD). Max HD is calculated and displayed automatically.
+  - The **Clip** dropdown only offers the positions that actually exist on the selected needle. K-needles have 3, 4, or 5 positions depending on the specific needle, per the official Dellorto datasheet — not a uniform range. D-needles (PHBL) use a physically-verified 4-position default; X (PHBH) and U (VHSx) needles currently fall back to an unverified 4-position placeholder pending further research. See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md).
+  - Use the ⧉ / ↺ icons on each row to duplicate a completed setup into the next empty slot, or reset a row back to empty.
 - The **Needle Profile** chart shows needle diameter vs. throttle position (0–115%) for each active setup.
 - The **Carb Profile** chart shows the blended equivalent flow (Overall HD) across the throttle range.
 - Click any chart panel (or the ⛶ icon) to open a full-screen modal with a larger version of that chart. Close with ✕, a backdrop click, or Escape.
 - Expand **Calculation Results** to inspect the raw per-throttle-point data for each setup — useful for verifying against the original Excel "Calc Data" sheets. For 2-stroke round-slide carbs (VHSx, PHBH, PHBL), each active setup also shows a **recommended slide cutaway** estimate and the needle-jet/main-jet area ratio. If the ratio falls outside the 0.45–0.80 target range, a warning is displayed instead of the cutaway value, indicating a likely needle jet / main jet mismatch. See the disclaimer note below.
+- The **Carburetor cross-section** card visualizes the selected needle inside the venturi / needle-jet bore for a chosen setup, driven by a throttle slider (0–115%) with a live-updated diagram, annulus-area readout, and needle position/diameter readout.
 - Use **Load Demo** to populate three example setups (K98-based).
 - Use **Reset** to clear all setups back to empty.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
-- Use the **Custom Needles** section to define additional needle profiles, save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
+- Toggle the UI language between **English and German** with the DE/EN button in the header; preference is persisted in localStorage.
+- Use the **Custom Needles** section to define additional needle profiles — with an interactive measurement schematic and field reference table — save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
 
 ## Files
 
 ```
 index.html          Main UI
 css/style.css       Styling (dark mode capable)
-js/needledb.js      Static needle database (read-only, 235 needles: K, U, X, D types)
+js/needledb.js      Static needle database (read-only, 242 needles: K, U, X, D types)
 js/calc.js          Calculation engine (1:1 port from Excel formulas)
 js/cutaway.js       Slide cutaway heuristic (2-stroke round-slide carbs only)
 js/storage.js       localStorage abstraction (setups + custom needles)
 js/charts.js        Chart.js diagram rendering
+js/i18n.js          EN/DE translations and language switching
 js/app.js           UI logic, event handling
 original/           Original unmodified Excel spreadsheet (for reference)
 ```
 
+See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
+
 ## Verification
 
-Known-good values against the original Excel:
+Known-good values, verified against the original Excel formulas:
 
 | Setup | maxHD (displayed as integer) |
 |-------|------------------------------|
 | #1 Demo-1 (K98, clip 3, NJ 262, DP) | 166 |
-| #2 Demo-2 (K98, clip 1, NJ 268, DQ) | 176 |
-| #3 Demo-3 (K98, clip 1, NJ 267, DQ) | 174 |
+| #2 Demo-2 (K98, clip 1, NJ 268, DQ) | 166 |
+| #3 Demo-3 (K98, clip 1, NJ 267, DQ) | 165 |
+
+> **Note:** The original spreadsheet's Chart sheet has a copy-paste bug — the max-HD cells for setups 2 and 3 both reference setup 1's calculation table instead of their own, so the Excel itself displays 166 / 176 / 174 for these three setups. This port intentionally computes each setup from its own data and does **not** reproduce that bug; the values above are the corrected ones.
 
 ## Cutaway calculation disclaimer
 

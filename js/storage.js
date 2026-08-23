@@ -1,7 +1,7 @@
 // storage.js — localStorage abstraction for setups and custom needles
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
-import { NEEDLE_DB } from './needledb.js';
+import { NEEDLE_DB, getClipCount } from './needledb.js';
 
 const STORAGE_KEY        = 'dellorto_setups';
 const CUSTOM_NEEDLES_KEY = 'dellorto_custom_needles';
@@ -24,17 +24,30 @@ export function loadSetups() {
   if (!raw) return structuredClone(DEFAULT_SETUPS);
 
   const setups = JSON.parse(raw);
-  let migrated = false;
+
+  // Per-needle clip-position counts (js/needledb.js `clips` field) are newer
+  // than some stored setups: a clipPos saved back when every needle allowed
+  // a uniform 1–4 range can now exceed its needle's actual count (e.g. many
+  // K-needles cap at 3). Clear any such stale value here, the same way the
+  // old K90→K96 migration used to normalize stale data on load — silently,
+  // once, at load time — rather than leaving calcSetup() to silently compute
+  // from a clip position that no longer exists on that needle.
+  const allNeedles = getAllNeedles();
+  let reconciled = false;
   setups.forEach(s => {
-    if (s.needleType === 'K90') {
-      s.needleType = 'K96';
-      migrated = true;
+    if (s.needleType && s.clipPos != null) {
+      const maxClips = allNeedles[s.needleType]?.clips ?? getClipCount(s.needleType);
+      if (s.clipPos > maxClips) {
+        s.clipPos = null;
+        reconciled = true;
+      }
     }
   });
-  if (migrated) {
-    console.info('[storage] Migrated setup(s) from retired needle type K90 to K96.');
+  if (reconciled) {
+    console.info('[storage] Cleared out-of-range clipPos value(s) — needle clip-position count changed since these setups were saved.');
     saveSetups(setups);
   }
+
   return setups;
 }
 
@@ -67,6 +80,7 @@ export function getAllNeedles() {
       if (n.length != null)           { entry.length = n.length; }
       if (n.D != null && n.E != null) { entry.D = n.D; entry.E = n.E; }
       if (n.F != null)                { entry.F = n.F; }
+      if (n.clips != null)            { entry.clips = n.clips; }
       return [n.type, entry];
     })
   );

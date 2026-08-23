@@ -32,6 +32,21 @@ ursprünglichen 2014er GUE-Excel).
   Laden automatisch auf `"K96"` (`storage.js` → `loadSetups()`), da die
   Geometrie identisch ist.
 
+### K90 — Richtigstellung (2026-08-xx)
+
+- Frühere Annahme (2026-08-03): K90 existiert nicht, Werte gehören
+  zu K96 — basierend auf einer damals unvollständigen Eurocarb-Quelle.
+- Neue Quelle: offizielles Dellorto-Datenblatt "Dimensions Aiguilles K"
+  (dellorto.fr, PDF-Anhang der Produktseite), listet K90 als
+  eigenständige, aktuell verkaufte Nadel (Ref. 08530_90) mit A:2.50,
+  B:1.75, C:42, 4 Clip-Positionen — abweichend von K96 (5 Positionen).
+- Status: K90 wieder als eigenständige Nadel geführt, Migration
+  rückgängig gemacht (siehe storage.js).
+
+K26, K55, K64 bleiben weiterhin unbelegt — auch im offiziellen PDF
+ohne Werte gelistet (echte Lücke in Dellortos eigener Nummerierung,
+kein Datenfehler).
+
 ### D-Type-Nadeln (PHBL) — Eurocarb / Stein-Dinse
 
 - Siehe Quellenangabe direkt im Code-Kommentar oberhalb der D-Nadeln in

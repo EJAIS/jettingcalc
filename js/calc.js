@@ -40,10 +40,15 @@ export function calcSetup(setup, needleSource) {
   const { needleType, clipPos, carbSize, needleJet, jetType, nd, hd } = setup;
   const db = needleSource || NEEDLE_DB;
   if (!needleType || !db[needleType]) return null;
+  // A setup is only meaningful once every input is chosen. JS silently
+  // coerces a missing numeric field (null) to 0 in arithmetic, so without
+  // this guard an incomplete setup (e.g. clipPos not yet picked) would
+  // still produce a plausible-looking but wrong curve instead of "—".
+  if (clipPos == null || carbSize == null || needleJet == null
+    || jetType == null || nd == null || hd == null) return null;
 
   const needle = db[needleType];
-  let needleLength = needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
-  if (needleType === 'X37') needleLength = 56.2;
+  const needleLength = needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
   const needleOffset = JET_OFFSETS[jetType] ?? 0;
   const tapers = needle.F ? 3 : needle.E ? 2 : 1;
 

@@ -22,15 +22,12 @@ ursprünglichen 2014er GUE-Excel).
 - **Korrigierte Nadeln:** K12, K13, K14, K15, K16, K18, K54, K57, K58, K61,
   K62, K65, K68, K69, K78, K79, K83, K84, K86 (Detail-Diff siehe Git-Historie
   von `js/needledb.js`).
-- **Nummerierungsfehler:** Die als "K90" geführte Nadel (A:2.5, B:1.75, C:42)
-  existiert unter dieser Nummer nicht in der offiziellen Eurocarb-Tabelle —
-  die Werte gehören zu K96. "K90" wurde entfernt, die Werte liegen jetzt
-  unter "K96".
+- **Nummerierungsfehler (überholt):** siehe Abschnitt "K90 —
+  Richtigstellung" weiter unten — die hier ursprünglich getroffene
+  Annahme (K90 existiere nicht) wurde später anhand einer besseren
+  Quelle korrigiert.
 - **Ergänzung:** K97 (A:2.50, B:1.80, C:44.5) war zuvor nicht in der
   Datenbank enthalten und wurde ergänzt.
-- **Migration:** Gespeicherte Setups mit `needleType: "K90"` migrieren beim
-  Laden automatisch auf `"K96"` (`storage.js` → `loadSetups()`), da die
-  Geometrie identisch ist.
 
 ### K90 — Richtigstellung (2026-08-xx)
 

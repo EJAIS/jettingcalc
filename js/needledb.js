@@ -263,7 +263,7 @@ export const NEEDLE_DB = {
 };
 
 // Needle length by prefix
-export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0, "X": 68.0, "D": 52.0 };
+export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0, "X": 55.0, "D": 52.0 };
 
 // Fallback clip-position count for needle types without per-needle data
 // yet (all except K, which has verified per-needle counts from the

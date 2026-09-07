@@ -63,6 +63,25 @@ kein Datenfehler).
 - **Methode:** Direktmessung der Gesamtlänge einer D-Nadel.
 - **Befund:** bestätigt.
 
+### `NEEDLE_LENGTHS["K"]` = 73.5 mm und `NEEDLE_LENGTHS["U"]` = 68.0 mm
+
+- **Datum:** 2026-08
+- **Methode:** Direktmessung der Gesamtlänge (Messschieber) an K98,
+  K24 und U16.
+- **Befund:** beide bisherigen, unverändert aus der 2014er GUE-Excel
+  übernommenen Werte bestätigt — K: 73,5mm (K98, K24), U: 68,0mm (U16).
+- **Anmerkung:** bei der ersten Messrunde wurden K24 und U16 versehentlich
+  vertauscht zugeordnet (K24 zunächst mit 68mm, U16 mit 73,5mm gemeldet —
+  exakt die Werte der jeweils anderen Familie). Das Muster fiel auf, weil
+  beide Abweichungen exakt auf den Wert der anderen Präfix-Konstante
+  fielen statt zufällig zu streuen; nach Prüfung bestätigte sich eine
+  Verwechslung der beiden physisch ähnlichen Nadeln. Nach Korrektur
+  stimmen beide Werte mit der Excel-Annahme überein. Für spätere
+  Messungen: K- und U-Nadeln sind ohne dauerhafte Beschriftung leicht zu
+  verwechseln — Zuordnung vor dem Messen doppelt prüfen.
+- Damit sind jetzt alle vier Nadellängen-Konstanten (D, X, K, U)
+  unabhängig verifiziert.
+
 ### `minExposed` (`MIN_EXPOSED_BY_CARB_TYPE` in `js/calc.js`)
 
 - **PHBL:** 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel
@@ -71,43 +90,52 @@ kein Datenfehler).
 - **PHBH:** 26.4 mm — weiterhin von VHSx geerbt, NICHT unabhängig
   verifiziert.
 
+### X-Nadel-Länge und `minExposed` (PHBH) — Auflösung
+
+- **Datum:** 2026-08
+- **Methode:** Direktmessung der Gesamtlänge einer X2-Nadel (55,0mm,
+  Messschieber) plus idlePos-Messung an einem 30mm PHBH mit X2-Nadel,
+  AS266-Mischrohr, Clip 1 (idlePos 31,2mm, indirekt über
+  Schieber-Überstand und Vergaser-Innenmaße ermittelt, da eine
+  direkte Messung durch die Mischrohröffnung bei eingesetztem
+  Schieber mechanisch nicht möglich ist).
+- **Befund:** `NEEDLE_LENGTHS["X"]` korrigiert von 68,0mm (fehlerhafte
+  Analogie zu U-Nadeln) auf **55,0mm** — deckt sich mit der zuvor nur
+  als Snippet-Evidenz vorliegenden Eurocarb-Angabe für Teilenr. 9477
+  sowie einem offiziellen Dellorto-Datenblatt (dellorto.fr, X01:
+  "Length: 55mm"). Erklärt zugleich die X37-Fußnote "56,2mm" als
+  55mm Basis + 1,2mm Clip-Spacing.
+- `MIN_EXPOSED_BY_CARB_TYPE.PHBH` korrigiert von 26,4mm (von VHSx
+  geerbt) auf **23,8mm**.
+- **Plausibilitätsprüfung:** alle 2088 geprüften X-Nadel-Kombinationen
+  (87 Nadeln × AV/AS × 3 PHBH-Bohrungen × 4 Clip-Positionen) gegen
+  negative Nadelposition bei Volllast durchgerechnet. Mit den neuen
+  Werten löst sich die Nadel im Median bei ~98,5% Gasstellung aus der
+  Düse (physikalisch plausibel — Hauptdüse übernimmt erst nahe
+  Vollgas), keine Kombination unterschreitet 85% Gasstellung. Zum
+  Vergleich: mit den alten Werten blieb die Nadel rechnerisch bis
+  über 100% hinaus wirksam (Median 134,7%), was eher untypisch ist.
+- **Clip-Anzahl X-Nadel:** an der X2-Nadel wurden 4 Kerben gezählt —
+  bestätigt die bisherige Fallback-Annahme (`DEFAULT_CLIPS_BY_PREFIX.X
+  = 4`) für mindestens diese eine Nadel.
+- Basis: eine Messung, methodisch identisch zur PHBL-Messung (eine
+  Nadel/Mischrohr/Bohrungs-Kombination bei Clip 1).
+
 ---
-
-## Priorität HOCH
-
-### X-Nadel-Länge und minExposed (PHBH) — gekoppelt
-- `NEEDLE_LENGTHS["X"] = 68.0` beruht auf einer fehlerhaften Analogie zu
-  U-Nadeln (U gehört zu PHBE/VHSA, nicht PHBH). Eurocarb gibt für die
-  X-Nadel (Teilenr. 9477) 55 mm an — Snippet-Evidenz, die Seite ist per
-  robots.txt nicht direkt abrufbar.
-- Die Fußnote der Eurocarb-Tabelle „X37 has a length of 56.2" ergibt bei
-  55 mm Basislänge Sinn (+1,2 mm); das Stein-Dinse-Handbuch führt diese
-  Abweichung nicht — Quellenwiderspruch offen.
-- `MIN_EXPOSED_BY_CARB_TYPE.PHBH = 26.4` ist von VHSx übernommen und
-  unverifiziert.
-- Beide Konstanten sind gekoppelt: Nur die Länge zu korrigieren führt bei
-  allen 1044 geprüften X-Kombinationen zu negativer Nadelposition bei
-  100 % Gas. Aktuell heben sich beide Fehler teilweise auf
-  (Netto-Abweichung ca. 4–5 mm bei idlePos).
-- Wie verifizieren: Messung an einem realen PHBH analog zum PHBL-Vorgehen
-  (M1 = Nadelspitze relativ zum Mischrohrsitz, M2 = Einbauhöhe der
-  Mischrohrmündung über dem Bund; idlePos = M2 − M1), plus Gesamtlänge
-  einer X-Nadel mit dem Messschieber.
-- Status: offen — bis dahin PHBH im Beta-Bereich, Werte unverändert.
 
 ## Noch zu verifizieren
 
-- X-Type-Nadeln (PHBH, Serie 9477) — noch nicht gegen eine externe Quelle
-  gegengeprüft.
 - U-Type-Nadeln — noch nicht gegen eine externe Quelle gegengeprüft.
 - Berechnungskonstanten in `js/calc.js` (Blend-Tabelle) — bislang nur gegen
   die Original-Excel-Formeln verifiziert, nicht gegen eine unabhängige
   Zweitquelle.
-- `minExposed` für PHBH — weiterhin ungeprüft von VHSx geerbt (s.o.).
-- Vergasergrößen-Term `(carbSize − 34)/2` für PHBL — Koeffizient ½ von VHSx
-  geerbt, für PHBL nicht bestätigt; zur Klärung ist eine zweite
-  idlePos-Messung bei einer anderen PHBL-Bohrungsgröße nötig (z.B. 20 oder
-  22 mm).
+- Vergasergrößen-Term `(carbSize − 34)/2` — Koeffizient ½ von VHSx
+  geerbt, weder für PHBL noch für PHBH bei mehreren Bohrungsgrößen
+  bestätigt (PHBL nur bei 26mm gemessen, PHBH nur bei 30mm). Zur
+  Klärung wäre jeweils eine zweite idlePos-Messung bei einer anderen
+  Bohrungsgröße nötig (PHBL z.B. 20/22mm, PHBH z.B. 26/28mm).
+- minExposed für VHSx (K und U gemeinsam) — nie unabhängig gemessen,
+  benötigt idlePos-Messung an einem realen VHSx-Vergaser.
 
 ## Priorität MITTEL
 

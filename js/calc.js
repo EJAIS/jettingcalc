@@ -11,10 +11,13 @@ const CLIP_SPACING = 1.2;   // mm between clip groove positions
 // PHBL: 16.3 — measured 2026-08 on a 26 mm PHBL with D36 needle + AQ
 //              atomizer (idlePos 31.7 mm at clip 1, cross-verified against
 //              an independent measurement chain).
-// PHBH: 26.4 — inherited from VHSx, NOT independently verified.
+// PHBH: 23.8 — measured 2026-08 on a 30 mm PHBH with X2 needle (4 clip
+//              positions) + AS266 atomizer (idlePos 31.2 mm at clip 1).
+//              Needle length independently confirmed at 55.0 mm via
+//              direct caliper measurement (see NEEDLE_LENGTHS["X"]).
 const MIN_EXPOSED_BY_CARB_TYPE = {
   VHSx: 26.4,
-  PHBH: 26.4,
+  PHBH: 23.8,
   PHBL: 16.3,
 };
 const MIN_EXPOSED_DEFAULT = 26.4;

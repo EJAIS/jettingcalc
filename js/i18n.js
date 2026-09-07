@@ -21,7 +21,7 @@ const TRANSLATIONS = {
     'carbType.betaBadge': 'BETA',
     'carbType.phblBetaDisclaimer': 'PHBL support is experimental. The needle-exposure constant (16.3 mm) was measured on a 26 mm PHBL with a D36 needle and AQ atomizer. It is not yet confirmed whether the carburetor-size scaling term applies to PHBL — needle positions for smaller PHBL sizes (20–24 mm) may deviate by up to ~3 mm. Verify against real-world testing.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL calculations are experimental and not fully verified.',
-    'carbType.phbhBetaDisclaimer': 'PHBH support is experimental. Two coupled constants are unverified: the X-type needle length (68 mm in this app; Eurocarb lists 55 mm for part 9477) and the needle-exposure constant (inherited from VHSx). They must be measured together — correcting only one produces worse results. Needle positions may deviate by roughly 4–5 mm.',
+    'carbType.phbhBetaDisclaimer': 'PHBH support is experimental. The needle length (55 mm) and needle-exposure constant (23.8 mm) were measured together on a 30 mm PHBH with an X2 needle and AS266 atomizer. It is not yet confirmed whether the carburetor-size scaling term applies equally to other PHBH bore sizes — needle positions for smaller/larger PHBH sizes may deviate. Verify against real-world testing.',
     'carbType.phbhBetaBanner': '⚠ Beta: PHBH calculations are experimental and not fully verified.',
 
     // Setups table
@@ -180,7 +180,7 @@ const TRANSLATIONS = {
     'carbType.betaBadge': 'BETA',
     'carbType.phblBetaDisclaimer': 'Die PHBL-Unterstützung ist experimentell. Die Konstante für die Nadel-Exposition (16,3 mm) wurde an einem 26-mm-PHBL mit D36-Nadel und AQ-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für PHBL gilt, ist noch nicht bestätigt — bei kleineren PHBL-Größen (20–24 mm) kann die Nadelposition um bis zu ~3 mm abweichen. Durch Praxistests bestätigen.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL-Berechnungen sind experimentell und nicht vollständig verifiziert.',
-    'carbType.phbhBetaDisclaimer': 'Die PHBH-Unterstützung ist experimentell. Zwei gekoppelte Konstanten sind unverifiziert: die Länge der X-Nadel (68 mm in dieser App; Eurocarb nennt 55 mm für Teilenr. 9477) und die Konstante für die Nadel-Exposition (von VHSx übernommen). Beide müssen gemeinsam gemessen werden — eine einzelne Korrektur verschlechtert das Ergebnis. Nadelpositionen können um ca. 4–5 mm abweichen.',
+    'carbType.phbhBetaDisclaimer': 'Die PHBH-Unterstützung ist experimentell. Die Nadellänge (55mm) und die Konstante für die Nadel-Exposition (23,8mm) wurden gemeinsam an einem 30mm PHBH mit X2-Nadel und AS266-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für andere PHBH-Bohrungsgrößen gilt, ist noch nicht bestätigt — bei kleineren/größeren PHBH-Größen kann die Nadelposition abweichen. Durch Praxistests bestätigen.',
     'carbType.phbhBetaBanner': '⚠ Beta: PHBH-Berechnungen sind experimentell und nicht vollständig verifiziert.',
 
     // Setups table

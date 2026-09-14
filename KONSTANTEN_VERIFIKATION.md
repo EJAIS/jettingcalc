@@ -57,6 +57,24 @@ kein Datenfehler).
   26 mm PHBL gemessen: 3.6 mm / 3 = 1.2 mm.
 - **Befund:** bestätigt identisch zum Excel-Originalwert (VHSx).
 
+### Nutgeometrie nach Nut-Anzahl (`CLIP_GEOMETRY_BY_COUNT`, K-Nadeln)
+
+- **Datum:** 2026-09
+- **Befund:** Der bisherige globale `CLIP_SPACING`-Wert (1.2 mm) galt nur
+  für 3- und 4-Nut-Nadeln. 5-Nut-K-Nadeln haben tatsächlich 1.0 mm
+  Nutabstand; außerdem liegt die erste Nut je nach Nut-Anzahl
+  unterschiedlich tief unter der Nadel-Oberkante (`topOffset`: 3.10 mm
+  bei 3 Nuten, 1.60 mm bei 4 Nuten [Referenzgeometrie], 1.50 mm bei
+  5 Nuten).
+- **Auswirkung:** `getClipGeometry()` in `js/needledb.js` liefert die
+  nadelspezifische Geometrie; `js/calc.js` wendet sie in der
+  `idlePos`-Formel an (Top-Offset-Korrektur relativ zur 4-Nut-
+  Referenzgeometrie, auf der alle `minExposed`-Konstanten beruhen).
+- **Regressionsschutz:** siehe `test/calc.test.mjs` (`node --test`) — prüft
+  die K1/K18-Differenz (1.50 mm), die K98-Clip5-minus-Clip1-Differenz
+  (−4.0 mm statt vormals −4.8 mm) sowie Unveränderheit der bereits
+  verifizierten D36-/X2-idlePos-Werte (31.7 mm / 31.2 mm).
+
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
 - **Datum:** 2026-08

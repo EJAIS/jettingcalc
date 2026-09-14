@@ -36,7 +36,32 @@ js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
 js/app.js           UI logic, event handling
 original/           Original unmodified Excel spreadsheet (for reference)
+test/               Regression tests (Node's built-in test runner)
 ```
+
+## Testing
+
+Regression tests for the calculation engine live in `test/` and use Node's
+built-in test runner — no dependencies, no build step, consistent with the
+rest of the project:
+
+```
+node --test
+```
+
+`test/calc.test.mjs` guards the per-needle clip-groove geometry
+(`CLIP_GEOMETRY_BY_COUNT` / `getClipGeometry()` in `js/needledb.js`, wired
+into `calcSetup()`'s idle-position formula) against the values verified in
+[KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md):
+
+- 3-groove vs. 4-groove needles (K1 vs. K18) differ by exactly the measured
+  top-offset delta (1.50 mm) at the same clip position.
+- 5-groove needles (K98) use 1.0 mm clip spacing, so idlePos(clip 5) −
+  idlePos(clip 1) is −4.0 mm (was −4.8 mm before the groove-count-aware
+  geometry).
+- The previously verified PHBL (D36) and PHBH (X2) idle positions — both
+  4-groove reference needles — are unchanged, guarding against regressions
+  in the already-measured `minExposed` / needle-length constants.
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 

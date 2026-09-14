@@ -2,9 +2,8 @@
 // Ported 1:1 from Excel formulas in "Calc Data" sheet
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
-import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS } from './needledb.js';
-
-const CLIP_SPACING = 1.2;   // mm between clip groove positions
+import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS, getClipGeometry,
+         CLIP_TOP_OFFSET_REF } from './needledb.js';
 
 // Minimum exposed needle length at idle (mm), by carburetor family.
 // VHSx: 26.4 — from the original GUE spreadsheet (K/U needles).
@@ -66,10 +65,18 @@ export function calcSetup(setup, needleSource) {
     ? 0
     : (needle.D - needle.B) / (needle.E - (needle.F || 0));
 
-  // Needle position at idle (Excel B7)
+  // Needle position at idle (Excel B7), with groove geometry per needle:
+  // - spacing: pitch between grooves (1.2 mm for 3/4-groove, 1.0 mm for
+  //   5-groove K needles — measured 2026-09)
+  // - top-offset correction: a needle whose groove 1 sits further below
+  //   its top face hangs higher in the slide by that difference, relative
+  //   to the 4-groove reference geometry the minExposed constants were
+  //   calibrated with. 4-groove needles → correction 0.
+  const { spacing, topOffset } = getClipGeometry(needle, needleType);
   const minExposed = MIN_EXPOSED_BY_CARB_TYPE[needle.carbType] ?? MIN_EXPOSED_DEFAULT;
   const idlePos = needleLength - minExposed
-    - (clipPos - 1) * CLIP_SPACING
+    - (topOffset - CLIP_TOP_OFFSET_REF)
+    - (clipPos - 1) * spacing
     + needleOffset
     + (carbSize - 34) / 2;
 

@@ -50,12 +50,43 @@ kein Datenfehler).
   `js/needledb.js` ("Source: Eurocarb, cross-verified against Stein-Dinse
   handbook").
 
-### `CLIP_SPACING` = 1.2 mm (D-Nadeln)
+### Clip-Nut-Geometrie (`CLIP_GEOMETRY_BY_COUNT`)
 
-- **Datum:** 2026-08
-- **Methode:** volle Spannweite über alle 4 Clip-Positionen an einem
-  26 mm PHBL gemessen: 3.6 mm / 3 = 1.2 mm.
-- **Befund:** bestätigt identisch zum Excel-Originalwert (VHSx).
+- **Datum:** 2026-08 (D-Nadel, 4 Nuten) / 2026-09 (K-Nadeln, 3/4/5 Nuten)
+- **Methode:** Spannmaß Außenkante oberer Clip → Außenkante unterer
+  Clip abzüglich Nutbreite 0,50 mm, geteilt durch Anzahl der Lücken;
+  zusätzlich Abstand Nadel-Oberkante → Oberkante Nut 1.
+- **Befund (K-Nadeln):**
+  | Nuten | Spannmaß | Abstand | Oberkante → Nut 1 |
+  |-------|----------|---------|--------------------|
+  | 3     | 2,90     | 1,20    | 3,10               |
+  | 4     | 4,10     | 1,20    | 1,60               |
+  | 5     | 4,50     | **1,00**| 1,50               |
+
+  Die 4-Nut-Messung (4,10 − 0,50 = 3,60 mm über 3 Lücken) reproduziert
+  die frühere D-Nadel-Messung exakt.
+- **Konsequenzen:** `CLIP_SPACING` ist keine globale Konstante mehr —
+  5-Nut-K-Nadeln (33 Stück) rechnen mit 1,0 mm. Zusätzlich wird der
+  Oberkante-Offset relativ zur 4-Nut-Geometrie korrigiert: 3-Nut-K-
+  Nadeln (15 Stück) hängen 1,5 mm höher, 5-Nut 0,1 mm tiefer.
+- **Annahme (nicht verifizierbar ohne VHSx-Vergaser):** `minExposed.VHSx
+  = 26,4` gilt als mit einer 4-Nut-Nadel kalibriert. PHBL (D36) und
+  PHBH (X2) wurden nachweislich mit 4-Nut-Nadeln gemessen, dort ist
+  die Korrektur per Konstruktion 0.
+- **Regressionsschutz:** siehe `test/calc.test.mjs` (`node --test`) — prüft
+  die K1/K18-Differenz (1,50 mm), die K98-Clip5-minus-Clip1-Differenz
+  (−4,0 mm statt vormals −4,8 mm) sowie Unveränderheit der bereits
+  verifizierten D36-/X2-idlePos-Werte (31,7 mm / 31,2 mm).
+
+### U-Nadeln und K57/K80 — Eurocarb 2015 / Drittanbieter-Chart / offizielles Dellorto-PDF (2026-09)
+
+- U-Nadel-Geometrie (A/B/C/D/E) 2026-09 gegen Eurocarb 2015 und ein
+  Drittanbieter-Chart abgeglichen. D/E-Zuordnung der App bestätigt (der
+  Drittanbieter-Chart hat dort eine Zeilenverschiebung). Zwei C-Werte
+  korrigiert: U17 35→36, U19 32,5→32,6 (beide Quellen einig).
+- K57 D 2,232→2,22 nach offiziellem Dellorto-PDF; K80: PDF nennt G=11
+  ohne ØD/F, im Modell nicht darstellbar, als Datenblatt-Inkonsistenz
+  dokumentiert.
 
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
@@ -125,7 +156,6 @@ kein Datenfehler).
 
 ## Noch zu verifizieren
 
-- U-Type-Nadeln — noch nicht gegen eine externe Quelle gegengeprüft.
 - Berechnungskonstanten in `js/calc.js` (Blend-Tabelle) — bislang nur gegen
   die Original-Excel-Formeln verifiziert, nicht gegen eine unabhängige
   Zweitquelle.
@@ -136,6 +166,16 @@ kein Datenfehler).
   Bohrungsgröße nötig (PHBL z.B. 20/22mm, PHBH z.B. 26/28mm).
 - minExposed für VHSx (K und U gemeinsam) — nie unabhängig gemessen,
   benötigt idlePos-Messung an einem realen VHSx-Vergaser.
+- **U-Nadel Nut-Geometrie (Priorität MITTEL):** Spannmaß und Oberkante-
+  Offset an U16 messen. Relevant, weil `minExposed.VHSx` für K und U
+  gemeinsam gilt — weicht die U-Geometrie von der 4-Nut-K-Geometrie
+  (1,2 / 1,60) ab, sind alle U-Nadeln um die Differenz versetzt. Ergebnis
+  ggf. als Override-Felder `clipSpacing` / `clipTopOffset` an den
+  U-Einträgen hinterlegen.
+- **X-Nadel Nutabstand (Priorität NIEDRIG):** Spannmaß an X2 messen, um
+  `spacing = 1,2` für PHBH zu bestätigen (bisher Annahme). Der
+  Oberkante-Offset ist für X irrelevant, da `minExposed.PHBH` direkt
+  mit X2 gemessen wurde.
 
 ## Priorität MITTEL
 

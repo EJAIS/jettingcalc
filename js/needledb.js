@@ -61,7 +61,7 @@ export const NEEDLE_DB = {
   "K53": { carbType: "VHSx", A: 2.52, B: 1.6,  C: 36, D: 2.25, E: 25, F: 11, clips: 4 },
   "K54": { carbType: "VHSx", A: 2.48, B: 1.5,  C: 40, D: 2.108, E: 18, clips: 4 },
   "K56": { carbType: "VHSx", A: 2.5,  B: 1.2,  C: 38, D: 2.17, E: 20, clips: 4 },
-  "K57": { carbType: "VHSx", A: 2.5,  B: 1.4,  C: 37, D: 2.232, E: 26, clips: 5 },
+  "K57": { carbType: "VHSx", A: 2.5,  B: 1.4,  C: 37, D: 2.22, E: 26, clips: 5 },
   "K58": { carbType: "VHSx", A: 2.46, B: 1.6,  C: 36, D: 2.25, E: 25, F: 11, clips: 4 },
   "K59": { carbType: "VHSx", A: 2.5,  B: 1.4,  C: 39, D: 2.23, E: 24, clips: 4 },
   "K60": { carbType: "VHSx", A: 2.46, B: 1.6,  C: 39, D: 2.13, E: 25, F: 11, clips: 5 },
@@ -83,6 +83,10 @@ export const NEEDLE_DB = {
   "K77": { carbType: "VHSx", A: 2.46, B: 1.6,  C: 39, D: 2.07, E: 25, F: 11, clips: 5 },
   "K78": { carbType: "VHSx", A: 2.48, B: 1.6,  C: 39, D: 2.07, E: 25, F: 11, clips: 5 },
   "K79": { carbType: "VHSx", A: 2.48, B: 1.6,  C: 36, D: 2.07, E: 25, F: 11, clips: 5 },
+  // Official Dellorto sheet lists G=11.00 for K80 but no ØD/F — a
+  // cylindrical tip without a second taper is not representable in this
+  // model (F requires D/E). Treated as a datasheet inconsistency; kept as
+  // single-taper.
   "K80": { carbType: "VHSx", A: 2.4,  B: 1.6,  C: 39, clips: 5 },
   "K81": { carbType: "VHSx", A: 2.44, B: 1.55, C: 39, D: 2.07, E: 25, F: 11, clips: 5 },
   "K82": { carbType: "VHSx", A: 2.48, B: 1.55, C: 39, D: 2.1,  E: 25, F: 11, clips: 5 },
@@ -119,9 +123,9 @@ export const NEEDLE_DB = {
   "U14": { carbType: "VHSx", A: 2.48, B: 0.6,  C: 28, D: 2.23, E: 18 },
   "U15": { carbType: "VHSx", A: 2.5,  B: 1.2,  C: 32 },
   "U16": { carbType: "VHSx", A: 2.5,  B: 1.8,  C: 32 },
-  "U17": { carbType: "VHSx", A: 2.5,  B: 0.6,  C: 35 },
+  "U17": { carbType: "VHSx", A: 2.5,  B: 0.6,  C: 36 },
   "U18": { carbType: "VHSx", A: 2.48, B: 1.0,  C: 34 },
-  "U19": { carbType: "VHSx", A: 2.44, B: 1.0,  C: 32.5 },
+  "U19": { carbType: "VHSx", A: 2.44, B: 1.0,  C: 32.6 },
   "U20": { carbType: "VHSx", A: 2.44, B: 1.0,  C: 34.5 },
   "U21": { carbType: "VHSx", A: 2.44, B: 1.0,  C: 36 },
   "U22": { carbType: "VHSx", A: 2.5,  B: 1.0,  C: 36.5 },

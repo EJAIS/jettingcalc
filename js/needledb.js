@@ -281,6 +281,35 @@ const DEFAULT_CLIPS_BY_PREFIX = {
   U: 4,
 };
 
+// Clip-groove geometry by groove count, measured on K needles (2026-09):
+// spacing = pitch between adjacent grooves; topOffset = distance from the
+// needle's top face to the upper edge of groove 1 (groove width 0.50 mm
+// already accounted for in the measurement).
+// 4 grooves is the reference geometry: every minExposed constant was
+// calibrated with (PHBL: D36, PHBH: X2) or is assumed calibrated with
+// (VHSx: GUE spreadsheet) a 4-groove needle, so 4-groove needles get a
+// top-offset correction of exactly 0.
+export const CLIP_GEOMETRY_BY_COUNT = {
+  3: { spacing: 1.2, topOffset: 3.10 },
+  4: { spacing: 1.2, topOffset: 1.60 },
+  5: { spacing: 1.0, topOffset: 1.50 },
+};
+export const CLIP_TOP_OFFSET_REF = CLIP_GEOMETRY_BY_COUNT[4].topOffset;
+const CLIP_GEOMETRY_DEFAULT = CLIP_GEOMETRY_BY_COUNT[4];
+
+// Resolve groove geometry for a needle entry (base DB or custom, passed
+// by the caller so no storage.js import is needed). Per-needle overrides
+// `clipSpacing` / `clipTopOffset` win over the count-based table; a count
+// outside 3–5 (custom needles) falls back to the reference geometry.
+export function getClipGeometry(needle, needleType) {
+  const count = needle?.clips ?? getClipCount(needleType);
+  const base = CLIP_GEOMETRY_BY_COUNT[count] ?? CLIP_GEOMETRY_DEFAULT;
+  return {
+    spacing:   needle?.clipSpacing   ?? base.spacing,
+    topOffset: needle?.clipTopOffset ?? base.topOffset,
+  };
+}
+
 // Custom needles (user-added, stored in localStorage) live in storage.js,
 // not here — needledb.js has no import of storage.js to avoid a circular
 // dependency. Callers resolving clip count for a possibly-custom needle

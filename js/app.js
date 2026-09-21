@@ -528,6 +528,19 @@ function applyShareFromUrl() {
   }
 }
 
+// Registers sw.js for offline support. Never lets a registration failure
+// (unsupported browser, blocked by a privacy setting, etc.) throw or block
+// the rest of app init — this is a progressive enhancement, not a
+// requirement for the app to work.
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.register('./sw.js', { type: 'module' });
+  } catch (err) {
+    console.warn('Service worker registration failed:', err);
+  }
+}
+
 function showImportBanner() {
   const banner  = document.getElementById('import-banner');
   const undoBtn = document.getElementById('btn-import-undo');
@@ -1120,4 +1133,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (tipTarget) hideTooltip();
   }, true);
+
+  registerServiceWorker();
 });

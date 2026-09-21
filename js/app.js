@@ -7,10 +7,14 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
+
+// In-memory only (never persisted): tracks a pending "Undo" for a share
+// link applied at page load. { snapshot: {setups, carbType} | null, importedKey }
+let importUndo = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -270,6 +274,12 @@ function updateUI() {
   }
   const shareBtn = document.getElementById('btn-share');
   if (shareBtn) shareBtn.disabled = !setups.some(s => s.needleType);
+  // Central check so the import banner survives a language toggle (which
+  // also calls updateUI() but never changes carbType/setups) and only
+  // disappears once the state actually diverges from what was imported.
+  if (importUndo && stateKey({ carbType, setups }) !== importUndo.importedKey) {
+    hideImportBanner();
+  }
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -451,6 +461,56 @@ async function copyShareLink() {
     clearTimeout(copyBtn._resetTimer);
     copyBtn._resetTimer = setTimeout(() => { copyBtn.textContent = t('btn.copyLink'); }, 2000);
   }
+}
+
+// ── Share import (applied once, at page load) ───────────────────────────────
+
+// Reads a share link from the URL (if any), applies it, and always scrubs
+// the query string afterwards — the decoded state must never be re-applied
+// on a later reload/refresh.
+function applyShareFromUrl() {
+  if (!hasShareParams(location.search)) return;
+
+  const decoded = decodeShare(location.search);
+  history.replaceState(null, '', location.pathname);
+
+  if (!decoded.ok) {
+    showNotice(decoded.reason === 'version' ? t('msg.shareVersion') : t('msg.shareInvalid'));
+    return;
+  }
+
+  const importedKey = stateKey(decoded.state);
+  if (importedKey === stateKey({ carbType, setups })) return; // nothing would actually change
+
+  // Only offer Undo if there was something local worth restoring.
+  const hasLocalData = !setups.every(isSlotEmpty);
+  const snapshot = hasLocalData ? structuredClone({ setups, carbType }) : null;
+
+  setups   = decoded.state.setups;
+  carbType = decoded.state.carbType;
+  saveSetups(setups);
+  saveCarbType(carbType);
+
+  importUndo = { snapshot, importedKey };
+  showImportBanner();
+
+  if (decoded.warnings.length > 0) {
+    showNotice(t('msg.shareFieldsIgnored').replace('{n}', decoded.warnings.length));
+  }
+}
+
+function showImportBanner() {
+  const banner  = document.getElementById('import-banner');
+  const undoBtn = document.getElementById('btn-import-undo');
+  if (!banner) return;
+  if (undoBtn) undoBtn.hidden = !importUndo?.snapshot;
+  banner.hidden = false;
+}
+
+function hideImportBanner() {
+  const banner = document.getElementById('import-banner');
+  if (banner) banner.hidden = true;
+  importUndo = null;
 }
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
@@ -813,6 +873,10 @@ function updateCrossSectionLive() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply a share link (if present in the URL) before anything else reads
+  // `setups`/`carbType`, so the very first render already reflects it.
+  applyShareFromUrl();
+
   // Initialize carb type radios from persisted state
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
     r.checked = r.value === carbType;
@@ -968,6 +1032,17 @@ document.addEventListener('DOMContentLoaded', () => {
       && e.clientY >= rect.top && e.clientY <= rect.bottom;
     if (!inDialog) dialog.close();
   });
+
+  // Import banner (shown once, when a share link was applied at page load)
+  document.getElementById('btn-import-undo')?.addEventListener('click', () => {
+    if (!importUndo?.snapshot) return;
+    setups   = importUndo.snapshot.setups;
+    carbType = importUndo.snapshot.carbType;
+    saveSetups(setups);
+    saveCarbType(carbType);
+    updateUI(); // its central check hides the banner once state != importedKey
+  });
+  document.getElementById('btn-import-close')?.addEventListener('click', hideImportBanner);
 
   // ── Tooltip (data-tooltip attribute) — hover + tap ──────────────────────
   const tip = document.createElement('div');

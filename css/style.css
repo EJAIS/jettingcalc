@@ -278,6 +278,16 @@ body.dark .btn-secondary:hover { background: #50565f; }
   margin-top: -8px;
 }
 
+.import-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.import-banner[hidden] { display: none; }
+.import-banner span { flex: 1; }
+.import-banner .btn-icon { color: var(--accent); }
+.import-banner .btn-icon:hover { color: var(--accent-h); }
+
 /* ── Beta carb-type banner (inside Setups card, below card-header) ──────────── */
 .carb-beta-banner {
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));

@@ -7,7 +7,7 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, shareParamKeys } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -326,13 +326,23 @@ function handleCarbTypeChange(newCarbType) {
 
 // ── Field change handler ──────────────────────────────────────────────────────
 
+// nd/hd are free-typed <input type="number" min max"> cells (unlike
+// clipPos/carbSize/needleJet, which are <select> dropdowns and so are
+// already constrained to valid options) — browsers don't clamp typed values
+// to min/max on their own, so out-of-range values must be clamped here.
+// Bounds match the HTML attributes in index.html and share.js's ND_MAX/HD_MAX.
+const NUM_FIELD_BOUNDS = { nd: [0, 200], hd: [0, 300] };
+
 function handleFieldChange(id, field, value) {
   const idx = setups.findIndex(s => s.id === id);
   if (idx === -1) return;
 
   const numFields = ['clipPos', 'carbSize', 'needleJet', 'nd', 'hd'];
   if (numFields.includes(field)) {
-    setups[idx][field] = value === '' ? null : parseFloat(value);
+    let num = value === '' ? null : parseFloat(value);
+    const bounds = NUM_FIELD_BOUNDS[field];
+    if (num != null && bounds) num = Math.min(bounds[1], Math.max(bounds[0], num));
+    setups[idx][field] = num;
   } else {
     setups[idx][field] = value === '' ? null : value;
   }
@@ -465,17 +475,36 @@ async function copyShareLink() {
 
 // ── Share import (applied once, at page load) ───────────────────────────────
 
-// Reads a share link from the URL (if any), applies it, and always scrubs
-// the query string afterwards — the decoded state must never be re-applied
-// on a later reload/refresh.
+// Removes only the share-link params from the current URL (not any other
+// query params or hash that might happen to coexist with them) and replaces
+// the history entry so the decoded state is never re-applied on reload.
+function scrubShareParamsFromUrl() {
+  const url = new URL(location.href);
+  for (const key of shareParamKeys()) url.searchParams.delete(key);
+  const qs = url.searchParams.toString();
+  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+}
+
+// Reads a share link from the URL (if any) and applies it. Always scrubs
+// the share params from the URL afterwards, whatever the outcome.
 function applyShareFromUrl() {
   if (!hasShareParams(location.search)) return;
 
   const decoded = decodeShare(location.search);
-  history.replaceState(null, '', location.pathname);
+  scrubShareParamsFromUrl();
 
   if (!decoded.ok) {
     showNotice(decoded.reason === 'version' ? t('msg.shareVersion') : t('msg.shareInvalid'));
+    return;
+  }
+
+  // A syntactically valid link (right version/carbType) can still carry no
+  // usable setup data, e.g. if it was truncated in transit and lost its
+  // s1..s5 params while v/c survived — encodeShare() never produces such a
+  // link itself, so treat it the same as a corrupt one rather than silently
+  // overwriting real local data with five blank slots.
+  if (decoded.state.setups.every(isSlotEmpty)) {
+    showNotice(t('msg.shareInvalid'));
     return;
   }
 

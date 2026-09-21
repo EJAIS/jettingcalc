@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SHARE_VERSION, isSlotEmpty, stateKey, hasShareParams, encodeShare, decodeShare,
+  SHARE_VERSION, isSlotEmpty, stateKey, hasShareParams, encodeShare, decodeShare, shareParamKeys,
 } from '../js/share.js';
 
 function emptySlot(id) {
@@ -189,4 +189,25 @@ test('stateKey: differing content produces a different key', () => {
   const a = { carbType: 'VHSx', setups: DEMO_SETUPS };
   const b = { carbType: 'VHSx', setups: fillSlots([{ ...DEMO_SETUPS[0], hd: 999 }, DEMO_SETUPS[1], DEMO_SETUPS[2]]) };
   assert.notEqual(stateKey(a), stateKey(b));
+});
+
+test('shareParamKeys: covers v, c, and s1-5/n1-5, nothing else', () => {
+  const keys = shareParamKeys();
+  assert.deepEqual(keys, [
+    'v', 'c',
+    's1', 'n1', 's2', 'n2', 's3', 'n3', 's4', 'n4', 's5', 'n5',
+  ]);
+});
+
+test('shareParamKeys: every key a real encoded link uses is covered', () => {
+  const setups = fillSlots([
+    { id: 1, name: 'Custom Name', needleType: 'K98', clipPos: 1, carbSize: 30, needleJet: 262, jetType: 'DP', nd: 53, hd: 175 },
+  ]);
+  const encoded = encodeShare({ carbType: 'VHSx', setups }, { baseUrl: 'https://example.com/' });
+  assert.equal(encoded.ok, true);
+  const usedKeys = [...new URL(encoded.url).searchParams.keys()];
+  const coveredKeys = new Set(shareParamKeys());
+  for (const key of usedKeys) {
+    assert.ok(coveredKeys.has(key), `shareParamKeys() is missing "${key}"`);
+  }
 });

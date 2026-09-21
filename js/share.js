@@ -12,6 +12,7 @@ export const SHARE_VERSION = 1;
 // are handled separately since they are never blank the way these are.
 const SLOT_FIELDS = ['needleType', 'clipPos', 'carbSize', 'needleJet', 'jetType', 'nd', 'hd'];
 
+const SLOT_COUNT = 5;
 const MAX_NAME_LENGTH = 30;
 const ND_MAX = 200;
 const HD_MAX = 300;
@@ -27,23 +28,26 @@ export function isSlotEmpty(slot) {
 export function stateKey({ carbType, setups }) {
   const canonical = {
     carbType,
-    setups: setups.map(s => ({
-      id: s.id,
-      name: s.name,
-      needleType: s.needleType,
-      clipPos: s.clipPos,
-      carbSize: s.carbSize,
-      needleJet: s.needleJet,
-      jetType: s.jetType,
-      nd: s.nd,
-      hd: s.hd,
-    })),
+    setups: setups.map(s => {
+      const slot = { id: s.id, name: s.name };
+      for (const field of SLOT_FIELDS) slot[field] = s[field];
+      return slot;
+    }),
   };
   return JSON.stringify(canonical);
 }
 
 export function hasShareParams(search) {
   return new URLSearchParams(search).has('v');
+}
+
+// Every query-string key a share link can use — the single source of truth
+// for scrubbing a share link back out of the URL (see app.js) without
+// touching unrelated params/hash that might happen to be present too.
+export function shareParamKeys() {
+  const keys = ['v', 'c'];
+  for (let id = 1; id <= SLOT_COUNT; id++) keys.push(`s${id}`, `n${id}`);
+  return keys;
 }
 
 export function encodeShare({ carbType, setups }, { baseUrl = '' } = {}) {
@@ -100,7 +104,7 @@ export function decodeShare(search) {
   const warnings = [];
   const setups = [];
 
-  for (let id = 1; id <= 5; id++) {
+  for (let id = 1; id <= SLOT_COUNT; id++) {
     const raw = params.get(`s${id}`);
     const name = sanitizeName(params.get(`n${id}`), id);
 

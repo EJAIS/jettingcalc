@@ -6,7 +6,13 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Dellorto Jetting Calculator</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e2327">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JettingCalc">
+  <script src="js/vendor/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -27,6 +33,7 @@
     <button id="btn-load-demo" class="btn-secondary" data-i18n="btn.loadDemo">Load Demo</button>
     <button id="btn-reset" class="btn-secondary" data-i18n="btn.reset">Reset</button>
     <button id="btn-darkmode" class="btn-secondary" title="Toggle dark mode">Dark Mode</button>
+    <button id="btn-install" class="btn-secondary" data-i18n="btn.install" hidden>Install App</button>
   </div>
 </header>
 
@@ -72,6 +79,12 @@
     <span data-i18n="msg.shareLoaded">Shared setups loaded.</span>
     <button id="btn-import-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
     <button id="btn-import-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
+  </div>
+
+  <div id="update-banner" class="app-notice import-banner" hidden>
+    <span data-i18n="banner.updateAvailable">A new version of this app is available.</span>
+    <button id="btn-update-now" class="btn-ghost" data-i18n="btn.updateNow">Update now</button>
+    <button id="btn-update-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
   </div>
 
   <!-- ── Setups Table ───────────────────────────────────────────────────── -->
@@ -165,6 +178,22 @@
     <p id="share-error" class="share-error" hidden></p>
     <div class="share-dialog-actions">
       <button id="btn-share-close" class="btn-ghost" data-i18n="btn.close">Close</button>
+    </div>
+  </dialog>
+
+  <!-- ── iOS "Add to Home Screen" instructions dialog ────────────────────── -->
+  <dialog id="install-dialog" class="share-dialog">
+    <h3 data-i18n="install.iosDialogTitle">Install this app</h3>
+    <div class="install-ios-instructions">
+      <svg class="install-ios-share-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M12 3v12"/>
+        <path d="M8 7l4-4 4 4"/>
+        <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>
+      </svg>
+      <p data-i18n="install.iosDialogSteps">Tap the Share icon in Safari's toolbar, then choose "Add to Home Screen".</p>
+    </div>
+    <div class="share-dialog-actions">
+      <button id="btn-install-dialog-close" class="btn-ghost" data-i18n="btn.close">Close</button>
     </div>
   </dialog>
 

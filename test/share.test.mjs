@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SHARE_VERSION, isSlotEmpty, stateKey, hasShareParams, encodeShare, decodeShare, shareParamKeys,
+  SHARE_VERSION, isSlotEmpty, isSlotDataEmpty, stateKey, hasShareParams, encodeShare, decodeShare, shareParamKeys,
 } from '../js/share.js';
 
 function emptySlot(id) {
@@ -56,6 +56,35 @@ test('isSlotEmpty: renamed empty slot is not empty', () => {
 
 test('isSlotEmpty: slot with any non-null field is not empty', () => {
   assert.equal(isSlotEmpty({ ...emptySlot(3), needleType: 'K98' }), false);
+});
+
+// isSlotDataEmpty() is the data-only counterpart used to detect a decoded
+// share link with no real setup data (a custom name alone must not count
+// as "not empty" here — see decodeShare()'s independent name/data
+// handling and the "reject as corrupt" guard in app.js's
+// applyShareFromUrl()).
+test('isSlotDataEmpty: default slot is empty', () => {
+  assert.equal(isSlotDataEmpty(emptySlot(3)), true);
+});
+
+test('isSlotDataEmpty: a custom name alone is still data-empty (unlike isSlotEmpty)', () => {
+  const slot = { ...emptySlot(3), name: 'My rig' };
+  assert.equal(isSlotDataEmpty(slot), true);
+  assert.equal(isSlotEmpty(slot), false);
+});
+
+test('isSlotDataEmpty: slot with any non-null field is not empty', () => {
+  assert.equal(isSlotDataEmpty({ ...emptySlot(3), needleType: 'K98' }), false);
+});
+
+test('decodeShare: a link with only n1 (no s1) is treated as carrying no data via isSlotDataEmpty', () => {
+  const decoded = decodeShare('?v=1&c=VHSx&n1=SomeName');
+  assert.equal(decoded.ok, true);
+  assert.equal(decoded.state.setups[0].name, 'SomeName');
+  // The bug this guards: isSlotEmpty would call this slot "not empty"
+  // (name isn't the default) even though it carries zero real setup data.
+  assert.equal(isSlotEmpty(decoded.state.setups[0]), false);
+  assert.equal(decoded.state.setups.every(isSlotDataEmpty), true);
 });
 
 test('round-trip: three demo setups', () => {

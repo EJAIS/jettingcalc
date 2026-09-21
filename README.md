@@ -40,9 +40,60 @@ js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
 js/share.js         Share-link encode/decode (pure module, no DOM/localStorage)
 js/app.js           UI logic, event handling
+js/vendor/          Vendored third-party scripts (Chart.js — see js/vendor/README.md)
+sw.js               Service worker (offline support, update checking)
+manifest.json       PWA manifest
+icons/              PWA icons (192/512/maskable/apple-touch-icon)
 original/           Original unmodified Excel spreadsheet (for reference)
-test/               Regression tests (Node's built-in test runner)
+test/               Regression tests (Node's built-in test runner, zero dependencies)
+test-browser/       Playwright browser tests (optional, see TESTING.md)
 ```
+
+## Deployment
+
+The app is static — copy the repo (minus `test/`, `test-browser/`,
+`node_modules/`, `package.json`) to any web server. It's currently
+deployed to a subdirectory on ejais.de, which is why `manifest.json`,
+`sw.js`, and every path inside them use relative URLs throughout (see
+`js/vendor/README.md` and `sw.js`'s own comments) rather than assuming a
+domain root.
+
+Two response headers matter for correct PWA behavior and are **server
+configuration, not something this repo's code controls** — there's no
+`.htaccess`/nginx config checked in here, so whoever configures the web
+server needs to set these explicitly:
+
+- **`manifest.json` → `Content-Type: application/manifest+json`.** Most
+  default server configs (nginx included, unless a `.json` MIME type
+  mapping is already in place) serve `.json` as `application/json`.
+  Browsers tolerate that in practice, but it isn't spec-correct — the
+  [Web App Manifest spec](https://www.w3.org/TR/appmanifest/) calls for
+  `application/manifest+json`. For nginx, either add a `types` mapping or
+  a per-location `default_type`:
+
+  ```nginx
+  location = /manifest.json {
+    default_type application/manifest+json;
+  }
+  ```
+
+- **`sw.js` → `Cache-Control: no-cache`** (or a short `max-age`, e.g. a
+  few minutes). Browsers already throttle their own service-worker
+  update checks to at most once per 24h regardless of HTTP caching
+  headers — but a long server-side cache lifetime on `sw.js` itself
+  (e.g. a blanket `Cache-Control: max-age=31536000` applied to all static
+  assets) makes that worse: the browser may not even see the new
+  `sw.js` bytes to compare against until its *own* cache entry expires,
+  on top of the 24h throttle. `sw.js` is the one file in this repo that
+  should never be far-future-cached, unlike everything under `js/vendor/`
+  or `icons/` which are safe to cache aggressively since they're
+  versioned by `JETTINGCALC_CACHE_VERSION`/filename instead. For nginx:
+
+  ```nginx
+  location = /sw.js {
+    add_header Cache-Control "no-cache";
+  }
+  ```
 
 ## Testing
 
@@ -78,7 +129,20 @@ warning (including a `clipPos` beyond that needle's `getClipCount()`),
 refusing to share a custom needle or a link with no active setups, and
 `shareParamKeys()` covering every param key a real encoded link uses.
 
+`test/sw.test.mjs` covers the pure, DOM-free parts of `sw.js` (the
+service worker): the precache manifest — including a cross-check against
+what `manifest.json`/`index.html` actually reference, not just a second
+hand-maintained list — and `isShareNavigation()` staying in sync with
+`share.js`'s `hasShareParams()`.
+
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
+
+See [TESTING.md](TESTING.md) for the PWA-specific test coverage: the
+Lighthouse installability audit, the Playwright browser test suite
+(`test-browser/`, offline reload, share-link network-first behavior, the
+update banner, the install button), and the manual checklist for what
+only a real device can exercise (Android/iOS install, standalone
+launch).
 
 ## Verification
 

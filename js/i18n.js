@@ -11,6 +11,11 @@ const TRANSLATIONS = {
     'btn.reset':     'Reset',
     'btn.darkMode':  'Dark Mode',
     'btn.lightMode': 'Light Mode',
+    'btn.share':     'Share',
+    'btn.copyLink':  'Copy link',
+    'btn.copied':    'Copied!',
+    'btn.close':     'Close',
+    'btn.undo':      'Undo',
 
     // Carb type selector
     'carbType.label': 'Carburetor Type',
@@ -147,6 +152,17 @@ const TRANSLATIONS = {
     'confirm.overwriteNeedle': '"${type}" already exists as a custom needle. Overwrite?',
     'confirm.deleteNeedle':    'Delete custom needle "${type}"?',
 
+    // Share links
+    'share.title':     'Share setups',
+    'share.intro':     'This creates a link that encodes your setups and carburetor type. Nothing is uploaded — the data lives entirely in the link itself.',
+    'share.linkLabel': 'Share link',
+    'err.share.noActiveSetups': 'No setup has a needle selected yet — choose at least one needle before sharing.',
+    'err.share.customNeedle':   "Can't share — {setups} use custom needle(s) not in the built-in database: {needles}. Only built-in needles can be shared.",
+    'msg.shareLoaded':          'Shared setups loaded.',
+    'msg.shareFieldsIgnored':   '{n} field(s) in the shared link were invalid and were skipped.',
+    'msg.shareInvalid':         'This share link is invalid or corrupted.',
+    'msg.shareVersion':         "This share link was created with a newer version of this app and can't be loaded.",
+
     // SVG needle schematic labels
     'svg.shank':         'Shank',
     'svg.taper1':        'Taper 1',
@@ -170,6 +186,11 @@ const TRANSLATIONS = {
     'btn.reset':     'Zurücksetzen',
     'btn.darkMode':  'Dunkelmodus',
     'btn.lightMode': 'Hellmodus',
+    'btn.share':     'Teilen',
+    'btn.copyLink':  'Link kopieren',
+    'btn.copied':    'Kopiert!',
+    'btn.close':     'Schließen',
+    'btn.undo':      'Rückgängig',
 
     // Carb type selector
     'carbType.label': 'Vergaser-Typ',
@@ -305,6 +326,17 @@ const TRANSLATIONS = {
     'confirm.resetRow':        '„{name}" zurücksetzen?',
     'confirm.overwriteNeedle': '"${type}" existiert bereits als eigene Nadel. Überschreiben?',
     'confirm.deleteNeedle':    'Eigene Nadel "${type}" löschen?',
+
+    // Share links
+    'share.title':     'Setups teilen',
+    'share.intro':     'Erzeugt einen Link, der deine Setups und den Vergaser-Typ enthält. Es wird nichts hochgeladen — die Daten stecken vollständig im Link selbst.',
+    'share.linkLabel': 'Link zum Teilen',
+    'err.share.noActiveSetups': 'Kein Setup hat bisher eine Nadel ausgewählt — bitte zuerst mindestens eine Nadel wählen.',
+    'err.share.customNeedle':   'Teilen nicht möglich – {setups} verwenden eigene Nadel(n), die nicht in der eingebauten Datenbank enthalten sind: {needles}. Es können nur eingebaute Nadeln geteilt werden.',
+    'msg.shareLoaded':          'Geteilte Setups geladen.',
+    'msg.shareFieldsIgnored':   '{n} Feld(er) im geteilten Link waren ungültig und wurden übersprungen.',
+    'msg.shareInvalid':         'Dieser Link zum Teilen ist ungültig oder beschädigt.',
+    'msg.shareVersion':         'Dieser Link zum Teilen wurde mit einer neueren Version dieser App erstellt und kann nicht geladen werden.',
 
     // SVG needle schematic labels
     'svg.shank':         'Schaft',

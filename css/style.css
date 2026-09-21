@@ -597,6 +597,16 @@ body.dark .btn-expand { color: #9aa0a8; }
   justify-content: flex-end;
 }
 
+.install-ios-instructions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.install-ios-share-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
 /* ── Calculation Results section ──────────────────────────────────────────── */
 .cr-empty {
   color: var(--text-muted);

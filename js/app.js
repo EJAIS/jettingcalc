@@ -16,6 +16,80 @@ let carbType = loadCarbType();
 // link applied at page load. { snapshot: {setups, carbType} | null, importedKey }
 let importUndo = null;
 
+// ── Install App (PWA) ────────────────────────────────────────────────────────
+//
+// Chromium/Android/Desktop: the browser fires 'beforeinstallprompt' once it
+// decides the app is installable. We stash that event (it also serves as
+// our native install trigger) and reveal #btn-install. Registered here at
+// module scope — not inside DOMContentLoaded — so an event fired very early
+// (before DOMContentLoaded) isn't missed; by the time this module (a
+// deferred <script type="module">) runs, the DOM is already parsed, so
+// touching #btn-install from here is safe too.
+//
+// iOS Safari never fires 'beforeinstallprompt' at all, so it gets its own
+// detection + a purely instructional dialog instead (see
+// maybeShowIosInstallButton(), called once from DOMContentLoaded).
+//
+// installPromptMode tells the shared #btn-install click handler which of
+// the two behaviors to run.
+let deferredInstallPrompt = null;
+let installPromptMode = null; // 'native' | 'ios-instructions'
+
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+function showInstallButton() {
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = false;
+}
+
+function hideInstallButton() {
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = true;
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  if (isAppInstalled()) return; // shouldn't fire in this case, but don't trust it
+  deferredInstallPrompt = e;
+  installPromptMode = 'native';
+  showInstallButton();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  hideInstallButton();
+});
+
+// iOS UA, actually Safari (not Chrome/Firefox/Edge-on-iOS, which are all
+// WebKit under the hood but report their own UA substring), and not
+// already running from the home screen.
+function isIosSafari() {
+  const ua = navigator.userAgent;
+  if (!/iPad|iPhone|iPod/.test(ua)) return false;
+  if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) return false;
+  return navigator.standalone !== true;
+}
+
+function maybeShowIosInstallButton() {
+  if (isAppInstalled() || !isIosSafari()) return;
+  installPromptMode = 'ios-instructions';
+  showInstallButton();
+}
+
+async function handleInstallButtonClick() {
+  if (installPromptMode === 'ios-instructions') {
+    document.getElementById('install-dialog')?.showModal();
+    return;
+  }
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice; // outcome ('accepted' | 'dismissed') doesn't change what we do next
+  deferredInstallPrompt = null;
+  hideInstallButton();
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
@@ -1060,6 +1134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // `setups`/`carbType`, so the very first render already reflects it.
   applyShareFromUrl({ offlineStale: shareOfflineStale });
 
+  // iOS Safari never fires 'beforeinstallprompt', so it needs its own
+  // one-time check to decide whether #btn-install should appear at all.
+  maybeShowIosInstallButton();
+
   // Initialize carb type radios from persisted state
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
     r.checked = r.value === carbType;
@@ -1208,6 +1286,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('share-dialog')?.close();
   });
   document.getElementById('share-dialog')?.addEventListener('click', e => {
+    const dialog = e.currentTarget;
+    if (e.target !== dialog) return; // click landed on dialog content, not the backdrop
+    const rect = dialog.getBoundingClientRect();
+    const inDialog = e.clientX >= rect.left && e.clientX <= rect.right
+      && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (!inDialog) dialog.close();
+  });
+
+  // Install App button (native Chromium prompt, or iOS instructions dialog)
+  document.getElementById('btn-install')?.addEventListener('click', handleInstallButtonClick);
+  document.getElementById('btn-install-dialog-close')?.addEventListener('click', () => {
+    document.getElementById('install-dialog')?.close();
+  });
+  document.getElementById('install-dialog')?.addEventListener('click', e => {
     const dialog = e.currentTarget;
     if (e.target !== dialog) return; // click landed on dialog content, not the backdrop
     const rect = dialog.getBoundingClientRect();

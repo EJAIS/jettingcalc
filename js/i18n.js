@@ -17,6 +17,7 @@ const TRANSLATIONS = {
     'btn.close':     'Close',
     'btn.undo':      'Undo',
     'btn.updateNow': 'Update now',
+    'btn.install':   'Install App',
 
     // Carb type selector
     'carbType.label': 'Carburetor Type',
@@ -168,6 +169,10 @@ const TRANSLATIONS = {
     // Service worker updates
     'banner.updateAvailable': 'A new version of this app is available.',
 
+    // Install App (PWA)
+    'install.iosDialogTitle': 'Install this app',
+    'install.iosDialogSteps': "Tap the Share icon in Safari's toolbar, then choose \"Add to Home Screen\".",
+
     // SVG needle schematic labels
     'svg.shank':         'Shank',
     'svg.taper1':        'Taper 1',
@@ -197,6 +202,7 @@ const TRANSLATIONS = {
     'btn.close':     'Schließen',
     'btn.undo':      'Rückgängig',
     'btn.updateNow': 'Jetzt aktualisieren',
+    'btn.install':   'App installieren',
 
     // Carb type selector
     'carbType.label': 'Vergaser-Typ',
@@ -347,6 +353,10 @@ const TRANSLATIONS = {
 
     // Service worker updates
     'banner.updateAvailable': 'Eine neue Version dieser App ist verfügbar.',
+
+    // Install App (PWA)
+    'install.iosDialogTitle': 'App installieren',
+    'install.iosDialogSteps': 'Tippe in der Safari-Werkzeugleiste auf das Teilen-Symbol und wähle dann „Zum Home-Bildschirm".',
 
     // SVG needle schematic labels
     'svg.shank':         'Schaft',

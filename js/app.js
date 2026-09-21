@@ -7,9 +7,14 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, shareParamKeys } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
+
+// In-memory only (never persisted): tracks a pending "Undo" for a share
+// link applied at page load. { snapshot: {setups, carbType} | null, importedKey }
+let importUndo = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -267,6 +272,14 @@ function updateUI() {
     banner.hidden = !key;
     if (key) banner.textContent = t(key);
   }
+  const shareBtn = document.getElementById('btn-share');
+  if (shareBtn) shareBtn.disabled = !setups.some(s => s.needleType);
+  // Central check so the import banner survives a language toggle (which
+  // also calls updateUI() but never changes carbType/setups) and only
+  // disappears once the state actually diverges from what was imported.
+  if (importUndo && stateKey({ carbType, setups }) !== importUndo.importedKey) {
+    hideImportBanner();
+  }
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -313,13 +326,23 @@ function handleCarbTypeChange(newCarbType) {
 
 // ── Field change handler ──────────────────────────────────────────────────────
 
+// nd/hd are free-typed <input type="number" min max"> cells (unlike
+// clipPos/carbSize/needleJet, which are <select> dropdowns and so are
+// already constrained to valid options) — browsers don't clamp typed values
+// to min/max on their own, so out-of-range values must be clamped here.
+// Bounds match the HTML attributes in index.html and share.js's ND_MAX/HD_MAX.
+const NUM_FIELD_BOUNDS = { nd: [0, 200], hd: [0, 300] };
+
 function handleFieldChange(id, field, value) {
   const idx = setups.findIndex(s => s.id === id);
   if (idx === -1) return;
 
   const numFields = ['clipPos', 'carbSize', 'needleJet', 'nd', 'hd'];
   if (numFields.includes(field)) {
-    setups[idx][field] = value === '' ? null : parseFloat(value);
+    let num = value === '' ? null : parseFloat(value);
+    const bounds = NUM_FIELD_BOUNDS[field];
+    if (num != null && bounds) num = Math.min(bounds[1], Math.max(bounds[0], num));
+    setups[idx][field] = num;
   } else {
     setups[idx][field] = value === '' ? null : value;
   }
@@ -381,6 +404,142 @@ function flashRow(id) {
   if (!row) return;
   row.classList.add('row-flash');
   setTimeout(() => row.classList.remove('row-flash'), 1200);
+}
+
+// ── Share dialog ─────────────────────────────────────────────────────────────
+
+function shareBaseUrl() {
+  return location.origin + location.pathname.replace(/index\.html$/, '');
+}
+
+function openShareDialog() {
+  const dialog  = document.getElementById('share-dialog');
+  const linkRow = document.getElementById('share-link-row');
+  const urlInput = document.getElementById('share-url');
+  const errorEl = document.getElementById('share-error');
+  const copyBtn = document.getElementById('btn-share-copy');
+  if (!dialog) return;
+
+  clearTimeout(copyBtn._resetTimer);
+  copyBtn.textContent = t('btn.copyLink');
+
+  const result = encodeShare({ carbType, setups }, { baseUrl: shareBaseUrl() });
+
+  if (result.ok) {
+    linkRow.hidden = false;
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+    urlInput.value = result.url;
+  } else {
+    linkRow.hidden = true;
+    errorEl.hidden = false;
+    if (result.reason === 'customNeedle') {
+      const setupNames = result.details.map(d => d.name).join(', ');
+      const needleTypes = result.details.map(d => d.needleType).join(', ');
+      errorEl.textContent = t('err.share.customNeedle')
+        .replace('{setups}', setupNames)
+        .replace('{needles}', needleTypes);
+    } else {
+      errorEl.textContent = t('err.share.noActiveSetups');
+    }
+  }
+
+  dialog.showModal();
+  if (result.ok) {
+    urlInput.focus();
+    urlInput.select();
+  }
+}
+
+async function copyShareLink() {
+  const urlInput = document.getElementById('share-url');
+  const copyBtn  = document.getElementById('btn-share-copy');
+  if (!urlInput?.value) return;
+
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(urlInput.value);
+    copied = true;
+  } catch {
+    urlInput.focus();
+    urlInput.select();
+    try { copied = document.execCommand('copy'); } catch { copied = false; }
+  }
+
+  if (copied) {
+    copyBtn.textContent = t('btn.copied');
+    clearTimeout(copyBtn._resetTimer);
+    copyBtn._resetTimer = setTimeout(() => { copyBtn.textContent = t('btn.copyLink'); }, 2000);
+  }
+}
+
+// ── Share import (applied once, at page load) ───────────────────────────────
+
+// Removes only the share-link params from the current URL (not any other
+// query params or hash that might happen to coexist with them) and replaces
+// the history entry so the decoded state is never re-applied on reload.
+function scrubShareParamsFromUrl() {
+  const url = new URL(location.href);
+  for (const key of shareParamKeys()) url.searchParams.delete(key);
+  const qs = url.searchParams.toString();
+  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+}
+
+// Reads a share link from the URL (if any) and applies it. Always scrubs
+// the share params from the URL afterwards, whatever the outcome.
+function applyShareFromUrl() {
+  if (!hasShareParams(location.search)) return;
+
+  const decoded = decodeShare(location.search);
+  scrubShareParamsFromUrl();
+
+  if (!decoded.ok) {
+    showNotice(decoded.reason === 'version' ? t('msg.shareVersion') : t('msg.shareInvalid'));
+    return;
+  }
+
+  // A syntactically valid link (right version/carbType) can still carry no
+  // usable setup data, e.g. if it was truncated in transit and lost its
+  // s1..s5 params while v/c survived — encodeShare() never produces such a
+  // link itself, so treat it the same as a corrupt one rather than silently
+  // overwriting real local data with five blank slots.
+  if (decoded.state.setups.every(isSlotEmpty)) {
+    showNotice(t('msg.shareInvalid'));
+    return;
+  }
+
+  const importedKey = stateKey(decoded.state);
+  if (importedKey === stateKey({ carbType, setups })) return; // nothing would actually change
+
+  // Only offer Undo if there was something local worth restoring.
+  const hasLocalData = !setups.every(isSlotEmpty);
+  const snapshot = hasLocalData ? structuredClone({ setups, carbType }) : null;
+
+  setups   = decoded.state.setups;
+  carbType = decoded.state.carbType;
+  saveSetups(setups);
+  saveCarbType(carbType);
+
+  importUndo = { snapshot, importedKey };
+  showImportBanner();
+
+  if (decoded.warnings.length > 0) {
+    showNotice(t('msg.shareFieldsIgnored').replace('{n}', decoded.warnings.length));
+  }
+}
+
+function showImportBanner() {
+  const banner  = document.getElementById('import-banner');
+  const undoBtn = document.getElementById('btn-import-undo');
+  if (!banner) return;
+  if (undoBtn) undoBtn.hidden = !importUndo?.snapshot;
+  banner.hidden = false;
+}
+
+function hideImportBanner() {
+  const banner = document.getElementById('import-banner');
+  if (banner) banner.hidden = true;
+  importUndo = null;
 }
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
@@ -743,6 +902,10 @@ function updateCrossSectionLive() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply a share link (if present in the URL) before anything else reads
+  // `setups`/`carbType`, so the very first render already reflects it.
+  applyShareFromUrl();
+
   // Initialize carb type radios from persisted state
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
     r.checked = r.value === carbType;
@@ -883,6 +1046,32 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeChartModal(); hideTooltip(); }
   });
+
+  // Share dialog
+  document.getElementById('btn-share')?.addEventListener('click', openShareDialog);
+  document.getElementById('btn-share-copy')?.addEventListener('click', copyShareLink);
+  document.getElementById('btn-share-close')?.addEventListener('click', () => {
+    document.getElementById('share-dialog')?.close();
+  });
+  document.getElementById('share-dialog')?.addEventListener('click', e => {
+    const dialog = e.currentTarget;
+    if (e.target !== dialog) return; // click landed on dialog content, not the backdrop
+    const rect = dialog.getBoundingClientRect();
+    const inDialog = e.clientX >= rect.left && e.clientX <= rect.right
+      && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (!inDialog) dialog.close();
+  });
+
+  // Import banner (shown once, when a share link was applied at page load)
+  document.getElementById('btn-import-undo')?.addEventListener('click', () => {
+    if (!importUndo?.snapshot) return;
+    setups   = importUndo.snapshot.setups;
+    carbType = importUndo.snapshot.carbType;
+    saveSetups(setups);
+    saveCarbType(carbType);
+    updateUI(); // its central check hides the banner once state != importedKey
+  });
+  document.getElementById('btn-import-close')?.addEventListener('click', hideImportBanner);
 
   // ── Tooltip (data-tooltip attribute) — hover + tap ──────────────────────
   const tip = document.createElement('div');

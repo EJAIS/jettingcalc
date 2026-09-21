@@ -748,6 +748,152 @@ Das öffnet den Standard-E-Mail-Client des Users (Outlook, Gmail, Apple Mail, Th
 
 ---
 
+## Share links
+
+Implementiert in `js/share.js` (reines ES-Modul, kein DOM/localStorage-Zugriff,
+importiert nur `needledb.js` — dadurch mit `node --test` isoliert testbar,
+siehe `test/share.test.mjs`) und in `js/app.js` (`openShareDialog()` /
+`applyShareFromUrl()`) an die UI angebunden.
+
+### URL-Schema (v1)
+
+```
+?v=1&c=<carbType>&s<N>=<needleType>-<clipPos>-<carbSize>-<needleJet>-<jetType>-<nd>-<hd>&n<N>=<name>
+```
+
+- `v`: Format-Version des Links, aktuell fest `1` (`SHARE_VERSION` in `share.js`).
+- `c`: der globale `carbType` (`VHSx` | `PHBH` | `PHBL`).
+- `s<N>` (`N` = 1–5, ein Parameter pro nicht-leerem Slot): genau sieben mit
+  `-` getrennte Felder in fester Reihenfolge — `needleType-clipPos-carbSize-
+  needleJet-jetType-nd-hd`. Ein leeres Feld steht als leerer String zwischen
+  zwei `-`. `-` ist bewusst der Trenner, weil `carbSize` Werte wie `"39.5"`
+  enthalten kann, aber nie `-`.
+- `n<N>`: nur gesetzt, wenn der Setup-Name vom Default `#N` abweicht.
+- Komplett leere Slots (`isSlotEmpty()`) werden beim Erzeugen des Links
+  weggelassen, nicht als leerer `s<N>`-Parameter mitgeschickt.
+- `shareParamKeys()` (`share.js`) ist die alleinige Quelle der Wahrheit für
+  die Menge aller Parameter-Namen (`v`, `c`, `s1`–`s5`, `n1`–`n5`). `app.js`
+  nutzt sie, um nach dem Anwenden eines Links **nur** diese Parameter wieder
+  aus der URL zu entfernen — ein zufällig mitgeführter anderer Query-Parameter
+  oder ein `#Hash` bleibt erhalten.
+
+### Validierungsregeln (`decodeShare()`)
+
+- `v` muss exakt `"1"` sein, sonst `{ ok:false, reason:'version' }`.
+- `c` muss ein bekannter Key in `CARB_TYPES` sein, sonst
+  `{ ok:false, reason:'carbType' }`.
+- Pro Slot müssen genau 7 mit `-` getrennte Felder vorhanden sein — sonst
+  bleibt der ganze Slot leer und es gibt eine Warnung
+  `{ code:'malformedSlot', slot }`.
+- Whitelist-Validierung je Feld; ein ungültiger Wert wird `null` plus einer
+  Warnung `{ code:'invalidField', slot, field }`:
+  - `needleType`: muss ein Key in `NEEDLE_DB` sein, dessen `carbType` zum
+    importierten `c` passt.
+  - `clipPos`: ganzzahlig, `1..getClipCount(needleType)`. Ist `needleType`
+    bereits `null` (leer oder ungültig), wird `clipPos` automatisch mit-genullt
+    — ohne eigene Warnung, da es dafür keinen Nadel-Bezug mehr gibt.
+  - `carbSize`: muss in `CARB_BORE_SIZES[c]` enthalten sein.
+  - `jetType`: muss in `CARB_TYPES[c].atomizers` enthalten sein.
+  - `needleJet`: muss in `ATOMIZER_SIZES[jetType]` enthalten sein — hängt
+    vom (bereits validierten) `jetType` desselben Slots ab.
+  - `nd`: 0–200, `hd`: 0–300 (`Number.isFinite`, inklusive Grenzen).
+- Name: Steuerzeichen werden entfernt, dann getrimmt und auf 30 Zeichen
+  gekürzt; bleibt danach nichts übrig, gilt der Default `#N`. `decodeShare()`
+  escaped den Namen NICHT als HTML — das bleibt bewusst Aufgabe der
+  Render-Funktionen in `app.js` (`renderTable`, `renderCalcResults`,
+  `renderCrossSection`, `buildCrossSectionSVG`), die dafür alle bereits
+  `escapeHtml()` verwenden. Es gibt in `share.js` keinen `innerHTML`-Pfad.
+- Ein Link mit korrektem `v`/`c`, aber ohne einen einzigen aktiven Slot (z.B.
+  weil ein Messenger die `s1..s5`-Parameter beim Kopieren/Weiterleiten
+  abgeschnitten hat), wird von `applyShareFromUrl()` in `app.js` wie ein
+  korrupter Link behandelt und nicht angewendet — `encodeShare()` erzeugt
+  einen solchen Link nie selbst (siehe `noActiveSetups` unten).
+
+### Entscheidung: Custom Needles werden nicht unterstützt
+
+`decodeShare()` validiert `needleType` bewusst gegen die statische, mit der
+App ausgelieferte `NEEDLE_DB` — **nicht** gegen `getAllNeedles()` aus
+`storage.js` (die zusätzlich lokale Custom Needles einschließen würde).
+Custom Needles leben ausschließlich lokal beim Ersteller
+(`dellorto_custom_needles` in `localStorage`); ein Link, der auf so eine
+Nadel verweist, wäre bei jeder anderen Person kaputt, weil die referenzierte
+Geometrie dort schlicht nicht existiert.
+
+Deshalb verweigert bereits `encodeShare()` das Erzeugen eines Links, sobald
+ein zu exportierender (nicht-leerer) Slot eine `needleType` hat, die nicht
+in `NEEDLE_DB` steht:
+```js
+{ ok: false, reason: 'customNeedle', details: [{ id, name, needleType }, ...] }
+```
+Die Share-UI (`openShareDialog()` in `app.js`) zeigt dafür eine Fehlermeldung
+mit den betroffenen Setup-Namen und Nadeltypen (`err.share.customNeedle` in
+`js/i18n.js`, mit `{setups}`/`{needles}`-Platzhaltern) anstelle des Links.
+
+### Import-/Undo-Verhalten
+
+- `applyShareFromUrl()` (`app.js`) läuft als allererster Schritt im
+  `DOMContentLoaded`-Handler — vor der Initialisierung der `carbType`-Radios
+  und vor `updateUI()` — und tut nur etwas, wenn `hasShareParams(location.search)`
+  `true` ist (Query-String enthält `v`).
+- Die Share-Parameter werden über `scrubShareParamsFromUrl()` (nutzt
+  `shareParamKeys()`) in jedem Fall aus der URL entfernt — bei Erfolg, bei
+  Fehler und bei „keine aktiven Setups im Link" gleichermaßen — damit ein
+  Reload denselben Link nie erneut anwendet.
+- `ok:false` (falsche Version/`carbType`) oder ein syntaktisch gültiger,
+  aber leerer Link → Notice (`msg.shareVersion` bzw. `msg.shareInvalid`),
+  **nichts** wird überschrieben.
+- `ok:true`: Ist `stateKey(neuer Zustand) === stateKey({carbType, setups})`
+  (aktueller Zustand), ändert sich nichts — kein redundanter Import.
+- Andernfalls: Nur wenn lokal bereits Daten vorhanden sind
+  (`!setups.every(isSlotEmpty)`), wird der aktuelle Zustand
+  (`{setups, carbType}`) per `structuredClone()` als Snapshot gesichert —
+  ausschließlich im Speicher (`importUndo`), **nie** in `localStorage`. War
+  lokal nichts vorhanden, gibt es keinen Snapshot und der Undo-Button bleibt
+  versteckt.
+- Der importierte Zustand wird übernommen und wie jede andere Änderung über
+  die bestehenden `saveSetups()`/`saveCarbType()` persistiert. Das
+  Import-Banner (`#import-banner`) erscheint mit Hinweistext und optionalem
+  Undo-Button. Ungültige/übersprungene Felder aus dem Link werden zusätzlich
+  als Anzahl über eine separate Notice gemeldet (`msg.shareFieldsIgnored`,
+  Platzhalter `{n}`).
+- **Undo** (`#btn-import-undo`) stellt den Snapshot wieder her und ruft
+  `updateUI()` auf — rein im Speicher, ohne eigene Persistenzschicht.
+- Das Banner verschwindet auf zwei Wegen: (a) sofort bei Klick auf ✕
+  (`hideImportBanner()`), oder (b) automatisch, sobald
+  `stateKey({carbType, setups})` vom beim Import gemerkten `importedKey`
+  abweicht. Dieser zweite Check läuft **zentral in `updateUI()`** (nicht in
+  einzelnen Edit-Handlern verstreut), damit z. B. ein Sprachwechsel — der
+  ebenfalls `updateUI()` aufruft, aber weder `carbType` noch `setups`
+  verändert — das Banner nicht fälschlich schließt.
+
+### Hinweis: Datenbank-Änderungen wirken auf bestehende Links
+
+Ein Share-Link enthält ausschließlich Benutzereingaben (`needleType`,
+`clipPos`, `carbSize`, `needleJet`, `jetType`, `nd`, `hd`) — keine
+berechneten Werte. Deshalb wirken sich spätere Änderungen an `NEEDLE_DB`,
+`CARB_BORE_SIZES` oder `ATOMIZER_SIZES` direkt auf die Gültigkeit bereits
+verschickter, älterer Links aus:
+
+- Eine im Link referenzierte `needleType`, die zwischenzeitlich aus
+  `NEEDLE_DB` entfernt oder umbenannt wurde (vgl. die K90→K96-Migration
+  weiter oben), fällt beim Decode durch die Whitelist-Prüfung und wird
+  stillschweigend `null` + Warnung — ebenso der davon abhängige `clipPos`.
+- Ein `clipPos`, der beim Erzeugen des Links noch gültig war, aber nach
+  einer Korrektur des `clips`-Werts der Nadel nicht mehr im erlaubten
+  Bereich liegt, wird ebenfalls genullt.
+- Eine `carbSize` oder ein `needleJet`, die aus der jeweiligen Whitelist
+  entfernt werden, verschwinden beim Decode auf dieselbe Weise.
+
+Es gibt **keine Versionierung pro Datenbank-Stand** — `SHARE_VERSION`
+(aktuell `1`) beschreibt nur das URL-/Feld-Format, nicht den Inhalt von
+`NEEDLE_DB`/`CARB_BORE_SIZES`/`ATOMIZER_SIZES`. Ein alter Link bleibt also
+nur so lange vollständig nutzbar, wie alle darin referenzierten Werte auch
+in der aktuell ausgelieferten Datenbank noch existieren; andernfalls verliert
+der Empfänger beim Öffnen kommentarlos nur die betroffenen Felder (mit
+`msg.shareFieldsIgnored`-Hinweis), nicht den ganzen Link.
+
+---
+
 ## Copyright & Attribution
 
 ### Ursprung

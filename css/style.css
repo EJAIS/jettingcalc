@@ -510,6 +510,83 @@ body.dark .btn-expand { color: #9aa0a8; }
   max-height: 700px;
 }
 
+/* ── Share dialog ──────────────────────────────────────────────────────────── */
+#btn-share:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+#btn-share:disabled:hover { background: transparent; color: var(--accent); }
+
+.share-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  width: min(520px, 90vw);
+  box-shadow: 0 8px 40px rgba(0,0,0,.5);
+  /* The global `* { margin: 0 }` reset overrides the UA stylesheet's
+     `margin: auto`, which is what centers a modal dialog — restore it
+     explicitly or the dialog renders pinned at the viewport's top-left. */
+  margin: auto;
+}
+.share-dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+.share-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.share-dialog h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+.share-dialog p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.share-link-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-link-row label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-muted);
+}
+.share-link-input-row {
+  display: flex;
+  gap: 8px;
+}
+#share-url {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.share-error {
+  font-size: 13px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.share-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* ── Calculation Results section ──────────────────────────────────────────── */
 .cr-empty {
   color: var(--text-muted);

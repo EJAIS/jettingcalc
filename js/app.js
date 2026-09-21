@@ -7,6 +7,7 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
+import { encodeShare } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -267,6 +268,8 @@ function updateUI() {
     banner.hidden = !key;
     if (key) banner.textContent = t(key);
   }
+  const shareBtn = document.getElementById('btn-share');
+  if (shareBtn) shareBtn.disabled = !setups.some(s => s.needleType);
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -381,6 +384,73 @@ function flashRow(id) {
   if (!row) return;
   row.classList.add('row-flash');
   setTimeout(() => row.classList.remove('row-flash'), 1200);
+}
+
+// ── Share dialog ─────────────────────────────────────────────────────────────
+
+function shareBaseUrl() {
+  return location.origin + location.pathname.replace(/index\.html$/, '');
+}
+
+function openShareDialog() {
+  const dialog  = document.getElementById('share-dialog');
+  const linkRow = document.getElementById('share-link-row');
+  const urlInput = document.getElementById('share-url');
+  const errorEl = document.getElementById('share-error');
+  const copyBtn = document.getElementById('btn-share-copy');
+  if (!dialog) return;
+
+  clearTimeout(copyBtn._resetTimer);
+  copyBtn.textContent = t('btn.copyLink');
+
+  const result = encodeShare({ carbType, setups }, { baseUrl: shareBaseUrl() });
+
+  if (result.ok) {
+    linkRow.hidden = false;
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+    urlInput.value = result.url;
+  } else {
+    linkRow.hidden = true;
+    errorEl.hidden = false;
+    if (result.reason === 'customNeedle') {
+      const setupNames = result.details.map(d => d.name).join(', ');
+      const needleTypes = result.details.map(d => d.needleType).join(', ');
+      errorEl.textContent = t('err.share.customNeedle')
+        .replace('{setups}', setupNames)
+        .replace('{needles}', needleTypes);
+    } else {
+      errorEl.textContent = t('err.share.noActiveSetups');
+    }
+  }
+
+  dialog.showModal();
+  if (result.ok) {
+    urlInput.focus();
+    urlInput.select();
+  }
+}
+
+async function copyShareLink() {
+  const urlInput = document.getElementById('share-url');
+  const copyBtn  = document.getElementById('btn-share-copy');
+  if (!urlInput?.value) return;
+
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(urlInput.value);
+    copied = true;
+  } catch {
+    urlInput.focus();
+    urlInput.select();
+    try { copied = document.execCommand('copy'); } catch { copied = false; }
+  }
+
+  if (copied) {
+    copyBtn.textContent = t('btn.copied');
+    clearTimeout(copyBtn._resetTimer);
+    copyBtn._resetTimer = setTimeout(() => { copyBtn.textContent = t('btn.copyLink'); }, 2000);
+  }
 }
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
@@ -882,6 +952,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeChartModal(); hideTooltip(); }
+  });
+
+  // Share dialog
+  document.getElementById('btn-share')?.addEventListener('click', openShareDialog);
+  document.getElementById('btn-share-copy')?.addEventListener('click', copyShareLink);
+  document.getElementById('btn-share-close')?.addEventListener('click', () => {
+    document.getElementById('share-dialog')?.close();
+  });
+  document.getElementById('share-dialog')?.addEventListener('click', e => {
+    const dialog = e.currentTarget;
+    if (e.target !== dialog) return; // click landed on dialog content, not the backdrop
+    const rect = dialog.getBoundingClientRect();
+    const inDialog = e.clientX >= rect.left && e.clientX <= rect.right
+      && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (!inDialog) dialog.close();
   });
 
   // ── Tooltip (data-tooltip attribute) — hover + tap ──────────────────────

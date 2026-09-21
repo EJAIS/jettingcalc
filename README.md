@@ -40,8 +40,13 @@ js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
 js/share.js         Share-link encode/decode (pure module, no DOM/localStorage)
 js/app.js           UI logic, event handling
+js/vendor/          Vendored third-party scripts (Chart.js — see js/vendor/README.md)
+sw.js               Service worker (offline support, update checking)
+manifest.json       PWA manifest
+icons/              PWA icons (192/512/maskable/apple-touch-icon)
 original/           Original unmodified Excel spreadsheet (for reference)
-test/               Regression tests (Node's built-in test runner)
+test/               Regression tests (Node's built-in test runner, zero dependencies)
+test-browser/       Playwright browser tests (optional, see TESTING.md)
 ```
 
 ## Testing
@@ -78,7 +83,20 @@ warning (including a `clipPos` beyond that needle's `getClipCount()`),
 refusing to share a custom needle or a link with no active setups, and
 `shareParamKeys()` covering every param key a real encoded link uses.
 
+`test/sw.test.mjs` covers the pure, DOM-free parts of `sw.js` (the
+service worker): the precache manifest — including a cross-check against
+what `manifest.json`/`index.html` actually reference, not just a second
+hand-maintained list — and `isShareNavigation()` staying in sync with
+`share.js`'s `hasShareParams()`.
+
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
+
+See [TESTING.md](TESTING.md) for the PWA-specific test coverage: the
+Lighthouse installability audit, the Playwright browser test suite
+(`test-browser/`, offline reload, share-link network-first behavior, the
+update banner, the install button), and the manual checklist for what
+only a real device can exercise (Android/iOS install, standalone
+launch).
 
 ## Verification
 

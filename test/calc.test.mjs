@@ -62,3 +62,40 @@ test('regression: X2 (PHBH) idlePos at clip 1 is unchanged at 31.2 mm', () => {
   const pos = idlePos('X2', 1, { carbSize: 30, jetType: 'AS' });
   assertClose(pos, 31.2, 'X2 clip 1 idlePos');
 });
+
+// Custom needles are not covered by the K-needle groove measurements, so
+// they must always use the 4-groove reference geometry (topOffset 1.60,
+// spacing 1.2), regardless of their `clips` count.
+function customIdlePos(clips, clipPos) {
+  const custom = { KC1: { carbType: 'VHSx', A: 2.5, B: 1.4, C: 38, clips } };
+  const setup = {
+    needleType: 'KC1', clipPos, carbSize: 30, needleJet: 262, jetType: 'DP',
+    nd: 53, hd: 175,
+  };
+  const result = calcSetup(setup, custom);
+  assert.ok(result, `calcSetup() returned null for custom needle, clips ${clips}`);
+  return result.idlePos;
+}
+
+test('custom needle with clips: 3 uses the 4-groove reference topOffset, not the 3-groove K correction', () => {
+  // Reference: 73.5 - 26.4 + (30 - 34) / 2 = 45.1 at clip 1 (no correction).
+  // The 3-groove K geometry would give 45.1 - 1.50 = 43.6.
+  assertClose(customIdlePos(3, 1), 45.1, 'custom clips 3, clip 1 idlePos');
+  // Same result as the built-in 4-groove K18 with identical dimensions.
+  assertClose(customIdlePos(3, 1), idlePos('K18', 1), 'custom clips 3 vs K18');
+});
+
+test('custom needle with clips: 5 uses spacing 1.2, not the 1.0 K-needle 5-groove spacing', () => {
+  const delta = customIdlePos(5, 4) - customIdlePos(5, 1);
+  assertClose(delta, -3.6, 'custom clips 5 clip4 - clip1 idlePos delta');
+  assertClose(customIdlePos(5, 1), 45.1, 'custom clips 5, clip 1 idlePos');
+});
+
+test('regression: built-in K25 (clips 5) still uses the measured 5-groove spacing of 1.0', () => {
+  // Guards against an over-broad "isBuiltIn" check that would silently
+  // drop built-in K needles back to the reference geometry.
+  const delta = idlePos('K25', 5) - idlePos('K25', 1);
+  assertClose(delta, -4.0, 'K25 clip5 - clip1 idlePos delta');
+  // topOffset 1.50 vs reference 1.60 → correction of +0.1 mm on top of 45.1.
+  assertClose(idlePos('K25', 1), 45.1 + 0.1, 'K25 clip 1 idlePos');
+});

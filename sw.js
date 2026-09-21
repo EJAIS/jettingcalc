@@ -18,7 +18,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = 'v1';
+export const JETTINGCALC_CACHE_VERSION = 'v2';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so
@@ -37,6 +37,8 @@ export const PRECACHE_URLS = [
   './js/vendor/chart.umd.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-maskable.png',
+  './icons/apple-touch-icon.png',
   './manifest.json',
 ];
 
@@ -60,29 +62,35 @@ function networkWithTimeout(request, timeoutMs) {
   });
 }
 
-async function networkFirst(request) {
+// Caches `response` under `request` without delaying the response we've
+// already decided to return: extends the event's lifetime via waitUntil()
+// instead of being awaited inline, so the write can't be dropped by the
+// worker being terminated right after respondWith()'s promise settles.
+function putInCache(event, request, response) {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, response)));
+}
+
+async function networkFirst(event, request) {
   try {
     const response = await networkWithTimeout(request, NETWORK_TIMEOUT_MS);
-    if (response?.ok) {
-      const cache = await caches.open(CACHE_NAME);
-      cache.put(request, response.clone());
-    }
+    if (response?.ok) putInCache(event, request, response.clone());
     return response;
   } catch {
-    const cached = await caches.match(request);
+    // A share-link navigation's URL carries `?v=...&c=...` params that
+    // never match the precached bare './' entry under a strict same-URL
+    // lookup — ignoreSearch falls back to the cached app shell by path
+    // alone, which is what we want here regardless of query string.
+    const cached = await caches.match(request, { ignoreSearch: true });
     if (cached) return cached;
     throw new Error('sw: network-first failed and nothing cached for ' + request.url);
   }
 }
 
-async function cacheFirst(request) {
+async function cacheFirst(event, request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response?.ok) {
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(request, response.clone());
-  }
+  if (response?.ok) putInCache(event, request, response.clone());
   return response;
 }
 
@@ -122,10 +130,10 @@ if (inServiceWorkerScope) {
 
     if (request.mode === 'navigate') {
       const url = new URL(request.url);
-      event.respondWith(isShareNavigation(url) ? networkFirst(request) : cacheFirst(request));
+      event.respondWith(isShareNavigation(url) ? networkFirst(event, request) : cacheFirst(event, request));
       return;
     }
 
-    event.respondWith(cacheFirst(request));
+    event.respondWith(cacheFirst(event, request));
   });
 }

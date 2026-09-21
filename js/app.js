@@ -7,7 +7,7 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, shareParamKeys } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -562,7 +562,7 @@ function scrubShareParamsFromUrl() {
 // Reads a share link from the URL (if any) and applies it. Always scrubs
 // the share params from the URL afterwards, whatever the outcome.
 //
-// `offlineStale` comes from checkShareLinkFreshness() (called before this,
+// `offlineStale` comes from isShareLinkPossiblyStale() (called before this,
 // in the DOMContentLoaded sequence, only when hasShareParams() is true): it
 // means the app was fully offline when the link was opened, so whatever
 // needledb.js this decodes against might not be the newest one the link
@@ -586,8 +586,12 @@ function applyShareFromUrl({ offlineStale = false } = {}) {
   // usable setup data, e.g. if it was truncated in transit and lost its
   // s1..s5 params while v/c survived — encodeShare() never produces such a
   // link itself, so treat it the same as a corrupt one rather than silently
-  // overwriting real local data with five blank slots.
-  if (decoded.state.setups.every(isSlotEmpty)) {
+  // overwriting real local data with five blank slots. Checked on data
+  // fields only (isSlotDataEmpty), not isSlotEmpty's name+data check: a
+  // stray `n<N>` surviving without its `s<N>` would otherwise make
+  // isSlotEmpty call that slot "not empty" on name alone and let a
+  // link with zero real data slip past this guard.
+  if (decoded.state.setups.every(isSlotDataEmpty)) {
     showNotice(withOfflineWarning(t('msg.shareInvalid')));
     return;
   }
@@ -636,20 +640,14 @@ async function registerServiceWorker() {
 
 // ── Service worker update checking ──────────────────────────────────────────
 //
-// Two distinct flows share the same registration:
-//
-// 1. General background check (every app start): fire-and-forget, never
-//    awaited before rendering. If an update installs while there's already
-//    an existing controller (i.e. this isn't the very first install), a
-//    persistent banner offers to activate it.
-// 2. Share-link-specific check (only when a share link is present): a
-//    share link must decode against the current needledb.js, not a stale
-//    cached one, so this blocks applyShareFromUrl() for a short, hard-capped
-//    window to give a pending update a chance to land first.
+// General background check (every app start): fire-and-forget, never
+// awaited before rendering. If an update installs while there's already an
+// existing controller (i.e. this isn't the very first install), a
+// persistent banner offers to activate it.
 
 let pendingUpdateRegistration = null;
 
-// Kicks off #1. Never throws, never awaited by its caller.
+// Never throws, never awaited by its caller.
 function watchForServiceWorkerUpdate(registration) {
   if (!registration) return;
 
@@ -690,52 +688,21 @@ function hideUpdateBanner() {
   if (banner) banner.hidden = true;
 }
 
-function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('sw update check timed out')), ms)),
-  ]);
-}
-
-// Resolves once a pending/new install for `registration` reaches
-// 'activated'. Never rejects on its own (a registration.update() network
-// failure is the only rejection path) — the common case, where an update
-// exists but stays parked in `registration.waiting` until the user clicks
-// "Update now", simply never resolves here and is handled by the caller's
-// withTimeout() race instead.
-function waitForServiceWorkerActivation(registration) {
-  return registration.update().then(() => {
-    const worker = registration.installing || registration.waiting;
-    if (!worker || worker.state === 'activated') return;
-    return new Promise(resolve => {
-      const onStateChange = () => {
-        if (worker.state === 'activated') {
-          worker.removeEventListener('statechange', onStateChange);
-          resolve();
-        }
-      };
-      worker.addEventListener('statechange', onStateChange);
-    });
-  });
-}
-
-const SHARE_LINK_UPDATE_TIMEOUT_MS = 2000;
-
-// Kicks off #2. Always resolves — the ~2s cap is a hard ceiling, not a
-// suggestion — so applyShareFromUrl() is never blocked indefinitely.
-async function checkShareLinkFreshness(swRegistrationPromise) {
-  if (!navigator.onLine) return { offlineStale: true };
-
-  const registration = await swRegistrationPromise;
-  if (!registration) return { offlineStale: false };
-
-  try {
-    await withTimeout(waitForServiceWorkerActivation(registration), SHARE_LINK_UPDATE_TIMEOUT_MS);
-  } catch {
-    // Timed out, or the update check itself failed (e.g. a flaky
-    // connection) — proceed with whatever's already cached either way.
-  }
-  return { offlineStale: false };
+// Share-link-specific check (only meaningful when hasShareParams() is
+// true): a share link must decode against the current needledb.js, not a
+// stale cached one. There used to be an attempt here to race a pending
+// service-worker update's activation against a timeout before deciding —
+// but by the time any code in this file runs, the browser's ES module
+// loader has already fetched and executed js/needledb.js (module scripts
+// run before DOMContentLoaded, which is before this check ever could), so
+// NEEDLE_DB for this page load is already bound to whatever was cached at
+// that point. No amount of waiting for a service-worker update afterwards
+// can make this page's own data any fresher — it could only affect a
+// future page load. So the only thing worth checking is whether we're
+// fully offline, since then the needledb.js this decodes against might
+// not be the one the link's creator had.
+function isShareLinkPossiblyStale() {
+  return !navigator.onLine;
 }
 
 function showImportBanner() {
@@ -1111,27 +1078,15 @@ function updateCrossSectionLive() {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Register the service worker up front (needed by both the general
-  // background update check below and, when there's a share link, the
-  // freshness check that must run before applyShareFromUrl()). The
-  // general check is fire-and-forget: nothing here awaits it, so a normal
-  // (non-share-link) app start is never delayed by it.
-  const swRegistrationPromise = registerServiceWorker();
-  swRegistrationPromise.then(watchForServiceWorkerUpdate).catch(() => {});
-
-  // A share link must decode against the current needledb.js, not a stale
-  // cached one — give a pending service-worker update a short, hard-capped
-  // window to finish activating before applyShareFromUrl() decodes
-  // anything. This await only ever runs (and only ever delays the page)
-  // when hasShareParams() is true.
-  let shareOfflineStale = false;
-  if (hasShareParams(location.search)) {
-    shareOfflineStale = (await checkShareLinkFreshness(swRegistrationPromise)).offlineStale;
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  // Register the service worker in the background — fire-and-forget, never
+  // awaited, so a slow/failed registration or update check can't delay
+  // rendering.
+  registerServiceWorker().then(watchForServiceWorkerUpdate).catch(() => {});
 
   // Apply a share link (if present in the URL) before anything else reads
   // `setups`/`carbType`, so the very first render already reflects it.
+  const shareOfflineStale = hasShareParams(location.search) && isShareLinkPossiblyStale();
   applyShareFromUrl({ offlineStale: shareOfflineStale });
 
   // iOS Safari never fires 'beforeinstallprompt', so it needs its own

@@ -15,6 +15,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation } from '../sw.js';
 import { hasShareParams, shareParamKeys } from '../js/share.js';
 
@@ -37,9 +38,30 @@ test('PRECACHE_URLS covers every file in the specified cache manifest', () => {
     './js/vendor/chart.umd.min.js',
     './icons/icon-192.png',
     './icons/icon-512.png',
+    './icons/icon-maskable.png',
+    './icons/apple-touch-icon.png',
     './manifest.json',
   ];
   assert.deepEqual([...PRECACHE_URLS].sort(), [...expected].sort());
+});
+
+// The test above only guards PRECACHE_URLS against itself — it can't catch
+// a file that manifest.json/index.html reference but PRECACHE_URLS forgot
+// (that's exactly how icon-maskable.png/apple-touch-icon.png were missed
+// originally). Cross-check against what those two files actually reference
+// instead of a second hand-maintained list.
+test('every icon referenced by manifest.json or index.html is in PRECACHE_URLS', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+  const manifestIcons = manifest.icons.map(icon => './' + icon.src);
+
+  const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const appleTouchIconMatch = indexHtml.match(/rel="apple-touch-icon"\s+href="([^"]+)"/);
+  assert.ok(appleTouchIconMatch, 'expected index.html to have an apple-touch-icon <link>');
+  const appleTouchIcon = './' + appleTouchIconMatch[1];
+
+  for (const icon of [...manifestIcons, appleTouchIcon]) {
+    assert.ok(PRECACHE_URLS.includes(icon), `${icon} is referenced but missing from PRECACHE_URLS`);
+  }
 });
 
 test('PRECACHE_URLS entries are all relative (no leading slash), so a subdirectory deploy works', () => {

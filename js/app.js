@@ -7,7 +7,7 @@ import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, shareParamKeys } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -15,6 +15,80 @@ let carbType = loadCarbType();
 // In-memory only (never persisted): tracks a pending "Undo" for a share
 // link applied at page load. { snapshot: {setups, carbType} | null, importedKey }
 let importUndo = null;
+
+// ── Install App (PWA) ────────────────────────────────────────────────────────
+//
+// Chromium/Android/Desktop: the browser fires 'beforeinstallprompt' once it
+// decides the app is installable. We stash that event (it also serves as
+// our native install trigger) and reveal #btn-install. Registered here at
+// module scope — not inside DOMContentLoaded — so an event fired very early
+// (before DOMContentLoaded) isn't missed; by the time this module (a
+// deferred <script type="module">) runs, the DOM is already parsed, so
+// touching #btn-install from here is safe too.
+//
+// iOS Safari never fires 'beforeinstallprompt' at all, so it gets its own
+// detection + a purely instructional dialog instead (see
+// maybeShowIosInstallButton(), called once from DOMContentLoaded).
+//
+// installPromptMode tells the shared #btn-install click handler which of
+// the two behaviors to run.
+let deferredInstallPrompt = null;
+let installPromptMode = null; // 'native' | 'ios-instructions'
+
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+function showInstallButton() {
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = false;
+}
+
+function hideInstallButton() {
+  const btn = document.getElementById('btn-install');
+  if (btn) btn.hidden = true;
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  if (isAppInstalled()) return; // shouldn't fire in this case, but don't trust it
+  deferredInstallPrompt = e;
+  installPromptMode = 'native';
+  showInstallButton();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  hideInstallButton();
+});
+
+// iOS UA, actually Safari (not Chrome/Firefox/Edge-on-iOS, which are all
+// WebKit under the hood but report their own UA substring), and not
+// already running from the home screen.
+function isIosSafari() {
+  const ua = navigator.userAgent;
+  if (!/iPad|iPhone|iPod/.test(ua)) return false;
+  if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) return false;
+  return navigator.standalone !== true;
+}
+
+function maybeShowIosInstallButton() {
+  if (isAppInstalled() || !isIosSafari()) return;
+  installPromptMode = 'ios-instructions';
+  showInstallButton();
+}
+
+async function handleInstallButtonClick() {
+  if (installPromptMode === 'ios-instructions') {
+    document.getElementById('install-dialog')?.showModal();
+    return;
+  }
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice; // outcome ('accepted' | 'dismissed') doesn't change what we do next
+  deferredInstallPrompt = null;
+  hideInstallButton();
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -487,14 +561,24 @@ function scrubShareParamsFromUrl() {
 
 // Reads a share link from the URL (if any) and applies it. Always scrubs
 // the share params from the URL afterwards, whatever the outcome.
-function applyShareFromUrl() {
+//
+// `offlineStale` comes from isShareLinkPossiblyStale() (called before this,
+// in the DOMContentLoaded sequence, only when hasShareParams() is true): it
+// means the app was fully offline when the link was opened, so whatever
+// needledb.js this decodes against might not be the newest one the link
+// was created with. When true, msg.shareOfflineStaleWarning is appended
+// alongside whatever other notice this call already shows — or shown on
+// its own if nothing else would have.
+function applyShareFromUrl({ offlineStale = false } = {}) {
   if (!hasShareParams(location.search)) return;
 
   const decoded = decodeShare(location.search);
   scrubShareParamsFromUrl();
 
+  const withOfflineWarning = msg => offlineStale ? `${msg} ${t('msg.shareOfflineStaleWarning')}` : msg;
+
   if (!decoded.ok) {
-    showNotice(decoded.reason === 'version' ? t('msg.shareVersion') : t('msg.shareInvalid'));
+    showNotice(withOfflineWarning(decoded.reason === 'version' ? t('msg.shareVersion') : t('msg.shareInvalid')));
     return;
   }
 
@@ -502,14 +586,23 @@ function applyShareFromUrl() {
   // usable setup data, e.g. if it was truncated in transit and lost its
   // s1..s5 params while v/c survived — encodeShare() never produces such a
   // link itself, so treat it the same as a corrupt one rather than silently
-  // overwriting real local data with five blank slots.
-  if (decoded.state.setups.every(isSlotEmpty)) {
-    showNotice(t('msg.shareInvalid'));
+  // overwriting real local data with five blank slots. Checked on data
+  // fields only (isSlotDataEmpty), not isSlotEmpty's name+data check: a
+  // stray `n<N>` surviving without its `s<N>` would otherwise make
+  // isSlotEmpty call that slot "not empty" on name alone and let a
+  // link with zero real data slip past this guard.
+  if (decoded.state.setups.every(isSlotDataEmpty)) {
+    showNotice(withOfflineWarning(t('msg.shareInvalid')));
     return;
   }
 
   const importedKey = stateKey(decoded.state);
-  if (importedKey === stateKey({ carbType, setups })) return; // nothing would actually change
+  if (importedKey === stateKey({ carbType, setups })) {
+    // Nothing would actually change, but still worth flagging if the
+    // values compared against a potentially stale offline database.
+    if (offlineStale) showNotice(t('msg.shareOfflineStaleWarning'));
+    return;
+  }
 
   // Only offer Undo if there was something local worth restoring.
   const hasLocalData = !setups.every(isSlotEmpty);
@@ -524,8 +617,92 @@ function applyShareFromUrl() {
   showImportBanner();
 
   if (decoded.warnings.length > 0) {
-    showNotice(t('msg.shareFieldsIgnored').replace('{n}', decoded.warnings.length));
+    showNotice(withOfflineWarning(t('msg.shareFieldsIgnored').replace('{n}', decoded.warnings.length)));
+  } else if (offlineStale) {
+    showNotice(t('msg.shareOfflineStaleWarning'));
   }
+}
+
+// Registers sw.js for offline support. Never lets a registration failure
+// (unsupported browser, blocked by a privacy setting, etc.) throw or block
+// the rest of app init — this is a progressive enhancement, not a
+// requirement for the app to work. Returns the registration (or null) so
+// callers can drive the update-checking logic below off it.
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    return await navigator.serviceWorker.register('./sw.js', { type: 'module' });
+  } catch (err) {
+    console.warn('Service worker registration failed:', err);
+    return null;
+  }
+}
+
+// ── Service worker update checking ──────────────────────────────────────────
+//
+// General background check (every app start): fire-and-forget, never
+// awaited before rendering. If an update installs while there's already an
+// existing controller (i.e. this isn't the very first install), a
+// persistent banner offers to activate it.
+
+let pendingUpdateRegistration = null;
+
+// Never throws, never awaited by its caller.
+function watchForServiceWorkerUpdate(registration) {
+  if (!registration) return;
+
+  registration.update().catch(() => {});
+
+  registration.addEventListener('updatefound', () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+    newWorker.addEventListener('statechange', () => {
+      // 'installed' + an existing controller means this is an update to an
+      // already-running app, not the very first install of the app.
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner(registration);
+      }
+    });
+  });
+
+  // A previous session may have left an update installed-but-waiting (the
+  // banner was hidden, or the tab closed before "Update now" was clicked)
+  // — surface it again now instead of losing track of it.
+  if (registration.waiting && navigator.serviceWorker.controller) {
+    showUpdateBanner(registration);
+  }
+}
+
+function showUpdateBanner(registration) {
+  pendingUpdateRegistration = registration;
+  const banner = document.getElementById('update-banner');
+  if (banner) banner.hidden = false;
+}
+
+// Hides the banner for the rest of THIS page load only — nothing is
+// persisted, so the banner is not permanently dismissible: if the update
+// is still pending next time the app starts, watchForServiceWorkerUpdate()'s
+// registration.waiting check brings it back.
+function hideUpdateBanner() {
+  const banner = document.getElementById('update-banner');
+  if (banner) banner.hidden = true;
+}
+
+// Share-link-specific check (only meaningful when hasShareParams() is
+// true): a share link must decode against the current needledb.js, not a
+// stale cached one. There used to be an attempt here to race a pending
+// service-worker update's activation against a timeout before deciding —
+// but by the time any code in this file runs, the browser's ES module
+// loader has already fetched and executed js/needledb.js (module scripts
+// run before DOMContentLoaded, which is before this check ever could), so
+// NEEDLE_DB for this page load is already bound to whatever was cached at
+// that point. No amount of waiting for a service-worker update afterwards
+// can make this page's own data any fresher — it could only affect a
+// future page load. So the only thing worth checking is whether we're
+// fully offline, since then the needledb.js this decodes against might
+// not be the one the link's creator had.
+function isShareLinkPossiblyStale() {
+  return !navigator.onLine;
 }
 
 function showImportBanner() {
@@ -902,9 +1079,19 @@ function updateCrossSectionLive() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Register the service worker in the background — fire-and-forget, never
+  // awaited, so a slow/failed registration or update check can't delay
+  // rendering.
+  registerServiceWorker().then(watchForServiceWorkerUpdate).catch(() => {});
+
   // Apply a share link (if present in the URL) before anything else reads
   // `setups`/`carbType`, so the very first render already reflects it.
-  applyShareFromUrl();
+  const shareOfflineStale = hasShareParams(location.search) && isShareLinkPossiblyStale();
+  applyShareFromUrl({ offlineStale: shareOfflineStale });
+
+  // iOS Safari never fires 'beforeinstallprompt', so it needs its own
+  // one-time check to decide whether #btn-install should appear at all.
+  maybeShowIosInstallButton();
 
   // Initialize carb type radios from persisted state
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
@@ -1062,6 +1249,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!inDialog) dialog.close();
   });
 
+  // Install App button (native Chromium prompt, or iOS instructions dialog)
+  document.getElementById('btn-install')?.addEventListener('click', handleInstallButtonClick);
+  document.getElementById('btn-install-dialog-close')?.addEventListener('click', () => {
+    document.getElementById('install-dialog')?.close();
+  });
+  document.getElementById('install-dialog')?.addEventListener('click', e => {
+    const dialog = e.currentTarget;
+    if (e.target !== dialog) return; // click landed on dialog content, not the backdrop
+    const rect = dialog.getBoundingClientRect();
+    const inDialog = e.clientX >= rect.left && e.clientX <= rect.right
+      && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    if (!inDialog) dialog.close();
+  });
+
   // Import banner (shown once, when a share link was applied at page load)
   document.getElementById('btn-import-undo')?.addEventListener('click', () => {
     if (!importUndo?.snapshot) return;
@@ -1072,6 +1273,15 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI(); // its central check hides the banner once state != importedKey
   });
   document.getElementById('btn-import-close')?.addEventListener('click', hideImportBanner);
+
+  // Update banner (shown when a new service-worker version has installed)
+  document.getElementById('btn-update-now')?.addEventListener('click', () => {
+    const waitingWorker = pendingUpdateRegistration?.waiting;
+    if (!waitingWorker) return;
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+  });
+  document.getElementById('btn-update-close')?.addEventListener('click', hideUpdateBanner);
 
   // ── Tooltip (data-tooltip attribute) — hover + tap ──────────────────────
   const tip = document.createElement('div');

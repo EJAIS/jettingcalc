@@ -378,6 +378,9 @@ export function applyTranslations() {
   document.querySelectorAll('[data-i18n-title]').forEach(el => {
     el.title = t(el.getAttribute('data-i18n-title'));
   });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label')));
+  });
   document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
     el.dataset.tooltip = t(el.getAttribute('data-i18n-tooltip'));
   });

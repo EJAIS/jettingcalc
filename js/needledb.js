@@ -299,11 +299,17 @@ const CLIP_GEOMETRY_DEFAULT = CLIP_GEOMETRY_BY_COUNT[4];
 
 // Resolve groove geometry for a needle entry (base DB or custom, passed
 // by the caller so no storage.js import is needed). Per-needle overrides
-// `clipSpacing` / `clipTopOffset` win over the count-based table; a count
-// outside 3–5 (custom needles) falls back to the reference geometry.
+// `clipSpacing` / `clipTopOffset` win over the count-based table, whether
+// the needle is built-in or custom. The count-based table was measured on
+// K needles, so it only applies to needles in the fixed NEEDLE_DB; custom
+// needles always get the 4-groove reference geometry (correction 0), as do
+// built-in needles whose count is outside 3–5.
 export function getClipGeometry(needle, needleType) {
+  const isBuiltIn = Object.prototype.hasOwnProperty.call(NEEDLE_DB, needleType);
   const count = needle?.clips ?? getClipCount(needleType);
-  const base = CLIP_GEOMETRY_BY_COUNT[count] ?? CLIP_GEOMETRY_DEFAULT;
+  const base = isBuiltIn
+    ? (CLIP_GEOMETRY_BY_COUNT[count] ?? CLIP_GEOMETRY_DEFAULT)
+    : CLIP_GEOMETRY_DEFAULT;
   return {
     spacing:   needle?.clipSpacing   ?? base.spacing,
     topOffset: needle?.clipTopOffset ?? base.topOffset,

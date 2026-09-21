@@ -176,22 +176,13 @@ kein Datenfehler).
   `spacing = 1,2` für PHBH zu bestätigen (bisher Annahme). Der
   Oberkante-Offset ist für X irrelevant, da `minExposed.PHBH` direkt
   mit X2 gemessen wurde.
-- **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles (Priorität MITTEL, offener
-  Punkt aus Code-Review 2026-09):** `getClipGeometry()` (`js/needledb.js`)
-  wendet die an K-Nadeln gemessene 3-/5-Nut-Korrektur (`topOffset`/
-  `spacing`) unbesehen auf JEDE Nadel mit `clips: 3` bzw. `clips: 5` an —
-  auch auf vom Nutzer angelegte Custom Needles (Formular erlaubt 1–8), für
-  die kein Bezug zur K-Nadel-Geometrie besteht. Anders als bei PHBH/PHBL
-  gibt es dafür weder einen Hinweis/Beta-Badge in der UI noch eine
-  Möglichkeit, die Korrektur pro Nadel zu deaktivieren (nur zu
-  überschreiben, via `clipSpacing`/`clipTopOffset`, was im Custom-Needle-
-  Formular aktuell nicht exponiert ist). Mögliche Lösungen: (a) die
-  Korrektur nur auf Nadeln aus `NEEDLE_DB` (feste Datenbank) anwenden,
-  Custom Needles immer auf die 4-Nut-Referenzgeometrie fallbacken, oder
-  (b) `clipSpacing`/`clipTopOffset` im Custom-Needle-Formular exponieren,
-  damit Nutzer bei Bedarf explizit gegensteuern können. Bislang unverändert
-  gelassen (siehe Code-Review-Notiz), da eine Entscheidung dazu noch
-  aussteht.
+- **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles — gelöst (2026-09):**
+  `getClipGeometry()` wendet die K-Nadel-Korrektur nur noch auf Nadeln
+  aus `NEEDLE_DB` an. Custom Needles verwenden unabhängig von ihrer
+  `clips`-Zahl immer die 4-Nut-Referenzgeometrie (Option a aus dem
+  Code-Review — Option b, `clipSpacing`/`clipTopOffset` im Formular
+  exponieren, bewusst nicht umgesetzt, da eine Nutzer-eingegebene
+  Nut-Geometrie ohne Referenzmessung ohnehin nicht verifizierbar wäre).
 
 ## Priorität MITTEL
 

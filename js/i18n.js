@@ -16,6 +16,7 @@ const TRANSLATIONS = {
     'btn.copied':    'Copied!',
     'btn.close':     'Close',
     'btn.undo':      'Undo',
+    'btn.updateNow': 'Update now',
 
     // Carb type selector
     'carbType.label': 'Carburetor Type',
@@ -162,6 +163,10 @@ const TRANSLATIONS = {
     'msg.shareFieldsIgnored':   '{n} field(s) in the shared link were invalid and were skipped.',
     'msg.shareInvalid':         'This share link is invalid or corrupted.',
     'msg.shareVersion':         "This share link was created with a newer version of this app and can't be loaded.",
+    'msg.shareOfflineStaleWarning': 'This link may have been created with a newer needle database — reconnect and reload to make sure your values are current.',
+
+    // Service worker updates
+    'banner.updateAvailable': 'A new version of this app is available.',
 
     // SVG needle schematic labels
     'svg.shank':         'Shank',
@@ -191,6 +196,7 @@ const TRANSLATIONS = {
     'btn.copied':    'Kopiert!',
     'btn.close':     'Schließen',
     'btn.undo':      'Rückgängig',
+    'btn.updateNow': 'Jetzt aktualisieren',
 
     // Carb type selector
     'carbType.label': 'Vergaser-Typ',
@@ -337,6 +343,10 @@ const TRANSLATIONS = {
     'msg.shareFieldsIgnored':   '{n} Feld(er) im geteilten Link waren ungültig und wurden übersprungen.',
     'msg.shareInvalid':         'Dieser Link zum Teilen ist ungültig oder beschädigt.',
     'msg.shareVersion':         'Dieser Link zum Teilen wurde mit einer neueren Version dieser App erstellt und kann nicht geladen werden.',
+    'msg.shareOfflineStaleWarning': 'Dieser Link wurde möglicherweise mit einer neueren Nadeldatenbank erstellt — bitte erneut verbinden und neu laden, um aktuelle Werte sicherzustellen.',
+
+    // Service worker updates
+    'banner.updateAvailable': 'Eine neue Version dieser App ist verfügbar.',
 
     // SVG needle schematic labels
     'svg.shank':         'Schaft',

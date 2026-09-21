@@ -9,6 +9,12 @@
 // or adds/removes a file from PRECACHE_URLS: it changes CACHE_NAME, which
 // makes the next install() populate a fresh cache and the next activate()
 // delete the old one.
+//
+// Deliberately does NOT call self.skipWaiting() during install: once an
+// existing controller is already in place, a newly installed worker is
+// meant to sit in `registration.waiting` until the user opts in (see the
+// update banner / "Update now" flow in js/app.js), which is what the
+// 'message' listener below is for.
 
 import { hasShareParams } from './js/share.js';
 
@@ -89,8 +95,7 @@ if (inServiceWorkerScope) {
   self.addEventListener('install', event => {
     event.waitUntil(
       caches.open(CACHE_NAME)
-        .then(cache => cache.addAll(PRECACHE_URLS))
-        .then(() => self.skipWaiting()),
+        .then(cache => cache.addAll(PRECACHE_URLS)),
     );
   });
 
@@ -100,6 +105,15 @@ if (inServiceWorkerScope) {
         .then(names => Promise.all(names.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))))
         .then(() => self.clients.claim()),
     );
+  });
+
+  // Lets js/app.js's "Update now" button move a waiting worker into
+  // activation on demand, instead of it happening automatically on
+  // install (which would make the update banner/registration.waiting
+  // check pointless — the new worker would already have taken over by
+  // the time either ran).
+  self.addEventListener('message', event => {
+    if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
   });
 
   self.addEventListener('fetch', event => {

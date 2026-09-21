@@ -21,6 +21,17 @@ export function isSlotEmpty(slot) {
   return slot.name === `#${slot.id}` && SLOT_FIELDS.every(field => slot[field] == null);
 }
 
+// Data-only emptiness check, ignoring `name` — unlike isSlotEmpty(), a
+// custom name alone does NOT count as "not empty" here. Used to detect
+// whether a *decoded share link* actually carries any usable setup data:
+// its `name` comes from the independent `n<N>` param and can survive
+// (e.g. a relay/messenger truncating a link) even when every `s<N>` was
+// dropped, so isSlotEmpty() alone would call such a slot non-empty and
+// let a link with no real data past the "reject as corrupt" guard.
+export function isSlotDataEmpty(slot) {
+  return SLOT_FIELDS.every(field => slot[field] == null);
+}
+
 // Canonical JSON string for comparing app state (e.g. "did the loaded share
 // link change anything the user already had?"). Fixed field order and only
 // known fields, so it stays stable across unrelated object-key ordering or

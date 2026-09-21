@@ -22,6 +22,10 @@ Open `index.html` in any modern browser. No build step, no server required.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
 - Toggle the UI language between **English and German** with the DE/EN button in the header; preference is persisted in localStorage.
 - Use the **Custom Needles** section to define additional needle profiles — with an interactive measurement schematic and field reference table — save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
+- Use the **Share** button in the Setups card header to generate a link that encodes the carburetor type and every non-empty setup — all in the URL itself, nothing is uploaded anywhere. Click **Copy link** to copy it (Clipboard API with a manual-selection fallback). Sharing is blocked, with an explanation of which setup(s)/needle(s) are affected, if any setup to be shared uses a custom needle (custom needles only exist locally for the person who created them, so a link referencing one would be broken for anyone else) or if no setup has a needle selected yet.
+  - Opening a share link applies it automatically on page load, before anything else is rendered, and immediately strips the share parameters back out of the URL (any other query params or a `#hash` in the link are left alone) so reloading the page never re-applies it. An invalid or newer-version link leaves your current data untouched and shows a notice instead.
+  - If the link doesn't change anything you already had, nothing happens. Otherwise, an **"Undo"** banner appears once above the Setups table; if you had setups of your own, it snapshots them in memory (not persisted) so **Undo** can restore them instantly. The banner also disappears on its own — without needing Undo — as soon as you make any change that moves your data away from what the link imported (a language toggle does not count as a change and does not dismiss it), or you can dismiss it directly with ✕.
+  - See the ["Share links"](CLAUDE.md#share-links) section in CLAUDE.md for the URL schema, validation rules, and why custom needles can't be shared.
 
 ## Files
 
@@ -34,6 +38,7 @@ js/cutaway.js       Slide cutaway heuristic (2-stroke round-slide carbs only)
 js/storage.js       localStorage abstraction (setups + custom needles)
 js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
+js/share.js         Share-link encode/decode (pure module, no DOM/localStorage)
 js/app.js           UI logic, event handling
 original/           Original unmodified Excel spreadsheet (for reference)
 test/               Regression tests (Node's built-in test runner)
@@ -62,6 +67,16 @@ into `calcSetup()`'s idle-position formula) against the values verified in
 - The previously verified PHBL (D36) and PHBH (X2) idle positions — both
   4-groove reference needles — are unchanged, guarding against regressions
   in the already-measured `minExposed` / needle-length constants.
+
+`test/share.test.mjs` covers `js/share.js` in isolation (it has no DOM or
+localStorage dependency, so it runs directly under `node --test` like
+`calc.test.mjs`): round-tripping setups (including the three demo setups,
+a `carbSize` with a decimal like `39.5`, a partial setup, and umlauts/a
+`<script>` tag in a name) through `encodeShare()`/`decodeShare()`, rejecting
+an unknown version or carburetor type, dropping invalid fields with a
+warning (including a `clipPos` beyond that needle's `getClipCount()`),
+refusing to share a custom needle or a link with no active setups, and
+`shareParamKeys()` covering every param key a real encoded link uses.
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 

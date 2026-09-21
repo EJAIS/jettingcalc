@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Dellorto Jetting Calculator</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -67,10 +68,17 @@
 
   <div id="app-notice" class="app-notice" hidden></div>
 
+  <div id="import-banner" class="app-notice import-banner" hidden>
+    <span data-i18n="msg.shareLoaded">Shared setups loaded.</span>
+    <button id="btn-import-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
+    <button id="btn-import-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
+  </div>
+
   <!-- ── Setups Table ───────────────────────────────────────────────────── -->
   <div class="card">
     <div class="card-header">
       <h2 data-i18n="section.setups">Setups</h2>
+      <button id="btn-share" class="btn-ghost" data-i18n="btn.share" disabled>Share</button>
     </div>
     <div id="carb-beta-banner" class="carb-beta-banner" hidden></div>
     <div class="table-wrapper">
@@ -142,6 +150,23 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Share dialog ───────────────────────────────────────────────────── -->
+  <dialog id="share-dialog" class="share-dialog">
+    <h3 data-i18n="share.title">Share setups</h3>
+    <p data-i18n="share.intro">This creates a link that encodes your setups and carburetor type. Nothing is uploaded — the data lives entirely in the link itself.</p>
+    <div id="share-link-row" class="share-link-row">
+      <label for="share-url" data-i18n="share.linkLabel">Share link</label>
+      <div class="share-link-input-row">
+        <input id="share-url" type="text" readonly>
+        <button id="btn-share-copy" class="btn-primary" data-i18n="btn.copyLink">Copy link</button>
+      </div>
+    </div>
+    <p id="share-error" class="share-error" hidden></p>
+    <div class="share-dialog-actions">
+      <button id="btn-share-close" class="btn-ghost" data-i18n="btn.close">Close</button>
+    </div>
+  </dialog>
 
   <!-- ── Calculation Results ───────────────────────────────────────────── -->
   <div class="card">

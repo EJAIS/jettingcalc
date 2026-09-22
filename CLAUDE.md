@@ -965,3 +965,23 @@ Die unveränderte Original-Excel liegt im Repository unter `/original/` und wird
 5. `charts.js` – Chart.js Diagramme
 6. `app.js` – Alles verbinden inkl. mailto Submit-Button
 7. `style.css` – Styling + Dark Mode
+
+---
+
+## Git Hooks (optional, empfohlen)
+
+Ein `pre-commit`-Hook in `.githooks/pre-commit` hält `sw.js`s
+`JETTINGCALC_CACHE_VERSION` automatisch aktuell (führt
+`npm run sync-sw-version` aus und stagt `sw.js` neu, falls sich der Wert
+geändert hat). Da Git-Hooks nicht mitgeklont werden, einmalig pro lokalem
+Checkout aktivieren:
+
+```
+git config core.hooksPath .githooks
+```
+
+Das ist reine Bequemlichkeit — der eigentliche Schutz ist der Test in
+`test/sw.test.mjs`, der bei jedem `node --test` (laut Projektkonvention vor
+jedem Merge ohnehin ausgeführt) fehlschlägt, falls `JETTINGCALC_CACHE_VERSION`
+nicht mehr zum aktuellen Inhalt der precached Dateien passt — unabhängig
+davon, ob der Hook aktiviert oder mit `--no-verify` umgangen wurde.

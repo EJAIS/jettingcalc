@@ -18,6 +18,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation } from '../sw.js';
 import { hasShareParams, shareParamKeys } from '../js/share.js';
+import { computeCacheVersion } from '../scripts/sync-sw-cache-version.mjs';
 
 test('CACHE_NAME is derived from JETTINGCALC_CACHE_VERSION', () => {
   assert.equal(CACHE_NAME, `jettingcalc-${JETTINGCALC_CACHE_VERSION}`);
@@ -107,6 +108,14 @@ test('isShareNavigation stays in sync with share.js hasShareParams() across samp
     const url = new URL(raw);
     assert.equal(isShareNavigation(url), hasShareParams(url.search), `mismatch for ${raw}`);
   }
+});
+
+test('sw.js JETTINGCALC_CACHE_VERSION matches the current content of every precached file', () => {
+  assert.equal(
+    JETTINGCALC_CACHE_VERSION,
+    computeCacheVersion(),
+    'JETTINGCALC_CACHE_VERSION is stale — a precached file changed since the last sync. Run `npm run sync-sw-version` and commit the result.',
+  );
 });
 
 test('sw.js imports cleanly under plain Node (no self/caches in this scope)', () => {

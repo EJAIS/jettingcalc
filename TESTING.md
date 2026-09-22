@@ -146,6 +146,7 @@ in `js/app.js`.
       to be installable.
 - [ ] With the app installed as a window, launching it while offline
       still renders the full UI (table, both charts).
-- [ ] Trigger an update (bump `JETTINGCALC_CACHE_VERSION`, redeploy,
-      reopen the installed window): the update banner appears; "Update
-      now" reloads into the new version.
+- [ ] Trigger an update (touch a precached file, run
+      `npm run sync-sw-version` to refresh `JETTINGCALC_CACHE_VERSION`,
+      redeploy, reopen the installed window): the update banner appears;
+      "Update now" reloads into the new version.

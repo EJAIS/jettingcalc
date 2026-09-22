@@ -4,7 +4,7 @@
 const TRANSLATIONS = {
   en: {
     // Header
-    'app.subtitle': "Web port of 'Calculate Jetting for Dellorto Carbs v1.5'",
+    'app.subtitle': "Evolved web port of 'Calculate Jetting for Dellorto Carbs v1.5'",
 
     // Buttons
     'btn.loadDemo':  'Load Demo',
@@ -189,7 +189,7 @@ const TRANSLATIONS = {
 
   de: {
     // Header
-    'app.subtitle': "Web-Port von 'Calculate Jetting for Dellorto Carbs v1.5'",
+    'app.subtitle': "Evolved Web-Port von 'Calculate Jetting for Dellorto Carbs v1.5'",
 
     // Buttons
     'btn.loadDemo':  'Demo laden',

@@ -44,6 +44,8 @@ js/vendor/          Vendored third-party scripts (Chart.js — see js/vendor/REA
 sw.js               Service worker (offline support, update checking)
 manifest.json       PWA manifest
 icons/              PWA icons (192/512/maskable/apple-touch-icon)
+scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version from precached file content
+.githooks/          Optional pre-commit hook that runs the script above automatically (see CLAUDE.md)
 original/           Original unmodified Excel spreadsheet (for reference)
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
@@ -87,13 +89,42 @@ server needs to set these explicitly:
   on top of the 24h throttle. `sw.js` is the one file in this repo that
   should never be far-future-cached, unlike everything under `js/vendor/`
   or `icons/` which are safe to cache aggressively since they're
-  versioned by `JETTINGCALC_CACHE_VERSION`/filename instead. For nginx:
+  versioned by `JETTINGCALC_CACHE_VERSION`/filename instead. That version
+  string is a generated content hash (see "Service worker cache
+  versioning" below), not something to hand-edit before a release. For
+  nginx:
 
   ```nginx
   location = /sw.js {
     add_header Cache-Control "no-cache";
   }
   ```
+
+### Service worker cache versioning
+
+`sw.js`'s `JETTINGCALC_CACHE_VERSION` (and therefore `CACHE_NAME`) is **not**
+hand-maintained. It's a SHA-256 hash (first 12 hex chars) computed over the
+relative path and byte content of every file listed in `PRECACHE_URLS`, so
+it changes automatically whenever any precached file's content changes —
+there's nothing to remember to bump.
+
+```
+npm run sync-sw-version
+```
+
+runs `scripts/sync-sw-cache-version.mjs`, which recomputes the hash and
+rewrites the `JETTINGCALC_CACHE_VERSION` line in `sw.js` in place if it's
+out of date (a no-op otherwise). Run it whenever a precached file changes —
+before a release, or as part of your normal commit flow via the optional
+`.githooks/pre-commit` hook (`git config core.hooksPath .githooks`, see
+[CLAUDE.md](CLAUDE.md#git-hooks-optional-empfohlen)), which re-syncs and
+re-stages `sw.js` automatically.
+
+The hook is a convenience only — it can be bypassed with `--no-verify` and
+isn't enabled by a fresh clone. The actual safety net is a `test/sw.test.mjs`
+assertion (see below) that fails the next `node --test` run if
+`JETTINGCALC_CACHE_VERSION` doesn't match the current file content, so a
+forgotten sync can't silently ship a stale cache to already-installed users.
 
 ## Testing
 
@@ -132,8 +163,11 @@ refusing to share a custom needle or a link with no active setups, and
 `test/sw.test.mjs` covers the pure, DOM-free parts of `sw.js` (the
 service worker): the precache manifest — including a cross-check against
 what `manifest.json`/`index.html` actually reference, not just a second
-hand-maintained list — and `isShareNavigation()` staying in sync with
-`share.js`'s `hasShareParams()`.
+hand-maintained list — `isShareNavigation()` staying in sync with
+`share.js`'s `hasShareParams()`, and (via
+`scripts/sync-sw-cache-version.mjs`'s `computeCacheVersion()`) that
+`JETTINGCALC_CACHE_VERSION` actually matches the current content of every
+precached file — see "Service worker cache versioning" above.
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 

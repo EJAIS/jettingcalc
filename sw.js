@@ -5,10 +5,13 @@
 // in js/app.js) so it can import hasShareParams() straight from share.js
 // instead of re-implementing the check — the two can't drift apart.
 //
-// Bump JETTINGCALC_CACHE_VERSION on any release that changes js/needledb.js
-// or adds/removes a file from PRECACHE_URLS: it changes CACHE_NAME, which
-// makes the next install() populate a fresh cache and the next activate()
-// delete the old one.
+// JETTINGCALC_CACHE_VERSION is a generated content hash (see
+// scripts/sync-sw-cache-version.mjs) — it must NOT be hand-edited. It is
+// kept in sync by running `npm run sync-sw-version` whenever a precached
+// file changes, which changes CACHE_NAME and makes the next install()
+// populate a fresh cache and the next activate() delete the old one. If
+// that step is forgotten, test/sw.test.mjs fails the next `node --test`
+// run as the fallback safety net.
 //
 // Deliberately does NOT call self.skipWaiting() during install: once an
 // existing controller is already in place, a newly installed worker is
@@ -18,7 +21,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = 'v2';
+export const JETTINGCALC_CACHE_VERSION = 'd4d532e6700e';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so

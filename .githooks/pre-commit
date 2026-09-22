@@ -1,0 +1,15 @@
+#!/bin/sh
+# Keeps sw.js's JETTINGCALC_CACHE_VERSION in sync with the precached files'
+# actual content before every commit. Convenience layer only — the real
+# guarantee is test/sw.test.mjs, run via `node --test` before merge, since
+# this hook can be bypassed with --no-verify and isn't cloned by default
+# (see CLAUDE.md for the one-time `git config core.hooksPath .githooks`
+# setup that enables it).
+
+set -e
+
+node scripts/sync-sw-cache-version.mjs
+
+if ! git diff --quiet -- sw.js; then
+  git add sw.js
+fi

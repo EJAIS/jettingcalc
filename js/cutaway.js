@@ -1,7 +1,7 @@
 // cutaway.js — Recommended slide cutaway calculation
 // Heuristic source: M. Forrest, dragonfly75.com (unverified — see disclaimer in i18n)
 // Scoped to 2-stroke round-slide carburetors only.
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 const RATIO_MIN = 0.45;
 const RATIO_MAX = 0.8;

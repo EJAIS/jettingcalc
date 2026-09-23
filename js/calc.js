@@ -1,6 +1,6 @@
 // calc.js — Calculation engine
 // Ported 1:1 from Excel formulas in "Calc Data" sheet
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { NEEDLE_DB, JET_OFFSETS, getClipGeometry, CLIP_TOP_OFFSET_REF,
          getNeedleLength, getTaperCount } from './needledb.js';

@@ -1,5 +1,5 @@
 // i18n.js — EN/DE translations and language helpers
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 export const TRANSLATIONS = {
   en: {

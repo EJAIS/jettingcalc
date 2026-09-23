@@ -26,6 +26,7 @@ globalThis.localStorage = {
   setItem: () => {},
 };
 const { TRANSLATIONS } = await import('../js/i18n.js');
+const { CATALOG_COLUMNS } = await import('../js/needlecatalog.js');
 
 const { en, de } = TRANSLATIONS;
 const PLACEHOLDER = /\{[a-zA-Z]+\}/g;
@@ -85,4 +86,16 @@ test('every literal t(\'…\') key in js/*.js exists in TRANSLATIONS.en', () => 
   }
   assert.ok(keys.length > 0, 'expected literal t() calls in js/*.js');
   assert.deepEqual(missingFromEn(keys), []);
+});
+
+// The catalog table headers use dynamic keys (t(`catalog.col.${key}`)),
+// which the literal-t() scan above cannot see — so guard them explicitly.
+test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', () => {
+  const missing = [];
+  for (const { key } of CATALOG_COLUMNS) {
+    for (const lang of ['en', 'de']) {
+      if (!Object.hasOwn(TRANSLATIONS[lang], `catalog.col.${key}`)) missing.push(`${lang}:catalog.col.${key}`);
+    }
+  }
+  assert.deepEqual(missing, []);
 });

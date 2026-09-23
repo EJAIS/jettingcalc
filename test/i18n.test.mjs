@@ -1,5 +1,5 @@
 // test/i18n.test.mjs — Permanent guard for EN/DE completeness of the UI
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 //
 // Plain Node.js built-in test runner (`node --test`), no dependencies,
 // consistent with the project's "no build tool" philosophy. Run with:

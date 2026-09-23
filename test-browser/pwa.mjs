@@ -1,7 +1,7 @@
 // test-browser/pwa.mjs — Browser-driven regression tests for the PWA
 // features (service worker offline support, share-link freshness
 // checking, the update banner, and the install button).
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 //
 // These need a real Chromium and the `playwright` package, unlike the
 // project's zero-dependency unit tests in test/ (which only use Node's

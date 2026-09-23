@@ -1,5 +1,5 @@
 // storage.js — localStorage abstraction for setups and custom needles
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { NEEDLE_DB, getClipCount } from './needledb.js';
 

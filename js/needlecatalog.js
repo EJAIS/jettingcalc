@@ -5,7 +5,7 @@
 // this module can be unit-tested with plain node:test. It contains no
 // user-visible text — only keys, numbers and codes; column headings,
 // filter labels etc. are resolved in the UI via t() and catalog.* keys.
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { NEEDLE_DB, VERIFIED_DEFAULT_CLIP_PREFIXES, getClipCount,
          getNeedleLength, getTaperCount } from './needledb.js';

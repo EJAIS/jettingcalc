@@ -1,5 +1,5 @@
 // sw.js — Service worker for offline support.
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 //
 // Registered as an ES module ({ type: 'module' }, see registerServiceWorker()
 // in js/app.js) so it can import hasShareParams() straight from share.js
@@ -21,7 +21,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = '98b9fc7be507';
+export const JETTINGCALC_CACHE_VERSION = '6b38dfe864a5';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so

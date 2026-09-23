@@ -1,6 +1,6 @@
 // needledb.js — Static needle database (read-only)
 // Source: "Needle Data" sheet of "Calculate Jetting for Dellorto Carbs v1.5"
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 // Needles: { carbType, A, B, C } for 1 taper; { ..., D, E } for 2 taper; { ..., F } for 3 taper
 // A = ØA shank diameter, B = ØB tip diameter, C = taper-1 start from tip

@@ -1,5 +1,5 @@
 // charts.js — Chart.js diagram rendering
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { calcSetup } from './calc.js';
 import { t } from './i18n.js';

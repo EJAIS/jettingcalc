@@ -1,5 +1,5 @@
 // test/needlecatalog.test.mjs — Regression tests for js/needlecatalog.js
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 //
 // Plain Node.js built-in test runner (`node --test`), no dependencies,
 // consistent with the project's "no build tool" philosophy. Run with:
@@ -15,8 +15,8 @@ import {
   sortCatalogRows, formatCatalogValue,
 } from '../js/needlecatalog.js';
 
-// The three demo setups from CLAUDE.md (K98 needle, VHSx carb), plus two
-// empty slots.
+// The three example setups from the original spreadsheet's Chart sheet
+// (K98 needle, VHSx carb), plus two empty slots.
 const DEMO_SETUPS = [
   { id: 1, name: '#1 Simonini Grund', needleType: 'K98', clipPos: 3, carbSize: 30, needleJet: 262, jetType: 'DP', nd: 53, hd: 175 },
   { id: 2, name: '#2 Simonini 6.6.23', needleType: 'K98', clipPos: 1, carbSize: 30, needleJet: 268, jetType: 'DQ', nd: 53, hd: 155 },

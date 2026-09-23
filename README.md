@@ -48,7 +48,7 @@ manifest.json       PWA manifest
 icons/              PWA icons (192/512/maskable/apple-touch-icon)
 scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version from precached file content
 .githooks/          Optional pre-commit hook that runs the script above automatically (see CLAUDE.md)
-original/           Original unmodified Excel spreadsheet (for reference)
+original/           Copy of the original Excel spreadsheet (for reference, see "Upstream copyright")
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
 ```
@@ -229,7 +229,7 @@ This project is a web port of the Excel spreadsheet
 Copyright (C) 2014 GUE
 Licensed under the GNU General Public License v2.0
 
-The original spreadsheet is included unmodified at [/original/](original/) for reference and attribution purposes.
+A copy of the spreadsheet is included at [/original/](original/) for reference and attribution. It is a locally re-saved copy: the example setups on the Chart sheet were entered by the author of this port, and personal document metadata has been removed. The untouched original download is no longer available. The copyright notice inside the spreadsheet is unchanged.
 
 This web port is also released under GPL v2.0.
 Source: https://github.com/EJAIS/jettingcalc

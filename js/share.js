@@ -2,7 +2,7 @@
 // Pure ES module: no DOM access, no localStorage, no import of storage.js
 // or i18n.js. Only needledb.js (the read-only static data) is imported, so
 // this module can be unit-tested with plain node:test.
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 

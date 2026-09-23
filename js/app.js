@@ -1,5 +1,5 @@
 // app.js — UI logic, event handling
-// Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
+// Copyright (C) 2014 GUE — GPL v2.0
 
 import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles, loadCarbType, saveCarbType } from './storage.js';
 import { calcSetup } from './calc.js';

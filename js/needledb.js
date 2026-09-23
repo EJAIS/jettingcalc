@@ -269,6 +269,19 @@ export const NEEDLE_DB = {
 // Needle length by prefix
 export const NEEDLE_LENGTHS = { "K": 73.5, "U": 68.0, "X": 55.0, "D": 52.0 };
 
+// Overall needle length (mm) for a needle entry (base DB or custom). A
+// per-needle `length` override (e.g. X37) wins over the prefix default;
+// unknown prefixes fall back to the K length.
+export function getNeedleLength(needle, needleType) {
+  return needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
+}
+
+// Number of tapers (1–3) for a needle entry. Truthy checks on purpose:
+// F/E of 0 count as absent, same as the original spreadsheet (Excel B14).
+export function getTaperCount(needle) {
+  return needle.F ? 3 : needle.E ? 2 : 1;
+}
+
 // Fallback clip-position count for needle types without per-needle data
 // yet (all except K, which has verified per-needle counts from the
 // official Dellorto datasheet — see NEEDLE_DB entries).
@@ -280,6 +293,11 @@ const DEFAULT_CLIPS_BY_PREFIX = {
   X: 4,
   U: 4,
 };
+
+// Prefixes whose DEFAULT_CLIPS_BY_PREFIX value is physically verified and
+// can be presented as such. D is verified (KONSTANTEN_VERIFIKATION.md);
+// X and U are placeholders and must stay out of this list until verified.
+export const VERIFIED_DEFAULT_CLIP_PREFIXES = ['D'];
 
 // Clip-groove geometry by groove count, measured on K needles (2026-09):
 // spacing = pitch between adjacent grooves; topOffset = distance from the

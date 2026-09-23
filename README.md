@@ -48,7 +48,7 @@ manifest.json       PWA manifest
 icons/              PWA icons (192/512/maskable/apple-touch-icon)
 scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version from precached file content
 .githooks/          Optional pre-commit hook that runs the script above automatically (see CLAUDE.md)
-original/           Copy of the original Excel spreadsheet (for reference, see "Upstream copyright")
+original/           Unmodified original Excel spreadsheet (for reference, see "Upstream copyright")
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
 ```
@@ -201,15 +201,29 @@ launch).
 
 ## Verification
 
-Known-good values, verified against the original Excel formulas:
+Known-good values, taken from the example setups stored on the Chart sheet of
+the included original spreadsheet (cells `G5`–`G9`) and reproduced by this port:
 
-| Setup | maxHD (displayed as integer) |
-|-------|------------------------------|
-| #1 Demo-1 (K98, clip 3, NJ 262, DP) | 166 |
-| #2 Demo-2 (K98, clip 1, NJ 268, DQ) | 166 |
-| #3 Demo-3 (K98, clip 1, NJ 267, DQ) | 165 |
+| Setup | Original (`Chart!G5`–`G9`) | This port | Delta |
+|---|---|---|---|
+| K24, clip 2, bore 34, NJ 270, DQ | 190.0167529 | 190.0167529 | 0 |
+| K24, clip 3, bore 34, NJ 264, DQ | 187.7297341 | 187.7297341 | 0 |
+| K24, clip 3, bore 34, NJ 264, DP | 197.4126466 | 197.4126466 | 0 |
+| K27, clip 2, bore 34, NJ 264, DP | 173.5572866 | 173.0087121 | −0.5486 |
+| U16, clip 2, bore 32, NJ 262, DQ | 168.5784197 | 168.5784197 | 0 |
 
-> **Note:** The original spreadsheet's Chart sheet has a copy-paste bug — the max-HD cells for setups 2 and 3 both reference setup 1's calculation table instead of their own, so the Excel itself displays 166 / 176 / 174 for these three setups. This port intentionally computes each setup from its own data and does **not** reproduce that bug; the values above are the corrected ones.
+The K27 row is the only difference, and it is intentional: K27 has five clip
+grooves, and this port uses the measured per-groove geometry
+(`CLIP_GEOMETRY_BY_COUNT`) where the spreadsheet assumes a single fixed groove
+spacing. See [CLAUDE.md](CLAUDE.md), section "Bewusste Abweichungen vom
+Original-Excel".
+
+> **Note:** The original spreadsheet computes max HD per setup correctly —
+> `Chart!G5`–`G9` each reference their own `'Calc Data 1'`…`'Calc Data 5'`
+> table. An earlier version of this documentation claimed a copy-paste bug in
+> those cells; that claim came from a locally modified copy of the spreadsheet
+> that has since been removed from this repository and is **not** true of the
+> original. This port matches the original here; please do not "fix" it back.
 
 ## Cutaway calculation disclaimer
 
@@ -229,7 +243,10 @@ This project is a web port of the Excel spreadsheet
 Copyright (C) 2014 GUE
 Licensed under the GNU General Public License v2.0
 
-A copy of the spreadsheet is included at [/original/](original/) for reference and attribution. It is a locally re-saved copy: the example setups on the Chart sheet were entered by the author of this port, and personal document metadata has been removed. The untouched original download is no longer available. The copyright notice inside the spreadsheet is unchanged.
+The original spreadsheet is included unmodified at
+[/original/Dellorto_Jetting_Gue.xlsx](original/Dellorto_Jetting_Gue.xlsx)
+(as downloaded in 2022, SHA-256 `4138cb52c7d108c9308d4c50ff540bf419f3d8d4cc387862600e00cafb6e1807`)
+for reference and attribution purposes.
 
 This web port is also released under GPL v2.0.
 Source: https://github.com/EJAIS/jettingcalc

@@ -94,6 +94,31 @@ browser context, so they don't share service-worker/cache state.
 
 All 5 passed against the current `feature/pwa` branch.
 
+`test-browser/catalog.mjs` covers the needle catalog view (service
+workers are blocked there — the tests are about the UI, not caching):
+
+- **Tabs and history** — clicking the catalog tab sets `#needles` and
+  swaps the panels, `history.back()` returns to the calculator with an
+  empty hash, a direct load with `#needles` opens the catalog, and
+  ArrowLeft/ArrowRight move between the tabs.
+- **No raw i18n keys** — in EN and DE, with demo setups and a custom
+  needle loaded, for VHSx and PHBH: no `view.*`/`catalog.*` key appears
+  in the visible text or in any `title`, `aria-label` or `placeholder`
+  of the tab bar and `#view-needles`.
+- **Isolation** — switching the catalog to PHBL leaves the calculator's
+  carb-type radio and the `dellorto_carb_type` / `dellorto_setups`
+  localStorage values untouched.
+- **Setups and filters** — after Load Demo, K98 shows three setup dots and
+  "My setups only" leaves exactly one row.
+- **Search** — typing `" k 98 "` finds K98 and focus stays in the search
+  box (also with no matches and the empty state shown).
+- **Phone layout (390×844)** — horizontally scrolling `#catalog-scroll`
+  leaves the sticky first column at the same x position, and the page
+  itself has no horizontal overflow.
+
+Set `CHROMIUM_PATH` to run it against a preinstalled Chromium when the
+Playwright package and its downloaded browser versions don't match.
+
 ## Manual test checklist
 
 Nothing below is automatable — a headless browser can't hold a real

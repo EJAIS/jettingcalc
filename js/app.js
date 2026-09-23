@@ -25,6 +25,7 @@ const catalogState = {
   carbType: null, series: 'all', tapers: 0,
   query: '', usedOnly: false,
   sortKey: 'name', sortDir: 'asc',
+  legendOpen: false,
 };
 
 // Currently shown view: 'calc' | 'needles'
@@ -420,6 +421,39 @@ function handleViewTabKeydown(e) {
   document.getElementById(VIEW_TABS[next])?.focus();
 }
 
+// ── Needle schematic ────────────────────────────────────────────────────────
+
+// Clones the shared needle schematic (<template id="tpl-needle-schematic">)
+// into `container`. Every id in the copy gets a `-${suffix}` suffix and all
+// url(#id) / href="#id" references inside it are rewritten to match: with
+// two copies sharing id="ndl-arrow", both would resolve to the first one's
+// marker, which some browsers don't render while it sits in a collapsed
+// <details>. Returns the mounted <svg> (or null if nothing was mounted).
+function mountNeedleSchematic(container, suffix) {
+  const tpl = document.getElementById('tpl-needle-schematic');
+  if (!container || !tpl) return null;
+  const clone = tpl.content.cloneNode(true);
+
+  const renamed = new Map();
+  clone.querySelectorAll('[id]').forEach(el => {
+    renamed.set(el.id, `${el.id}-${suffix}`);
+    el.id = `${el.id}-${suffix}`;
+  });
+  const rewrite = value => value
+    .replace(/url\(#([^)]+)\)/g, (m, id) => renamed.has(id) ? `url(#${renamed.get(id)})` : m)
+    .replace(/^#(.+)$/, (m, id) => renamed.has(id) ? `#${renamed.get(id)}` : m);
+  clone.querySelectorAll('*').forEach(el => {
+    for (const attr of [...el.attributes]) {
+      if (!attr.value.includes('#')) continue;
+      const updated = rewrite(attr.value);
+      if (updated !== attr.value) el.setAttribute(attr.name, updated);
+    }
+  });
+
+  container.replaceChildren(clone);
+  return container.querySelector('svg');
+}
+
 // ── Needle catalog ──────────────────────────────────────────────────────────
 
 function catalogCarbType() {
@@ -443,8 +477,23 @@ function buildActiveCatalogRows() {
 }
 
 function renderNeedleCatalog() {
+  renderCatalogLegend();
   renderCatalogControls();
   renderCatalogTable();
+}
+
+// Dimension key (needle schematic) below the filter bar: visibility, plus
+// the toggle's label/aria-expanded — re-run on every catalog render so the
+// label follows language changes.
+function renderCatalogLegend() {
+  const open = catalogState.legendOpen;
+  const legend = document.getElementById('catalog-legend');
+  if (legend) legend.hidden = !open;
+  const btn = document.getElementById('catalog-legend-toggle');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(open));
+    btn.textContent = t(open ? 'catalog.legend.hide' : 'catalog.legend.show');
+  }
 }
 
 // Re-rendering replaces the focused button; this puts focus back on its
@@ -1328,6 +1377,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // rendering.
   registerServiceWorker().then(watchForServiceWorkerUpdate).catch(() => {});
 
+  // Needle schematics: mounted before the first applyTranslations() (which
+  // updateUI() already triggers), so their data-i18n texts get translated.
+  mountNeedleSchematic(document.querySelector('[data-schematic="custom"]'), 'custom');
+  mountNeedleSchematic(document.querySelector('[data-schematic="catalog"]'), 'catalog');
+
   // Apply a share link (if present in the URL) before anything else reads
   // `setups`/`carbType`, so the very first render already reflects it.
   const shareOfflineStale = hasShareParams(location.search) && isShareLinkPossiblyStale();
@@ -1364,6 +1418,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Needle catalog: filters/sort re-render; the search box only re-renders
   // the table so it keeps focus while typing.
   document.getElementById('catalog-controls')?.addEventListener('click', handleCatalogControlClick);
+  document.getElementById('catalog-legend-toggle')?.addEventListener('click', () => {
+    catalogState.legendOpen = !catalogState.legendOpen;
+    renderCatalogLegend();
+  });
   document.getElementById('catalog-table')?.addEventListener('click', handleCatalogSortClick);
   document.getElementById('catalog-search')?.addEventListener('input', e => {
     catalogState.query = e.target.value;

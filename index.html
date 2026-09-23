@@ -37,7 +37,28 @@
   </div>
 </header>
 
+<nav id="view-tabs" class="view-tabs" role="tablist" data-i18n-aria-label="view.nav.label" aria-label="View">
+  <button type="button" role="tab" id="tab-calc" aria-controls="view-calc" aria-selected="true" tabindex="0" data-i18n="view.calc">Calculator</button>
+  <button type="button" role="tab" id="tab-catalog" aria-controls="view-needles" aria-selected="false" tabindex="-1" data-i18n="view.catalog">Needle catalog</button>
+</nav>
+
 <main>
+
+  <div id="app-notice" class="app-notice" hidden></div>
+
+  <div id="import-banner" class="app-notice import-banner" hidden>
+    <span data-i18n="msg.shareLoaded">Shared setups loaded.</span>
+    <button id="btn-import-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
+    <button id="btn-import-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
+  </div>
+
+  <div id="update-banner" class="app-notice import-banner" hidden>
+    <span data-i18n="banner.updateAvailable">A new version of this app is available.</span>
+    <button id="btn-update-now" class="btn-ghost" data-i18n="btn.updateNow">Update now</button>
+    <button id="btn-update-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
+  </div>
+
+  <section id="view-calc" class="view-panel" role="tabpanel" aria-labelledby="tab-calc">
 
   <!-- ── Carburetor Type Selector ──────────────────────────────────────── -->
   <div id="carb-type-selector" class="carb-type-selector">
@@ -71,20 +92,6 @@
             role="button" tabindex="0"
             aria-label="PHBL beta disclaimer">ℹ</span>
     </div>
-  </div>
-
-  <div id="app-notice" class="app-notice" hidden></div>
-
-  <div id="import-banner" class="app-notice import-banner" hidden>
-    <span data-i18n="msg.shareLoaded">Shared setups loaded.</span>
-    <button id="btn-import-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
-    <button id="btn-import-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
-  </div>
-
-  <div id="update-banner" class="app-notice import-banner" hidden>
-    <span data-i18n="banner.updateAvailable">A new version of this app is available.</span>
-    <button id="btn-update-now" class="btn-ghost" data-i18n="btn.updateNow">Update now</button>
-    <button id="btn-update-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
   </div>
 
   <!-- ── Setups Table ───────────────────────────────────────────────────── -->
@@ -153,49 +160,6 @@
     </div>
 
   </div>
-
-  <!-- ── Chart modal ────────────────────────────────────────────────────── -->
-  <div id="chart-modal" class="chart-modal-backdrop" hidden>
-    <div class="chart-modal-box">
-      <button id="chart-modal-close" class="chart-modal-close" title="Close">✕</button>
-      <div class="chart-modal-canvas-wrap">
-        <canvas id="modal-canvas"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Share dialog ───────────────────────────────────────────────────── -->
-  <dialog id="share-dialog" class="share-dialog">
-    <h3 data-i18n="share.title">Share setups</h3>
-    <p data-i18n="share.intro">This creates a link that encodes your setups and carburetor type. Nothing is uploaded — the data lives entirely in the link itself.</p>
-    <div id="share-link-row" class="share-link-row">
-      <label for="share-url" data-i18n="share.linkLabel">Share link</label>
-      <div class="share-link-input-row">
-        <input id="share-url" type="text" readonly>
-        <button id="btn-share-copy" class="btn-primary" data-i18n="btn.copyLink">Copy link</button>
-      </div>
-    </div>
-    <p id="share-error" class="share-error" hidden></p>
-    <div class="share-dialog-actions">
-      <button id="btn-share-close" class="btn-ghost" data-i18n="btn.close">Close</button>
-    </div>
-  </dialog>
-
-  <!-- ── iOS "Add to Home Screen" instructions dialog ────────────────────── -->
-  <dialog id="install-dialog" class="share-dialog">
-    <h3 data-i18n="install.iosDialogTitle">Install this app</h3>
-    <div class="install-ios-instructions">
-      <svg class="install-ios-share-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-        <path d="M12 3v12"/>
-        <path d="M8 7l4-4 4 4"/>
-        <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>
-      </svg>
-      <p data-i18n="install.iosDialogSteps">Tap the Share icon in Safari's toolbar, then choose "Add to Home Screen".</p>
-    </div>
-    <div class="share-dialog-actions">
-      <button id="btn-install-dialog-close" class="btn-ghost" data-i18n="btn.close">Close</button>
-    </div>
-  </dialog>
 
   <!-- ── Calculation Results ───────────────────────────────────────────── -->
   <div class="card">
@@ -459,6 +423,77 @@
       <div id="cross-section-diagram"></div>
     </div>
   </div>
+
+  </section>
+
+  <!-- ── Needle catalog ─────────────────────────────────────────────────── -->
+  <section id="view-needles" class="card catalog-card" role="tabpanel" aria-labelledby="tab-catalog" hidden>
+    <div class="card-header">
+      <h2 data-i18n="view.catalog">Needle catalog</h2>
+      <span id="catalog-count" class="catalog-count" aria-live="polite"></span>
+    </div>
+    <div class="card-body catalog-body">
+      <div class="catalog-toolbar">
+        <!-- Rendered by app.js (renderCatalogControls) -->
+        <div id="catalog-controls" class="catalog-controls"></div>
+        <!-- Outside the re-rendered controls so typing never loses focus -->
+        <label class="catalog-search">
+          <span class="visually-hidden" data-i18n="catalog.search.label">Search needle</span>
+          <input type="search" id="catalog-search" autocomplete="off" spellcheck="false"
+                 data-i18n-placeholder="catalog.search.placeholder" placeholder="Search needle, e.g. K98">
+        </label>
+      </div>
+      <div id="catalog-scroll" class="catalog-scroll">
+        <!-- thead/tbody rendered by app.js (renderCatalogTable) -->
+        <table id="catalog-table" class="catalog-table"></table>
+      </div>
+      <p id="catalog-empty" class="catalog-empty" data-i18n="catalog.empty" hidden>No needles match these filters.</p>
+      <p class="catalog-footnote" data-i18n="catalog.footnote">Values in mm. * = series default clip count, not verified per needle. Coloured dots = used in a setup.</p>
+    </div>
+  </section>
+
+  <!-- ── Chart modal ────────────────────────────────────────────────────── -->
+  <div id="chart-modal" class="chart-modal-backdrop" hidden>
+    <div class="chart-modal-box">
+      <button id="chart-modal-close" class="chart-modal-close" title="Close">✕</button>
+      <div class="chart-modal-canvas-wrap">
+        <canvas id="modal-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Share dialog ───────────────────────────────────────────────────── -->
+  <dialog id="share-dialog" class="share-dialog">
+    <h3 data-i18n="share.title">Share setups</h3>
+    <p data-i18n="share.intro">This creates a link that encodes your setups and carburetor type. Nothing is uploaded — the data lives entirely in the link itself.</p>
+    <div id="share-link-row" class="share-link-row">
+      <label for="share-url" data-i18n="share.linkLabel">Share link</label>
+      <div class="share-link-input-row">
+        <input id="share-url" type="text" readonly>
+        <button id="btn-share-copy" class="btn-primary" data-i18n="btn.copyLink">Copy link</button>
+      </div>
+    </div>
+    <p id="share-error" class="share-error" hidden></p>
+    <div class="share-dialog-actions">
+      <button id="btn-share-close" class="btn-ghost" data-i18n="btn.close">Close</button>
+    </div>
+  </dialog>
+
+  <!-- ── iOS "Add to Home Screen" instructions dialog ────────────────────── -->
+  <dialog id="install-dialog" class="share-dialog">
+    <h3 data-i18n="install.iosDialogTitle">Install this app</h3>
+    <div class="install-ios-instructions">
+      <svg class="install-ios-share-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M12 3v12"/>
+        <path d="M8 7l4-4 4 4"/>
+        <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>
+      </svg>
+      <p data-i18n="install.iosDialogSteps">Tap the Share icon in Safari's toolbar, then choose "Add to Home Screen".</p>
+    </div>
+    <div class="share-dialog-actions">
+      <button id="btn-install-dialog-close" class="btn-ghost" data-i18n="btn.close">Close</button>
+    </div>
+  </dialog>
 
 </main>
 

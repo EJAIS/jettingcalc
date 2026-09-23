@@ -391,14 +391,14 @@ export const TRANSLATIONS = {
 
     // SVG needle schematic labels
     'svg.shank':         'Schaft',
-    'svg.taper1':        'Konus 1',
-    'svg.taper2':        'Konus 2',
+    'svg.taper1':        'Taper 1',
+    'svg.taper2':        'Taper 2',
     'svg.cylTip':        'Zyl. Spitze',
     'svg.fromTipMm':     'von Spitze (mm)',
     'svg.fromTipOpt':    'von Spitze (opt.)',
     'svg.cylTipOpt':     'zyl. Spitze (opt.)',
     'svg.required':      'Pflichtfeld',
-    'svg.optionalMulti': 'Optional (nur Mehrkonus-Nadeln)',
+    'svg.optionalMulti': 'Optional (nur Nadeln mit mehreren Tapern)',
     'svg.title':         'Dellorto Nadel-Schema — Messpunkte ØA, ØB, C, ØD, E, F',
     'svg.desc':          'Querschnitt einer Dellorto-Nadel mit allen sechs offiziellen Messparametern',
 

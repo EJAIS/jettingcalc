@@ -8,6 +8,8 @@ import { renderCharts, openChartModal, closeChartModal, getColors } from './char
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
+import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
+         sortCatalogRows, formatCatalogValue } from './needlecatalog.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -15,6 +17,18 @@ let carbType = loadCarbType();
 // In-memory only (never persisted): tracks a pending "Undo" for a share
 // link applied at page load. { snapshot: {setups, carbType} | null, importedKey }
 let importUndo = null;
+
+// Needle catalog view state — in-memory only (never persisted). carbType
+// null means "follow the calculator's carbType"; picking a type in the
+// catalog only changes this state, never the global carbType or setups.
+const catalogState = {
+  carbType: null, series: 'all', tapers: 0,
+  query: '', usedOnly: false,
+  sortKey: 'name', sortDir: 'asc',
+};
+
+// Currently shown view: 'calc' | 'needles'
+let currentView = 'calc';
 
 // ── Install App (PWA) ────────────────────────────────────────────────────────
 //
@@ -358,6 +372,233 @@ function updateUI() {
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
   renderCrossSection();
+  // Covers setup edits, custom-needle save/delete and language changes.
+  if (currentView === 'needles') renderNeedleCatalog();
+}
+
+// ── Views (calculator / needle catalog) ─────────────────────────────────────
+
+const VIEW_PANELS = { calc: 'view-calc', needles: 'view-needles' };
+const VIEW_TABS   = { calc: 'tab-calc',  needles: 'tab-catalog' };
+const CATALOG_HASH = '#needles';
+
+function hashToView() {
+  return location.hash === CATALOG_HASH ? 'needles' : 'calc';
+}
+
+function showView(view, { push = true } = {}) {
+  if (!VIEW_PANELS[view]) view = 'calc';
+  // Initial call on page load (same view, no push) keeps the browser's
+  // scroll restoration; every actual switch starts at the top.
+  const changed = view !== currentView;
+  currentView = view;
+  for (const [v, panelId] of Object.entries(VIEW_PANELS)) {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.hidden = v !== view;
+    const tab = document.getElementById(VIEW_TABS[v]);
+    if (tab) {
+      tab.setAttribute('aria-selected', String(v === view));
+      tab.tabIndex = v === view ? 0 : -1;
+    }
+  }
+  if (push) {
+    // Keep pathname + search (e.g. unrelated query params), only swap the hash.
+    const url = location.pathname + location.search + (view === 'needles' ? CATALOG_HASH : '');
+    if (url !== location.pathname + location.search + location.hash) history.pushState(null, '', url);
+  }
+  if (changed || push) window.scrollTo(0, 0);
+  if (view === 'needles') renderNeedleCatalog();
+}
+
+function handleViewTabKeydown(e) {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const views = Object.keys(VIEW_TABS);
+  const idx = views.indexOf(currentView);
+  const next = views[(idx + (e.key === 'ArrowRight' ? 1 : views.length - 1)) % views.length];
+  e.preventDefault();
+  showView(next);
+  document.getElementById(VIEW_TABS[next])?.focus();
+}
+
+// ── Needle catalog ──────────────────────────────────────────────────────────
+
+function catalogCarbType() {
+  return catalogState.carbType ?? carbType;
+}
+
+// Replaces only the first occurrence of `placeholder` — via a replacer
+// function so `$&`/`$1` in user-provided text (setup names) stay literal.
+function fillPlaceholder(template, placeholder, value) {
+  return template.replace(placeholder, () => String(value));
+}
+
+// All rows of the active catalog carbType, before any filter.
+function buildActiveCatalogRows() {
+  return buildCatalogRows({
+    allNeedles:  getAllNeedles(),
+    carbType:    catalogCarbType(),
+    customTypes: loadCustomNeedles().map(n => n.type),
+    setups,
+  });
+}
+
+function renderNeedleCatalog() {
+  renderCatalogControls();
+  renderCatalogTable();
+}
+
+// Re-rendering replaces the focused button; this puts focus back on its
+// replacement (matched by the same data-* attribute) so keyboard users
+// don't get thrown back to <body> on every filter click.
+function withPreservedFocus(container, selectorAttrs, render) {
+  const active = document.activeElement;
+  const attr = active && container.contains(active)
+    ? selectorAttrs.find(a => active.hasAttribute(a))
+    : null;
+  const value = attr ? active.getAttribute(attr) : null;
+  render();
+  if (attr) container.querySelector(`[${attr}="${CSS.escape(value)}"]`)?.focus();
+}
+
+const CATALOG_CONTROL_ATTRS = ['data-catalog-carb', 'data-catalog-series', 'data-catalog-tapers', 'data-catalog-used'];
+
+function renderCatalogControls() {
+  const container = document.getElementById('catalog-controls');
+  if (!container) return;
+
+  const activeType = catalogCarbType();
+  const rows = buildActiveCatalogRows();
+  const seriesList = getSeriesList(rows);
+  // Taper counts reflect the series choice only (not taper/search filter).
+  const counts = countByTaper(filterCatalogRows(rows, { series: catalogState.series }));
+  const pressed = on => `aria-pressed="${on ? 'true' : 'false'}"`;
+
+  const carbButtons = Object.keys(CARB_TYPES).map(ct => {
+    const badge = BETA_BANNER_KEY[ct]
+      ? ` <span class="beta-badge">${escapeHtml(t('carbType.betaBadge'))}</span>` : '';
+    return `<button type="button" class="catalog-carb${BETA_BANNER_KEY[ct] ? ' beta' : ''}" data-catalog-carb="${escapeHtml(ct)}" ${pressed(ct === activeType)}>${escapeHtml(ct)}${badge}</button>`;
+  }).join('');
+
+  const seriesChips = seriesList.length > 1
+    ? [['all', t('catalog.filter.all')],
+       ...seriesList.map(sr => [sr, fillPlaceholder(t('catalog.filter.series'), '{s}', sr)])]
+        .map(([value, label]) => `<button type="button" class="chip" data-catalog-series="${escapeHtml(value)}" ${pressed(catalogState.series === value)}>${escapeHtml(label)}</button>`)
+        .join('')
+    : '';
+
+  const taperChips = [0, 1, 2, 3].map(n => {
+    const label = n === 0 ? t('catalog.filter.all') : fillPlaceholder(t('catalog.filter.tapers'), '{n}', n);
+    const count = n === 0 ? counts.all : counts[n];
+    const isActive = catalogState.tapers === n;
+    return `<button type="button" class="chip" data-catalog-tapers="${n}" ${pressed(isActive)}${count === 0 && !isActive ? ' disabled' : ''}>${escapeHtml(label)} <span class="chip-count">${count}</span></button>`;
+  }).join('');
+
+  withPreservedFocus(container, CATALOG_CONTROL_ATTRS, () => {
+    container.innerHTML = `
+      <div class="catalog-carb-group" role="group" aria-labelledby="catalog-carb-label">
+        <span id="catalog-carb-label" class="catalog-group-label">${escapeHtml(t('carbType.label'))}</span>
+        <div class="catalog-carb-buttons">${carbButtons}</div>
+      </div>
+      <div class="catalog-chips" role="group" aria-label="${escapeHtml(t('catalog.filter.label'))}">
+        ${seriesChips ? `<div class="chip-group">${seriesChips}</div>` : ''}
+        <div class="chip-group">${taperChips}</div>
+      </div>
+      <button type="button" class="chip catalog-used-toggle" data-catalog-used="1" ${pressed(catalogState.usedOnly)}>${escapeHtml(t('catalog.usedOnly'))}</button>`;
+  });
+}
+
+function catalogSortIndicator(key) {
+  if (catalogState.sortKey !== key) return '↕';
+  return catalogState.sortDir === 'asc' ? '▲' : '▼';
+}
+
+function renderCatalogTable() {
+  const table = document.getElementById('catalog-table');
+  if (!table) return;
+
+  const allRows = buildActiveCatalogRows();
+  const rows = sortCatalogRows(
+    filterCatalogRows(allRows, catalogState),
+    { key: catalogState.sortKey, dir: catalogState.sortDir },
+  );
+  const colors = getColors();
+  const setupName = id => setups.find(s => s.id === id)?.name ?? `#${id}`;
+
+  const headCells = CATALOG_COLUMNS.map(({ key, kind }) => {
+    const label = t(`catalog.col.${key}`);
+    const isSorted = catalogState.sortKey === key;
+    const ariaSort = isSorted ? (catalogState.sortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+    return `<th scope="col" class="${kind === 'text' ? '' : 'num'}${isSorted ? ' sorted' : ''}" aria-sort="${ariaSort}">`
+      + `<button type="button" class="catalog-sort" data-catalog-sort="${escapeHtml(key)}" aria-label="${escapeHtml(fillPlaceholder(t('catalog.sortBy'), '{col}', label))}">`
+      + `${escapeHtml(label)}<span class="catalog-sort-arrow" aria-hidden="true">${catalogSortIndicator(key)}</span>`
+      + `</button></th>`;
+  }).join('');
+
+  const bodyRows = rows.map(row => {
+    const cells = CATALOG_COLUMNS.map(({ key, kind }) => {
+      if (key === 'name') {
+        const badge = row.isCustom
+          ? ` <span class="catalog-badge">${escapeHtml(t('catalog.badge.custom'))}</span>` : '';
+        let dots = '';
+        if (row.usedBy.length > 0) {
+          const label = fillPlaceholder(t('catalog.usedBy'), '{names}', row.usedBy.map(setupName).join(', '));
+          dots = ` <span class="catalog-used" role="img" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">`
+            + row.usedBy.map(id => `<span class="catalog-dot" style="background:${escapeHtml(colors[id - 1] ?? 'var(--text-muted)')}"></span>`).join('')
+            + `</span>`;
+        }
+        return `<th scope="row" class="catalog-name"><strong>${escapeHtml(row.type)}</strong>${badge}${dots}</th>`;
+      }
+      if (key === 'clips' && row.clipsSource === 'default') {
+        const tip = escapeHtml(t('catalog.clipsDefault.tooltip'));
+        return `<td class="num"><span class="catalog-unverified" title="${tip}" aria-label="${escapeHtml(row.clips)} — ${tip}">${escapeHtml(row.clips)}*</span></td>`;
+      }
+      return `<td class="num">${escapeHtml(formatCatalogValue(row[key], kind))}</td>`;
+    }).join('');
+    return `<tr data-type="${escapeHtml(row.type)}">${cells}</tr>`;
+  }).join('');
+
+  withPreservedFocus(table, ['data-catalog-sort'], () => {
+    table.innerHTML = `<thead><tr>${headCells}</tr></thead><tbody>${bodyRows}</tbody>`;
+  });
+
+  const countEl = document.getElementById('catalog-count');
+  if (countEl) {
+    countEl.textContent = fillPlaceholder(
+      fillPlaceholder(t('catalog.count'), '{n}', rows.length), '{total}', allRows.length);
+  }
+  const emptyEl = document.getElementById('catalog-empty');
+  if (emptyEl) emptyEl.hidden = rows.length > 0;
+}
+
+function handleCatalogControlClick(e) {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  if (btn.dataset.catalogCarb) {
+    catalogState.carbType = btn.dataset.catalogCarb;
+    catalogState.series = 'all';
+    catalogState.tapers = 0;
+  } else if (btn.dataset.catalogSeries) {
+    catalogState.series = btn.dataset.catalogSeries;
+  } else if (btn.dataset.catalogTapers) {
+    catalogState.tapers = Number(btn.dataset.catalogTapers);
+  } else if (btn.dataset.catalogUsed) {
+    catalogState.usedOnly = !catalogState.usedOnly;
+  } else {
+    return;
+  }
+  renderNeedleCatalog();
+}
+
+function handleCatalogSortClick(e) {
+  const key = e.target.closest('[data-catalog-sort]')?.dataset.catalogSort;
+  if (!key) return;
+  if (catalogState.sortKey === key) {
+    catalogState.sortDir = catalogState.sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    catalogState.sortKey = key;
+    catalogState.sortDir = 'asc';
+  }
+  renderCatalogTable();
 }
 
 // ── Carb type change ──────────────────────────────────────────────────────────
@@ -365,6 +606,9 @@ function updateUI() {
 function handleCarbTypeChange(newCarbType) {
   carbType = newCarbType;
   saveCarbType(carbType);
+  // The catalog follows the calculator again after an explicit change here.
+  catalogState.carbType = null;
+  catalogState.series = 'all';
 
   const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
@@ -1106,6 +1350,26 @@ document.addEventListener('DOMContentLoaded', () => {
   renderCustomNeedleList();
   applyTranslations();
 
+  // View tabs + history (initial view is picked below, once dark mode is
+  // applied, so a direct '#needles' load renders dots in the right colors).
+  document.getElementById('tab-calc')?.addEventListener('click', () => showView('calc'));
+  document.getElementById('tab-catalog')?.addEventListener('click', () => showView('needles'));
+  document.getElementById('view-tabs')?.addEventListener('keydown', handleViewTabKeydown);
+  const syncViewFromHash = () => {
+    if (hashToView() !== currentView) showView(hashToView(), { push: false });
+  };
+  window.addEventListener('popstate', syncViewFromHash);
+  window.addEventListener('hashchange', syncViewFromHash);
+
+  // Needle catalog: filters/sort re-render; the search box only re-renders
+  // the table so it keeps focus while typing.
+  document.getElementById('catalog-controls')?.addEventListener('click', handleCatalogControlClick);
+  document.getElementById('catalog-table')?.addEventListener('click', handleCatalogSortClick);
+  document.getElementById('catalog-search')?.addEventListener('input', e => {
+    catalogState.query = e.target.value;
+    renderCatalogTable();
+  });
+
   // Custom needle form: toggle K/U length-type selector for VHSx
   document.getElementById('custom-needle-form')?.addEventListener('change', e => {
     if (e.target.name === 'customCarbType') updateLengthTypeVisibility();
@@ -1209,9 +1473,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.toggle('dark');
     localStorage.setItem('darkMode', document.body.classList.contains('dark') ? '1' : '0');
     updateDarkBtn();
+    // Setup dots in the catalog use getColors(), which depends on the theme.
+    if (currentView === 'needles') renderCatalogTable();
   });
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
   updateDarkBtn();
+
+  // Initial view from the hash — after applyShareFromUrl(), whose
+  // scrubShareParamsFromUrl() keeps the hash intact.
+  showView(hashToView(), { push: false });
 
   // Language toggle
   document.getElementById('btn-lang')?.addEventListener('click', () => {

@@ -2,8 +2,8 @@
 // Ported 1:1 from Excel formulas in "Calc Data" sheet
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
-import { NEEDLE_DB, NEEDLE_LENGTHS, JET_OFFSETS, getClipGeometry,
-         CLIP_TOP_OFFSET_REF } from './needledb.js';
+import { NEEDLE_DB, JET_OFFSETS, getClipGeometry, CLIP_TOP_OFFSET_REF,
+         getNeedleLength, getTaperCount } from './needledb.js';
 
 // Minimum exposed needle length at idle (mm), by carburetor family.
 // VHSx: 26.4 — from the original GUE spreadsheet (K/U needles).
@@ -50,9 +50,9 @@ export function calcSetup(setup, needleSource) {
     || jetType == null || nd == null || hd == null) return null;
 
   const needle = db[needleType];
-  const needleLength = needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
+  const needleLength = getNeedleLength(needle, needleType);
   const needleOffset = JET_OFFSETS[jetType] ?? 0;
-  const tapers = needle.F ? 3 : needle.E ? 2 : 1;
+  const tapers = getTaperCount(needle);
 
   // Taper slope (k) and diameter start point for taper 1
   const t1_k = tapers === 1

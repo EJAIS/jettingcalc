@@ -604,17 +604,17 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   README, Abschnitt „Version history of original spreadsheet“.
 - **Lizenz der WebApp:** GPL-2.0 (Copyleft), Quellcode öffentlich unter
   github.com/EJAIS/jettingcalc.
-- **`/original/Dellorto_Jetting_Gue.xlsx`:** das **unveränderte** Original
-  (Download-Stand 2022) zu Referenz- und Attributionszwecken, byte-identisch
-  committet, SHA-256
-  `4138cb52c7d108c9308d4c50ff540bf419f3d8d4cc387862600e00cafb6e1807`.
-  Die Datei enthält kein `docProps/`-Verzeichnis und keine
-  `MSIP_`-Klassifizierungsmetadaten. **Nie öffnen und neu speichern** — auch
-  nicht mit openpyxl oder LibreOffice —, da jedes Neuschreiben die Bytes
-  und damit den Hash verändert; nur lesend auswerten (z. B. über `zipfile`).
-  Die frühere `original/Dellorto_Jetting_Calculator.xlsx` war eine lokal
-  geänderte Kopie mit personen- bzw. firmenbezogenen Metadaten und wurde per
-  `git filter-repo` aus der gesamten Historie entfernt.
+- **`/original/`:** enthält zu Referenz- und Attributionszwecken
+  ausschließlich das **unveränderte** Original `Dellorto_Jetting_Gue.xlsx`
+  (Download-Stand 2022, byte-identisch committet, SHA-256
+  `4138cb52c7d108c9308d4c50ff540bf419f3d8d4cc387862600e00cafb6e1807`, ohne
+  `docProps/`-Verzeichnis und ohne `MSIP_`-Klassifizierungsmetadaten).
+  **Nie öffnen und neu speichern** — auch nicht mit openpyxl oder
+  LibreOffice —, nur lesend auswerten (z. B. über `zipfile`), und aus
+  demselben Grund keine lokal geöffneten oder neu gespeicherten Kopien
+  hinzufügen: jedes Neuschreiben ändert die Bytes und damit den Hash, und
+  Office-Programme schreiben dabei Autor- und Organisations-Metadaten in die
+  Datei.
 
 ### Pflicht-Footer
 

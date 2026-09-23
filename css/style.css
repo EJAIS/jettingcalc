@@ -1148,9 +1148,41 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 
 /* ── Needle catalog ────────────────────────────────────────────────────────── */
 .catalog-count {
+  margin-left: auto;
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.catalog-legend-toggle { white-space: nowrap; }
+
+/* Dimension key: the same needle schematic as in Custom Needles */
+.catalog-legend {
+  overflow-x: auto;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.catalog-legend[hidden] { display: none; }
+/* 680px = the viewBox width: drawn 1:1 on desktop, and an integer height
+   (385px) keeps the sticky table header below on whole pixels */
+.catalog-schematic {
+  max-width: 680px;
+  margin: 0 auto;
+}
+/* min-width keeps the labels readable on phones instead of scaling the
+   whole drawing down to ~6px text; the container scrolls instead */
+.catalog-schematic svg {
+  display: block;
+  min-width: 520px;
+}
+/* The Required/Optional key belongs to the custom-needle form only */
+#catalog-legend .schematic-form-legend { display: none; }
+.catalog-legend-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .catalog-toolbar {
@@ -1474,6 +1506,13 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   }
 
   .view-panel { gap: 16px; }
+
+  /* Catalog header: legend toggle on its own row below the count */
+  .catalog-card .card-header { flex-wrap: wrap; }
+  .catalog-legend-toggle {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
 
   /* nowrap: a wrapping column flexbox sizes each line to its widest item
      (the chip row), which would push every control past the card edge */

@@ -178,141 +178,7 @@
       <div class="card-body">
 
         <!-- Needle schematic -->
-        <div class="needle-schematic-wrapper">
-        <svg width="100%" viewBox="0 0 680 385" role="img"
-             xmlns="http://www.w3.org/2000/svg">
-          <title data-i18n="svg.title">Dellorto needle schematic — measurement points ØA, ØB, C, ØD, E, F</title>
-          <desc data-i18n="svg.desc">Cross-section of a full-featured Dellorto needle showing all six official measurement parameters</desc>
-          <defs>
-            <marker id="ndl-arrow" viewBox="0 0 10 10" refX="8" refY="5"
-                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
-                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </marker>
-          </defs>
-
-          <!-- center axis -->
-          <line x1="48" y1="180" x2="542" y2="180"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="8 5"/>
-
-          <!-- section dividers -->
-          <line x1="255" y1="106" x2="255" y2="254"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
-          <line x1="360" y1="106" x2="360" y2="294"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
-          <line x1="455" y1="112" x2="455" y2="327"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
-
-          <!-- needle body -->
-          <polygon
-            points="60,130 255,130 360,135 455,152 535,152
-                     535,208 455,208 360,225 255,230 60,230"
-            fill="var(--accent)" fill-opacity="0.15"
-            stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
-
-          <!-- taper junction dots -->
-          <circle cx="360" cy="135" r="3.5" fill="var(--accent)"/>
-          <circle cx="360" cy="225" r="3.5" fill="var(--accent)"/>
-          <circle cx="455" cy="152" r="3.5" fill="var(--accent)"/>
-          <circle cx="455" cy="208" r="3.5" fill="var(--accent)"/>
-
-          <!-- section labels -->
-          <text font-size="12" x="157" y="112" text-anchor="middle"
-                fill="var(--text-muted)" data-i18n="svg.shank">Shank</text>
-          <text font-size="12" x="307" y="112" text-anchor="middle"
-                fill="var(--text-muted)" data-i18n="svg.taper1">Taper 1</text>
-          <text font-size="12" x="407" y="120" text-anchor="middle"
-                fill="var(--text-muted)" data-i18n="svg.taper2">Taper 2</text>
-          <text font-size="12" x="495" y="130" text-anchor="middle"
-                fill="var(--text-muted)" data-i18n="svg.cylTip">Cyl. tip</text>
-
-          <!-- ØA: shank diameter (required) -->
-          <line x1="36" y1="130" x2="36" y2="230"
-                stroke="var(--accent)" stroke-width="1.5"
-                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
-          <line x1="36" y1="130" x2="64" y2="130"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="36" y1="230" x2="64" y2="230"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <text x="20" y="180" text-anchor="middle"
-                transform="rotate(-90 20 180)"
-                font-size="13" font-weight="500"
-                fill="var(--text)">ØA</text>
-
-          <!-- ØB: tip diameter (required) -->
-          <line x1="550" y1="152" x2="550" y2="208"
-                stroke="var(--accent)" stroke-width="1.5"
-                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
-          <line x1="535" y1="152" x2="555" y2="152"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="535" y1="208" x2="555" y2="208"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <text x="562" y="184" text-anchor="start"
-                font-size="13" font-weight="500"
-                fill="var(--text)">ØB</text>
-
-          <!-- ØD: diameter at taper junction — vertical leader from above (optional) -->
-          <line x1="360" y1="70" x2="360" y2="132"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <text x="360" y="58" text-anchor="middle"
-                font-size="13" font-weight="500"
-                fill="var(--text-muted)">ØD</text>
-          <text x="360" y="70" text-anchor="middle"
-                font-size="12" fill="var(--text-muted)">(opt.)</text>
-
-          <!-- C: tip to taper-1 start (required) -->
-          <line x1="255" y1="242" x2="255" y2="257"
-                stroke="var(--accent)" stroke-width="1"/>
-          <line x1="535" y1="212" x2="535" y2="257"
-                stroke="var(--accent)" stroke-width="1"/>
-          <line x1="255" y1="251" x2="535" y2="251"
-                stroke="var(--accent)" stroke-width="1.5"
-                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
-          <text x="395" y="268" text-anchor="middle"
-                font-size="13" font-weight="500"
-                fill="var(--text)">C</text>
-          <text x="395" y="280" text-anchor="middle"
-                font-size="12" fill="var(--text-muted)" data-i18n="svg.fromTipMm">from tip (mm)</text>
-
-          <!-- E: tip to taper-2 start (optional) -->
-          <line x1="360" y1="229" x2="360" y2="292"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="535" y1="257" x2="535" y2="292"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="360" y1="287" x2="535" y2="287"
-                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
-                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
-          <text x="420" y="303" text-anchor="middle"
-                font-size="13" font-weight="500"
-                fill="var(--text-muted)">E</text>
-          <text x="420" y="315" text-anchor="middle"
-                font-size="12" fill="var(--text-muted)" data-i18n="svg.fromTipOpt">from tip (opt.)</text>
-
-          <!-- F: cylindrical tip length (optional) -->
-          <line x1="455" y1="212" x2="455" y2="328"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="535" y1="292" x2="535" y2="328"
-                stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
-          <line x1="455" y1="322" x2="535" y2="322"
-                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
-                marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
-          <text x="495" y="338" text-anchor="middle"
-                font-size="13" font-weight="500"
-                fill="var(--text-muted)">F</text>
-          <text x="495" y="350" text-anchor="middle"
-                font-size="12" fill="var(--text-muted)" data-i18n="svg.cylTipOpt">cyl. tip (opt.)</text>
-
-          <!-- legend -->
-          <line x1="388" y1="372" x2="406" y2="372"
-                stroke="var(--accent)" stroke-width="1.5"/>
-          <text x="410" y="376" font-size="12"
-                fill="var(--text-muted)" data-i18n="svg.required">Required</text>
-          <line x1="470" y1="372" x2="488" y2="372"
-                stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"/>
-          <text x="492" y="376" font-size="12"
-                fill="var(--text-muted)" data-i18n="svg.optionalMulti">Optional (multi-taper only)</text>
-        </svg>
-        </div>
+        <div class="needle-schematic-wrapper" data-schematic="custom"></div>
 
         <!-- Field reference (collapsible) -->
         <details class="collapsible" id="cn-field-ref" style="margin-bottom:12px">
@@ -431,6 +297,9 @@
     <div class="card-header">
       <h2 data-i18n="view.catalog">Needle catalog</h2>
       <span id="catalog-count" class="catalog-count" aria-live="polite"></span>
+      <!-- Label (show/hide) set by app.js (renderCatalogLegend) -->
+      <button type="button" id="catalog-legend-toggle" class="btn-ghost catalog-legend-toggle"
+              aria-expanded="false" aria-controls="catalog-legend"></button>
     </div>
     <div class="card-body catalog-body">
       <div class="catalog-toolbar">
@@ -442,6 +311,10 @@
           <input type="search" id="catalog-search" autocomplete="off" spellcheck="false"
                  data-i18n-placeholder="catalog.search.placeholder" placeholder="Search needle, e.g. K98">
         </label>
+      </div>
+      <div id="catalog-legend" class="catalog-legend" hidden>
+        <div class="catalog-schematic" data-schematic="catalog"></div>
+        <p class="catalog-legend-note" data-i18n="catalog.legend.note">All lengths in mm, measured from the needle tip. Single-taper needles only have ØA, ØB and C; two-taper needles add ØD and E, three-taper needles add F.</p>
       </div>
       <div id="catalog-scroll" class="catalog-scroll">
         <!-- thead/tbody rendered by app.js (renderCatalogTable) -->
@@ -494,6 +367,147 @@
       <button id="btn-install-dialog-close" class="btn-ghost" data-i18n="btn.close">Close</button>
     </div>
   </dialog>
+
+  <!-- ── Needle schematic template ───────────────────────────────────────
+       Cloned by mountNeedleSchematic() (app.js) into every
+       [data-schematic] wrapper, with ids suffixed per copy. -->
+  <template id="tpl-needle-schematic">
+    <svg width="100%" viewBox="0 0 680 385" role="img"
+         xmlns="http://www.w3.org/2000/svg">
+      <title data-i18n="svg.title">Dellorto needle schematic — measurement points ØA, ØB, C, ØD, E, F</title>
+      <desc data-i18n="svg.desc">Cross-section of a full-featured Dellorto needle showing all six official measurement parameters</desc>
+      <defs>
+        <marker id="ndl-arrow" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke"
+                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- center axis -->
+      <line x1="48" y1="180" x2="542" y2="180"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="8 5"/>
+
+      <!-- section dividers -->
+      <line x1="255" y1="106" x2="255" y2="254"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="360" y1="106" x2="360" y2="294"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="455" y1="112" x2="455" y2="327"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <!-- needle body -->
+      <polygon
+        points="60,130 255,130 360,135 455,152 535,152
+                 535,208 455,208 360,225 255,230 60,230"
+        fill="var(--accent)" fill-opacity="0.15"
+        stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+
+      <!-- taper junction dots -->
+      <circle cx="360" cy="135" r="3.5" fill="var(--accent)"/>
+      <circle cx="360" cy="225" r="3.5" fill="var(--accent)"/>
+      <circle cx="455" cy="152" r="3.5" fill="var(--accent)"/>
+      <circle cx="455" cy="208" r="3.5" fill="var(--accent)"/>
+
+      <!-- section labels -->
+      <text font-size="12" x="157" y="112" text-anchor="middle"
+            fill="var(--text-muted)" data-i18n="svg.shank">Shank</text>
+      <text font-size="12" x="307" y="112" text-anchor="middle"
+            fill="var(--text-muted)" data-i18n="svg.taper1">Taper 1</text>
+      <text font-size="12" x="407" y="120" text-anchor="middle"
+            fill="var(--text-muted)" data-i18n="svg.taper2">Taper 2</text>
+      <text font-size="12" x="495" y="130" text-anchor="middle"
+            fill="var(--text-muted)" data-i18n="svg.cylTip">Cyl. tip</text>
+
+      <!-- ØA: shank diameter (required) -->
+      <line x1="36" y1="130" x2="36" y2="230"
+            stroke="var(--accent)" stroke-width="1.5"
+            marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+      <line x1="36" y1="130" x2="64" y2="130"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="36" y1="230" x2="64" y2="230"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="20" y="180" text-anchor="middle"
+            transform="rotate(-90 20 180)"
+            font-size="13" font-weight="500"
+            fill="var(--text)">ØA</text>
+
+      <!-- ØB: tip diameter (required) -->
+      <line x1="550" y1="152" x2="550" y2="208"
+            stroke="var(--accent)" stroke-width="1.5"
+            marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+      <line x1="535" y1="152" x2="555" y2="152"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="535" y1="208" x2="555" y2="208"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="562" y="184" text-anchor="start"
+            font-size="13" font-weight="500"
+            fill="var(--text)">ØB</text>
+
+      <!-- ØD: diameter at taper junction — vertical leader from above (optional) -->
+      <line x1="360" y1="70" x2="360" y2="132"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="360" y="58" text-anchor="middle"
+            font-size="13" font-weight="500"
+            fill="var(--text-muted)">ØD</text>
+      <text x="360" y="70" text-anchor="middle"
+            font-size="12" fill="var(--text-muted)">(opt.)</text>
+
+      <!-- C: tip to taper-1 start (required) -->
+      <line x1="255" y1="242" x2="255" y2="257"
+            stroke="var(--accent)" stroke-width="1"/>
+      <line x1="535" y1="212" x2="535" y2="257"
+            stroke="var(--accent)" stroke-width="1"/>
+      <line x1="255" y1="251" x2="535" y2="251"
+            stroke="var(--accent)" stroke-width="1.5"
+            marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+      <text x="395" y="268" text-anchor="middle"
+            font-size="13" font-weight="500"
+            fill="var(--text)">C</text>
+      <text x="395" y="280" text-anchor="middle"
+            font-size="12" fill="var(--text-muted)" data-i18n="svg.fromTipMm">from tip (mm)</text>
+
+      <!-- E: tip to taper-2 start (optional) -->
+      <line x1="360" y1="229" x2="360" y2="292"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="535" y1="257" x2="535" y2="292"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="360" y1="287" x2="535" y2="287"
+            stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
+            marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+      <text x="420" y="303" text-anchor="middle"
+            font-size="13" font-weight="500"
+            fill="var(--text-muted)">E</text>
+      <text x="420" y="315" text-anchor="middle"
+            font-size="12" fill="var(--text-muted)" data-i18n="svg.fromTipOpt">from tip (opt.)</text>
+
+      <!-- F: cylindrical tip length (optional) -->
+      <line x1="455" y1="212" x2="455" y2="328"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="535" y1="292" x2="535" y2="328"
+            stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>
+      <line x1="455" y1="322" x2="535" y2="322"
+            stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"
+            marker-start="url(#ndl-arrow)" marker-end="url(#ndl-arrow)"/>
+      <text x="495" y="338" text-anchor="middle"
+            font-size="13" font-weight="500"
+            fill="var(--text-muted)">F</text>
+      <text x="495" y="350" text-anchor="middle"
+            font-size="12" fill="var(--text-muted)" data-i18n="svg.cylTipOpt">cyl. tip (opt.)</text>
+
+      <!-- legend (custom-needle form only; hidden in the catalog) -->
+      <g class="schematic-form-legend">
+        <line x1="388" y1="372" x2="406" y2="372"
+              stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="410" y="376" font-size="12"
+              fill="var(--text-muted)" data-i18n="svg.required">Required</text>
+        <line x1="470" y1="372" x2="488" y2="372"
+              stroke="var(--text-muted)" stroke-width="1.5" stroke-dasharray="5 3"/>
+        <text x="492" y="376" font-size="12"
+              fill="var(--text-muted)" data-i18n="svg.optionalMulti">Optional (multi-taper only)</text>
+      </g>
+    </svg>
+  </template>
 
 </main>
 

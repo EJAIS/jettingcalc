@@ -184,6 +184,33 @@ kein Datenfehler).
   exponieren, bewusst nicht umgesetzt, da eine Nutzer-eingegebene
   Nut-Geometrie ohne Referenzmessung ohnehin nicht verifizierbar wäre).
 
+### K76 ØD — Abweichung vom Original-Excel (offen)
+
+- **Datum:** 2026-09-23
+- **Status:** **offen** — Quelle für den in `NEEDLE_DB` verwendeten Wert
+  ist noch zu belegen. `NEEDLE_DB` bleibt bis dahin unverändert.
+- **Befund:** Beim Abgleich des Blatts "Needle Data" des Original-Excel
+  (`original/Dellorto_Jetting_Gue.xlsx`, Zeile 69) gegen `NEEDLE_DB` ist K76
+  die **einzige** Nadel mit abweichender Geometrie:
+
+  | Feld | Original-Excel | `NEEDLE_DB` |
+  |---|---|---|
+  | ØA | 2.46 | 2.46 |
+  | ØB | 1.55 | 1.55 |
+  | C | 39.0 | 39 |
+  | **ØD** | **2.5** | **2.1** |
+  | E | 25.0 | 25 |
+  | F | 11.0 | 11 |
+
+- **Bewertung:** Der Original-Wert ØD = 2.5 ist physikalisch unplausibel,
+  weil ØD (Durchmesser am Übergang Taper 1/2) größer wäre als der
+  Schaftdurchmesser ØA = 2.46. Eine Nadel verjüngt sich zur Spitze hin; ØD
+  muss also ≤ ØA sein. Der Fehler liegt daher im Original.
+- **Offener Punkt:** Woher der Wert 2.1 in `NEEDLE_DB` stammt, ist nicht
+  dokumentiert. Gegen das offizielle Dellorto-Datenblatt "Dimensions
+  Aiguilles K" (dellorto.fr) und gegen Eurocarb 2015 gegenprüfen und das
+  Ergebnis hier nachtragen. Erst danach gilt der Wert als verifiziert.
+
 ## Priorität MITTEL
 
 ### Schiebertyp der VHS-Familie (Flach- vs. Rundschieber)

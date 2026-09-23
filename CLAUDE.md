@@ -79,7 +79,7 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
 test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs)
-original/                   Kopie der Original-Excel (siehe „Copyright & Attribution“)
+original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
 KONSTANTEN_VERIFIKATION.md  Verifikationsstand aller Konstanten und Messwerte
@@ -211,25 +211,35 @@ rechnen und plausible, aber falsche Kurven erzeugen).
 
 ### Bewusste Abweichungen vom Original-Excel
 
-a) **maxHD je Setup aus der eigenen Kurve.** Im Chart-Blatt des Excel
-   verweisen G5–G7 alle absolut auf `'Calc Data 1'!$C$45` (Copy-Paste-Fehler),
-   sodass Setup 2 und 3 mit dem Nadeldurchmesser von Setup 1 gerechnet
-   werden. Die Portierung nutzt je Setup die eigene Kurve und reproduziert
-   den Fehler nicht.
-b) **Leerlaufposition mit Nut-Geometrie.** Nutabstand und
+a) **Leerlaufposition mit Nut-Geometrie.** Nutabstand und
    Oberkanten-Offset hängen von der gemessenen Nut-Anzahl ab (3/4/5 Nuten,
    `CLIP_GEOMETRY_BY_COUNT`); 4-Nuten-Nadeln haben Korrektur 0. Werte für
    3- und 5-Nuten-Nadeln weichen deshalb vom Excel ab (das mit festem
    Nutabstand rechnet), z. B. K98 (5 Nuten) bei Clip 3. Die Referenzwerte
    stehen in `test/calc.test.mjs` (Tests zu 3- vs. 4-Nuten- und
    5-Nuten-Nadeln).
-c) **`minExposed` familienspezifisch** (`MIN_EXPOSED_BY_CARB_TYPE`, aufgelöst
+b) **`minExposed` familienspezifisch** (`MIN_EXPOSED_BY_CARB_TYPE`, aufgelöst
    über `carbType` der Nadel, nicht über den Namenspräfix und nicht über den
    globalen Vergasertyp). Werte und Messbedingungen:
    `KONSTANTEN_VERIFIKATION.md`.
-d) **HD-Äquivalent nie `NaN`.** Ist der Nadeldurchmesser größer als das
+c) **HD-Äquivalent nie `NaN`.** Ist der Nadeldurchmesser größer als das
    Mischrohr, klemmt `calcSetup()` den Wurzel-Radikanden auf 0
    (`Math.max(0, …)`), wo das Excel einen Fehlerwert liefern würde.
+
+### Kein Excel-Fehler bei maxHD
+
+**Nicht „korrigieren“.** Im Original-Excel verweisen `Chart!G5`–`G9` jeweils
+korrekt auf die eigene Tabelle `'Calc Data 1'`…`'Calc Data 5'`
+(`SQRT($E5^2-('Calc Data N'!$C$45*100)^2)`). Die Web-App rechnet maxHD je Setup
+aus der eigenen Kurve und **entspricht damit dem Original** — das ist keine
+Abweichung.
+
+Die frühere Behauptung, G6/G7 zeigten wegen eines Copy-Paste-Fehlers auf
+`'Calc Data 1'`, stammte aus einer lokal geänderten Kopie der Tabelle, die
+inzwischen aus dem Repository entfernt wurde. Sie gilt für das Original nicht.
+Nachgerechnet gegen die im Original gespeicherten Beispiel-Setups stimmen 4 von
+5 maxHD-Werten exakt überein; die einzige Abweichung ist K27 (5 Nuten) und
+geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“.
 
 ---
 
@@ -594,12 +604,17 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   README, Abschnitt „Version history of original spreadsheet“.
 - **Lizenz der WebApp:** GPL-2.0 (Copyleft), Quellcode öffentlich unter
   github.com/EJAIS/jettingcalc.
-- **`/original/`:** Kopie der Tabelle zu Referenz- und Attributionszwecken.
-  Es ist eine lokal neu gespeicherte Kopie: die Beispiel-Setups im
-  Chart-Blatt hat der Autor dieser Portierung eingetragen, persönliche
-  Dokument-Metadaten wurden entfernt. Der unveränderte Original-Download ist
-  nicht mehr verfügbar. Der Copyright-Hinweis in der Tabelle ist
-  unverändert.
+- **`/original/`:** enthält zu Referenz- und Attributionszwecken
+  ausschließlich das **unveränderte** Original `Dellorto_Jetting_Gue.xlsx`
+  (Download-Stand 2022, byte-identisch committet, SHA-256
+  `4138cb52c7d108c9308d4c50ff540bf419f3d8d4cc387862600e00cafb6e1807`, ohne
+  `docProps/`-Verzeichnis und ohne `MSIP_`-Klassifizierungsmetadaten).
+  **Nie öffnen und neu speichern** — auch nicht mit openpyxl oder
+  LibreOffice —, nur lesend auswerten (z. B. über `zipfile`), und aus
+  demselben Grund keine lokal geöffneten oder neu gespeicherten Kopien
+  hinzufügen: jedes Neuschreiben ändert die Bytes und damit den Hash, und
+  Office-Programme schreiben dabei Autor- und Organisations-Metadaten in die
+  Datei.
 
 ### Pflicht-Footer
 

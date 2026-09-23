@@ -1,6 +1,7 @@
 // test-browser/catalog.mjs — Browser-driven regression tests for the
 // needle catalog view (tabs + history, i18n of the rendered UI, isolation
-// from the calculator state, filters, search focus, sticky first column).
+// from the calculator state, filters, search focus, sticky first column,
+// dimension key / shared needle schematic).
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 //
 // Needs a real Chromium and the `playwright` package, so — like pwa.mjs —
@@ -143,7 +144,7 @@ test('arrow keys move between the view tabs', async () => {
 });
 
 test('no raw i18n key in catalog or tab texts/attributes, in EN and DE', async () => {
-  const RAW_KEY = /\b(view|catalog)\.[a-zA-Z.]+/;
+  const RAW_KEY = /\b(view|catalog|svg)\.[a-zA-Z.]+/;
   await withPage(async page => {
     await openApp(page, '#needles');
     await loadDemo(page); // usedBy dots + titles
@@ -153,9 +154,13 @@ test('no raw i18n key in catalog or tab texts/attributes, in EN and DE', async (
     await page.reload();
     await page.waitForSelector('#catalog-table tbody tr');
 
+    // The dimension key (needle schematic) is part of #view-needles; open
+    // it so its texts are rendered. textContent as well, since innerText
+    // doesn't reliably include SVG <title>/<text> content.
+    await page.click('#catalog-legend-toggle');
     const collect = () => page.evaluate(() => {
       const roots = [document.getElementById('view-tabs'), document.getElementById('view-needles')];
-      const out = [];
+      const out = [document.getElementById('catalog-legend').textContent];
       for (const root of roots) {
         out.push(root.innerText);
         for (const el of [root, ...root.querySelectorAll('*')]) {
@@ -261,4 +266,91 @@ test('390×844: the first column stays at the left edge while #catalog-scroll sc
     // No horizontal page overflow on the phone layout.
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   }, { viewport: { width: 390, height: 844 } });
+});
+
+test('dimension key toggle: aria-expanded and label switch, in EN and DE', async () => {
+  const LABELS = {
+    en: { show: 'Show dimension key', hide: 'Hide dimension key' },
+    de: { show: 'Maßlegende anzeigen', hide: 'Maßlegende ausblenden' },
+  };
+  await withPage(async page => {
+    await openApp(page, '#needles');
+    const toggle = '#catalog-legend-toggle';
+    assert.equal(await page.getAttribute(toggle, 'aria-controls'), 'catalog-legend');
+
+    for (const lang of ['en', 'de']) {
+      if (lang === 'de') await page.click('#btn-lang');
+      assert.equal(await page.getAttribute(toggle, 'aria-expanded'), 'false', `${lang}: starts closed`);
+      assert.equal((await page.textContent(toggle)).trim(), LABELS[lang].show);
+      assert.equal(await isVisible(page, '#catalog-legend'), false);
+
+      await page.click(toggle);
+      assert.equal(await page.getAttribute(toggle, 'aria-expanded'), 'true');
+      assert.equal((await page.textContent(toggle)).trim(), LABELS[lang].hide);
+      assert.equal(await isVisible(page, '#catalog-legend'), true);
+      assert.equal(await isVisible(page, '#catalog-legend svg'), true);
+
+      await page.click(toggle);
+      assert.equal(await page.getAttribute(toggle, 'aria-expanded'), 'false');
+      assert.equal((await page.textContent(toggle)).trim(), LABELS[lang].show);
+      assert.equal(await isVisible(page, '#catalog-legend'), false);
+    }
+
+    // A language switch while open re-labels the toggle too.
+    await page.click(toggle);
+    await page.click('#btn-lang');
+    assert.equal((await page.textContent(toggle)).trim(), LABELS.en.hide);
+  });
+});
+
+test('form legend (Required/Optional) is hidden in the catalog, shown in Custom Needles', async () => {
+  await withPage(async page => {
+    await openApp(page, '#needles');
+    await page.click('#catalog-legend-toggle');
+    assert.equal(await isVisible(page, '#catalog-legend svg'), true);
+    assert.equal(await page.locator('#catalog-legend .schematic-form-legend').count(), 1);
+    assert.equal(await isVisible(page, '#catalog-legend .schematic-form-legend'), false);
+
+    await page.click('#tab-calc');
+    await page.evaluate(() => { document.getElementById('custom-needle-section').open = true; });
+    assert.equal(await isVisible(page, '[data-schematic="custom"] svg'), true);
+    assert.equal(await isVisible(page, '[data-schematic="custom"] .schematic-form-legend'), true);
+  });
+});
+
+test('schematic copies: no duplicate ids, every url(#…)/#href resolves inside its own <svg>', async () => {
+  await withPage(async page => {
+    await openApp(page);
+    const report = await page.evaluate(() => {
+      const counts = new Map();
+      for (const el of document.querySelectorAll('[id]')) counts.set(el.id, (counts.get(el.id) ?? 0) + 1);
+      const duplicates = [...counts].filter(([, n]) => n > 1).map(([id]) => id);
+
+      const svgs = [...document.querySelectorAll('[data-schematic] svg')];
+      const unresolved = [];
+      let refCount = 0;
+      for (const svg of svgs) {
+        for (const el of [svg, ...svg.querySelectorAll('*')]) {
+          for (const attr of el.attributes) {
+            const ids = [...attr.value.matchAll(/url\(#([^)]+)\)/g)].map(m => m[1]);
+            if (/^#/.test(attr.value) && /href$/.test(attr.name)) ids.push(attr.value.slice(1));
+            for (const id of ids) {
+              refCount++;
+              if (!svg.querySelector(`#${CSS.escape(id)}`)) {
+                unresolved.push(`${svg.parentElement.dataset.schematic}: ${attr.name}=${attr.value}`);
+              }
+            }
+          }
+        }
+      }
+      return {
+        duplicates, unresolved, refCount,
+        mounted: svgs.map(svg => svg.parentElement.dataset.schematic).sort(),
+      };
+    });
+    assert.deepEqual(report.mounted, ['catalog', 'custom']);
+    assert.deepEqual(report.duplicates, []);
+    assert.ok(report.refCount > 0, 'expected marker references in the schematics');
+    assert.deepEqual(report.unresolved, []);
+  });
 });

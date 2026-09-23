@@ -15,6 +15,9 @@
 //   npx playwright install chromium   # first time only, downloads the browser
 //   node --test test-browser/*.mjs
 //
+// Set CHROMIUM_PATH to launch a preinstalled Chromium instead of the one
+// Playwright downloads (e.g. when the two versions don't match).
+//
 // Each test spins up its own throwaway static file server (serving the
 // repo root, like `python3 -m http.server` in the README) and its own
 // isolated browser context, so tests don't share service-worker/cache
@@ -65,7 +68,7 @@ let server, baseUrl, browser;
 before(async () => {
   server = await startServer();
   baseUrl = `http://127.0.0.1:${server.address().port}`;
-  browser = await chromium.launch();
+  browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 });
 
 after(async () => {

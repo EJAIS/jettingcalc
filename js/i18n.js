@@ -1,7 +1,7 @@
 // i18n.js — EN/DE translations and language helpers
 // Copyright (C) 2014 GUE (Global Underwater Explorers) — GPL v2.0
 
-const TRANSLATIONS = {
+export const TRANSLATIONS = {
   en: {
     // Header
     'app.subtitle': "Evolved web port of 'Calculate Jetting for Dellorto Carbs v1.5'",

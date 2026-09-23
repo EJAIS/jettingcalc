@@ -243,12 +243,15 @@ export const JET_OFFSETS = {
 (vermutlich Übernahmefehler aus einer minderwertigen Quelle im ursprünglichen 2014er GUE-Excel).
 Die Werte wurden gegen die offizielle Eurocarb-Spezifikation (2015 Update) korrigiert und zusätzlich
 gegen das Stein-Dinse Dellorto-Handbuch gegengeprüft. Betroffen: K12, K13, K14, K15, K16, K18, K54,
-K57, K58, K61, K62, K65, K68, K69, K78, K79, K83, K84, K86. Außerdem wurde die fälschlich als "K90"
-geführte Nadel (A:2.5, B:1.75, C:42) zu "K96" umbenannt — "K90" ist keine reale Dellorto-Bezeichnung
-und existiert nicht mehr in `NEEDLE_DB`. Neu hinzugefügt: K97 (A:2.50, B:1.80, C:44.5). Details siehe
-[KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md). Bestehende gespeicherte Setups mit
-`needleType: "K90"` werden beim Laden automatisch und geräuschlos auf `"K96"` migriert
-(`storage.js` → `loadSetups()`), da die zugrunde liegende Geometrie identisch ist.
+K57, K58, K61, K62, K65, K68, K69, K78, K79, K83, K84, K86. Neu hinzugefügt: K97 (A:2.50, B:1.80,
+C:44.5).
+
+**K90 und K96 (Stand nach Richtigstellung):** Laut offiziellem Dellorto-Datenblatt ("Dimensions
+Aiguilles K") sind K90 und K96 zwei eigenständige Nadeln mit gleicher Geometrie (A:2.50, B:1.75,
+C:42), aber unterschiedlicher Anzahl Clip-Positionen: K90 hat 4, K96 hat 5. Beide stehen in
+`NEEDLE_DB`. Die frühere Annahme, "K90" sei keine reale Bezeichnung und gehöre zu K96, war falsch;
+die zugehörige K90→K96-Migration in `storage.js` → `loadSetups()` wurde entfernt. Details siehe
+[KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md), Abschnitt "K90 — Richtigstellung".
 
 ---
 
@@ -891,6 +894,105 @@ nur so lange vollständig nutzbar, wie alle darin referenzierten Werte auch
 in der aktuell ausgelieferten Datenbank noch existieren; andernfalls verliert
 der Empfänger beim Öffnen kommentarlos nur die betroffenen Felder (mit
 `msg.shareFieldsIgnored`-Hinweis), nicht den ganzen Link.
+
+---
+
+## Nadelkatalog (Needle catalog)
+
+### Zweck
+
+Zweiter Tab neben dem Rechner ("Nadelkatalog" / "Needle catalog"): eine
+Geometrie-Übersicht aller Nadeln eines Vergasertyps (Basis-Datenbank plus
+lokale Custom Needles) mit Filterleiste, Suche, sortierbarer Tabelle und
+einer ein-/ausblendbaren Maßlegende (dasselbe Nadel-Schema wie im
+Custom-Needles-Abschnitt).
+
+Der Tab ist bewusst der **einzige** Einstiegspunkt. Es gibt keine Absprünge
+aus Setup-Zeilen oder aus dem Custom-Needles-Abschnitt in den Katalog —
+Entscheidung zur Vermeidung redundanter Einstiege.
+
+### Modulaufteilung
+
+- `js/needlecatalog.js` — reine Logik, analog zu `share.js`: importiert nur
+  `needledb.js`, kein DOM, kein localStorage, kein i18n, keine sichtbaren
+  Texte (nur Keys, Zahlen, Codes). Liefert `CATALOG_COLUMNS`,
+  `buildCatalogRows()`, `filterCatalogRows()`, `sortCatalogRows()`,
+  `countByTaper()`, `getSeriesList()`, `compareNeedleTypes()`,
+  `formatCatalogValue()`. Getestet in `test/needlecatalog.test.mjs`.
+  Die gemeinsamen Helfer `getNeedleLength()`, `getTaperCount()` und
+  `VERIFIED_DEFAULT_CLIP_PREFIXES` liegen in `needledb.js` und werden auch
+  von `calcSetup()` genutzt (Single Source of Truth).
+- `js/app.js` — UI: `showView()` (Tab-Wechsel), `renderNeedleCatalog()`
+  (ruft `renderCatalogLegend()`, `renderCatalogControls()`,
+  `renderCatalogTable()`), `mountNeedleSchematic()` (klont
+  `<template id="tpl-needle-schematic">` in jeden `[data-schematic]`-Wrapper,
+  hängt an jede id `-<suffix>` an und schreibt `url(#…)`-Verweise um, damit
+  zwei Kopien nie gegenseitig ihre Pfeil-Marker referenzieren).
+  Die Suche (`#catalog-search`) liegt außerhalb des neu gerenderten
+  Bereichs und rendert nur die Tabelle neu — der Fokus bleibt beim Tippen
+  erhalten.
+
+### Zustand: `catalogState`
+
+- Nur im Speicher, nie in localStorage: `carbType`, `series`, `tapers`,
+  `query`, `usedOnly`, `sortKey`, `sortDir`, `legendOpen`.
+- `carbType: null` bedeutet "folgt dem Rechner" (`catalogState.carbType ??
+  carbType`). Ein Vergasertyp-Wechsel im Rechner (`handleCarbTypeChange()`)
+  setzt `catalogState.carbType` auf `null` und `series` auf `'all'`.
+- Der Katalog schreibt **nie** `dellorto_carb_type` und fasst keine Setups
+  an. Begründung: `handleCarbTypeChange()` setzt Setups, deren Nadel,
+  Düsentyp oder Vergaser-Ø nicht zum neuen Typ passen, zurück — ein
+  Durchblättern der PHBL-Nadeln im Katalog darf die VHSx-Setups des
+  Rechners nicht löschen.
+- Neu gerendert wird der sichtbare Katalog zentral in `updateUI()`
+  (Setup-Änderungen, Custom Needle speichern/löschen, Sprachwechsel) sowie
+  beim Dark-Mode-Wechsel (die Setup-Farbpunkte hängen an `getColors()`).
+
+### Routing
+
+- `#needles` = Katalog, ohne Hash = Rechner. `showView()` setzt per
+  `history.pushState()` nur den Hash (pathname + search bleiben erhalten);
+  `popstate`/`hashchange` synchronisieren die Ansicht zurück.
+- Die Startansicht wird im `DOMContentLoaded`-Handler nach
+  `applyShareFromUrl()` aus `location.hash` bestimmt. Verträglich mit den
+  Share-Links: `scrubShareParamsFromUrl()` entfernt nur die Share-Parameter
+  und lässt den Hash stehen; ein Share-Link mit `#needles` importiert also
+  die Setups und öffnet danach den Katalog.
+
+### Formatierung
+
+- `formatCatalogValue()`: Dezimalpunkt in beiden Sprachen (konsistent zu
+  `toFixed()` im restlichen `app.js`), keine Locale-Formatierung.
+- Keine aufgefüllten Nachkommastellen über das Nötige hinaus: Durchmesser
+  2–3, Positionen/Längen 1–2 Nachkommastellen — Werte werden nur so genau
+  gezeigt, wie die Quelle sie hergibt. `test/needlecatalog.test.mjs` prüft
+  per Round-Trip (`parseFloat(format(v)) === v`) für alle Werte aus
+  `NEEDLE_DB`, dass nichts gerundet wird.
+- Fehlende Werte: `CATALOG_EMPTY_VALUE` (`–`).
+
+### Clip-Anzahl
+
+`clipsSource` je Zeile: `'verified'` (per-Nadel-Wert aus `NEEDLE_DB` oder
+Serie in `VERIFIED_DEFAULT_CLIP_PREFIXES`, derzeit nur D), `'custom'`
+(Custom Needle) oder `'default'` (unverifizierter Serien-Platzhalter, X und
+U). `'default'` wird in der Tabelle mit "*" gekennzeichnet
+(`.catalog-unverified`, Tooltip `catalog.clipsDefault.tooltip`, Erklärung in
+der Fußnote).
+
+### i18n
+
+- Alle Texte über `t()` / `data-i18n*` (`view.*`, `catalog.*`).
+- Die Spaltenüberschriften nutzen dynamische Keys
+  (`` t(`catalog.col.${key}`) ``), die die statische `t('…')`-Prüfung nicht
+  sieht; `test/i18n.test.mjs` prüft sie deshalb explizit gegen
+  `CATALOG_COLUMNS` in `en` und `de`.
+- Im Deutschen gilt einheitlich "Taper" (nicht "Konus") — in `catalog.*`,
+  `ref.*` und `svg.*`.
+
+### Service Worker
+
+`./js/needlecatalog.js` steht in `PRECACHE_URLS` (`sw.js`) und in der
+gespiegelten Liste in `test/sw.test.mjs`.
 
 ---
 

@@ -21,6 +21,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 - Use **Reset** to clear all setups back to empty.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
 - Toggle the UI language between **English and German** with the DE/EN button in the header; preference is persisted in localStorage.
+- Switch to the **Needle catalog** tab (or open `#needles`) for a sortable geometry overview of every needle for a carburetor type — filter by series, taper count or name, highlight the needles your setups use, and show a dimension key explaining ØA, ØB, C, ØD, E and F.
 - Use the **Custom Needles** section to define additional needle profiles — with an interactive measurement schematic and field reference table — save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
 - Use the **Share** button in the Setups card header to generate a link that encodes the carburetor type and every non-empty setup — all in the URL itself, nothing is uploaded anywhere. Click **Copy link** to copy it (Clipboard API with a manual-selection fallback). Sharing is blocked, with an explanation of which setup(s)/needle(s) are affected, if any setup to be shared uses a custom needle (custom needles only exist locally for the person who created them, so a link referencing one would be broken for anyone else) or if no setup has a needle selected yet.
   - Opening a share link applies it automatically on page load, before anything else is rendered, and immediately strips the share parameters back out of the URL (any other query params or a `#hash` in the link are left alone) so reloading the page never re-applies it. An invalid or newer-version link leaves your current data untouched and shows a notice instead.
@@ -39,6 +40,7 @@ js/storage.js       localStorage abstraction (setups + custom needles)
 js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
 js/share.js         Share-link encode/decode (pure module, no DOM/localStorage)
+js/needlecatalog.js Needle catalog rows, filtering, sorting, formatting (pure module)
 js/app.js           UI logic, event handling
 js/vendor/          Vendored third-party scripts (Chart.js — see js/vendor/README.md)
 sw.js               Service worker (offline support, update checking)
@@ -168,6 +170,25 @@ hand-maintained list — `isShareNavigation()` staying in sync with
 `scripts/sync-sw-cache-version.mjs`'s `computeCacheVersion()`) that
 `JETTINGCALC_CACHE_VERSION` actually matches the current content of every
 precached file — see "Service worker cache versioning" above.
+
+`test/needlecatalog.test.mjs` covers `js/needlecatalog.js` (the pure
+row/filter/sort/format logic behind the needle catalog, not yet wired into
+the UI): one row per `NEEDLE_DB` entry of each carburetor type (counts
+derived from the data, never hard-coded), taper count, needle length
+(including the X37 override), clip count and its source
+(verified / default / custom), custom needles overriding a base name,
+`usedBy` for the demo setups, natural type ordering (`K9 < K10 < K98 <
+K98-mod < U1`), filters and sorting (null values always last), a
+format → `parseFloat` round-trip for every value in `NEEDLE_DB` (so data
+with more decimals than displayed fails immediately), and that no function
+mutates its deep-frozen inputs.
+
+`test/i18n.test.mjs` is a standing guard for EN/DE completeness of the
+whole app: `en` and `de` in `js/i18n.js` have identical key sets, no empty
+values and identical `{placeholder}` sets per key, and every key used in
+`index.html` (`data-i18n`, `-placeholder`, `-title`, `-aria-label`,
+`-tooltip`) or in a literal `t('…')` call in `js/*.js` exists. Keys built
+dynamically (template strings, variables) are not covered.
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 

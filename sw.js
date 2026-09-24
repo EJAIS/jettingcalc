@@ -74,20 +74,64 @@ function putInCache(event, request, response) {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.put(request, response)));
 }
 
+// The precached app shell is the './' entry, i.e. the directory the worker
+// is registered for. Derived from the registration scope rather than
+// hard-coded so a subdirectory deploy (ejais.de/jettingcalc/) resolves to
+// its own index, not the site root. Pure, so test/sw.test.mjs can cover it.
+export function appShellUrl(scope) {
+  return new URL('./', scope).href;
+}
+
+// Last resort for a navigation that neither the network nor a same-path
+// cache entry can answer: the app is a single page, so any URL inside the
+// scope can be served by the cached shell. Rethrows the original error if
+// even the shell isn't cached (e.g. the install never completed).
+async function appShellOrThrow(error) {
+  const shell = await caches.match(appShellUrl(self.registration.scope));
+  if (shell) return shell;
+  throw error;
+}
+
 async function networkFirst(event, request) {
   try {
     const response = await networkWithTimeout(request, NETWORK_TIMEOUT_MS);
     if (response?.ok) putInCache(event, request, response.clone());
     return response;
-  } catch {
+  } catch (error) {
     // A share-link navigation's URL carries `?v=...&c=...` params that
     // never match the precached bare './' entry under a strict same-URL
     // lookup — ignoreSearch falls back to the cached app shell by path
     // alone, which is what we want here regardless of query string.
     const cached = await caches.match(request, { ignoreSearch: true });
     if (cached) return cached;
-    throw new Error('sw: network-first failed and nothing cached for ' + request.url);
+    // A share link on './index.html' has a different path than './', so
+    // ignoreSearch alone misses the shell.
+    return appShellOrThrow(error);
   }
+}
+
+// Cache-first for plain (non-share) navigations. Unlike assets, a
+// navigation can arrive under URLs that were never precached: './index.html'
+// (the very first visit isn't controlled by the worker yet, so it never
+// lands in the cache) or './' with unrelated params like ?utm_source=...
+// Hence the widening lookups, and the app shell once the network is
+// unreachable. The shell is only substituted when fetch() throws: an
+// online 404 or 500 is a real answer from the server and must stay one,
+// or a mistyped URL would silently render the app.
+async function navigationCacheFirst(event, request) {
+  const exact = await caches.match(request);
+  if (exact) return exact;
+  const samePath = await caches.match(request, { ignoreSearch: true });
+  if (samePath) return samePath;
+
+  let response;
+  try {
+    response = await fetch(request);
+  } catch (error) {
+    return appShellOrThrow(error);
+  }
+  if (response?.ok) putInCache(event, request, response.clone());
+  return response;
 }
 
 async function cacheFirst(event, request) {
@@ -134,7 +178,7 @@ if (inServiceWorkerScope) {
 
     if (request.mode === 'navigate') {
       const url = new URL(request.url);
-      event.respondWith(isShareNavigation(url) ? networkFirst(event, request) : cacheFirst(event, request));
+      event.respondWith(isShareNavigation(url) ? networkFirst(event, request) : navigationCacheFirst(event, request));
       return;
     }
 

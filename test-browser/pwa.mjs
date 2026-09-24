@@ -114,6 +114,43 @@ test('offline: fresh load, then offline reload, still renders fully (charts incl
   }
 });
 
+test('offline: direct navigation to ./index.html?foo=bar after an online visit of ./ renders the app shell', async () => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(`${baseUrl}/`);
+    await waitForController(page);
+
+    // Neither the path nor the query of this URL was ever cached; only
+    // the navigation fallback to the precached './' can answer it.
+    await context.setOffline(true);
+    await page.goto(`${baseUrl}/index.html?foo=bar`, { waitUntil: 'load' });
+
+    assert.equal(await page.title(), 'Dellorto Jetting Calculator');
+    const chartInstanceCount = await page.evaluate(() => Object.keys(globalThis.Chart?.instances ?? {}).length);
+    assert.ok(chartInstanceCount >= 2, `expected both charts to be instantiated offline, got ${chartInstanceCount}`);
+    assert.ok(await page.evaluate(() => !!document.querySelector('[data-id="1"][data-field="needleType"]')), 'expected the setups table to render');
+  } finally {
+    await context.close();
+  }
+});
+
+test('online: a missing page still gets the server 404, not the app shell', async () => {
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(`${baseUrl}/`);
+    await waitForController(page);
+
+    const response = await page.goto(`${baseUrl}/does-not-exist.html`, { waitUntil: 'load' });
+    assert.equal(response.status(), 404);
+    assert.notEqual(await page.title(), 'Dellorto Jetting Calculator');
+    assert.equal((await page.evaluate(() => document.body.textContent)).trim(), 'Not found');
+  } finally {
+    await context.close();
+  }
+});
+
 test('share link online: navigation is network-first, not served from a poisoned stale cache entry', async () => {
   const context = await browser.newContext();
   try {

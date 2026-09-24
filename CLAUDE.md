@@ -44,6 +44,17 @@ Rules for all future UI implementations:
 - Use `data-i18n="key"` on HTML elements for static text content
 - Use `data-i18n-placeholder="key"` for input placeholder attributes
 - Use `data-i18n-title="key"` for tooltip/title attributes
+- Use `data-i18n-aria-label="key"` for aria-label attributes
+- Every `title`, `aria-label` and `placeholder` in `index.html` carries
+  its `data-i18n-*` binding — enforced by `test/i18n.test.mjs`, which
+  tokenizes the markup tag by tag (attributes may span several lines).
+  Attributes rendered from JS use `t()` (e.g. the delete button in the
+  custom needle list: `btn.deleteNeedle` with `{type}`, escaped); the same
+  test fails on a literal `title="…"`, `aria-label="…"` or
+  `placeholder="…"` text in `js/*.js` (`js/vendor/` excluded).
+- Numbers use a decimal point in both languages and a space before the
+  unit (`23.8 mm`; compounds like `26-mm-PHBL` are fine) — also enforced
+  by `test/i18n.test.mjs`
 - After any dynamic DOM update that adds translatable text, call
   `applyTranslations()` from i18n.js
 - Chart axis labels and legends must also go through `t('key')` —
@@ -53,7 +64,9 @@ Rules for all future UI implementations:
 - localStorage key: `dellorto_lang`
 - Values: `'en'` (default) | `'de'`
 - Toggle button shows the TARGET language (clicking EN shows DE and vice versa)
-- `document.documentElement.lang` is updated on every language change
+- `document.documentElement.lang` is set in `applyTranslations()` (the only
+  place that sets it) — on the first load with the stored language and on
+  every language change
 
 ---
 
@@ -79,7 +92,7 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 .gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
-test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs)
+test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
@@ -256,6 +269,31 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
 - **Maßgeblich sind die Werte in `js/calc.js` und `js/needledb.js`.**
   Frühere Annahmen (X-Nadellänge 68 mm, PHBH-`minExposed` 26.4 mm) sind
   überholt.
+
+### Vergasertyp-Auswahl (`#carb-type-selector`)
+
+- Jede Beta-Option steht mit ihrem ⓘ in einem `.carb-type-beta-item`, damit
+  beide nie getrennt umbrechen.
+- **> 600 px** (Desktop, Querformat): eine Zeile wie bisher — VHSx | Beta-
+  Label, PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht
+  dem der Gruppe, die Maße sind identisch zum Stand vor dem Wrapper.
+- **≤ 600 px** (Hochformat): gestapelt — VHSx in voller Breite, darunter
+  das Beta-Label als Zwischenüberschrift mit Linie, darunter PHBH und PHBL
+  nebeneinander (zweispaltiges Grid), jeweils mit ⓘ; Tippziele ≥ 44 px,
+  kein horizontaler Überlauf bis 320 px (dort bricht das BETA-Badge unter
+  den Namen).
+- Die ⓘ in dieser Box haben per `::after` eine Trefferfläche von ca.
+  37 × 37 px. Die Optionen liegen darüber (`z-index`, per `isolation`
+  auf die Box begrenzt), damit die Fläche nie einen Tap auf eine Option
+  abfängt; im Hochformat ist der Spaltenabstand deshalb 12 px, so endet
+  die Fläche in der Lücke. Andere `.cutaway-info` (z. B. Max HD) sind
+  davon nicht betroffen.
+- **Tooltips auf Touch-Geräten** (`app.js`): Ein Tap löst erst
+  `mouseover`, dann `click` aus; früher öffnete das Hover den Tooltip und
+  der Klick schloss ihn sofort wieder. Hover hört deshalb auf
+  `pointerover` und ignoriert Touch. Ein Tap auf einen echten `<button>`
+  mit Tooltip (Zeilenaktionen) führt weiter direkt die Aktion aus.
+- Abgesichert durch `test-browser/carb-selector.mjs`.
 
 ---
 
@@ -608,7 +646,8 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   Details und manuelle Checkliste: `TESTING.md`.
 - **Konvention:** vor jedem Merge ist `node --test` grün (ohne
   Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
-  `custom-needles.mjs`) laufen ebenfalls vollständig grün.
+  `custom-needles.mjs`, `carb-selector.mjs`) laufen ebenfalls vollständig
+  grün.
 
 ### Tooling
 

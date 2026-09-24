@@ -124,3 +124,72 @@ test('needle length texts match NEEDLE_LENGTHS in en and de', () => {
   }
   assert.deepEqual(problems, []);
 });
+
+// Minimal HTML start-tag tokenizer: walks the markup tag by tag (comments
+// skipped), so attributes spread over several lines and quoted values
+// containing '>' are handled — a per-line regex would miss both. Enough
+// for the project's own index.html; not a general-purpose HTML parser.
+function parseStartTags(html) {
+  const tag = /<!--[\s\S]*?-->|<([a-zA-Z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g;
+  const attr = /([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+  const tags = [];
+  for (const m of html.matchAll(tag)) {
+    if (!m[1]) continue; // comment
+    const attrs = {};
+    for (const a of (m[2] ?? '').matchAll(attr)) attrs[a[1].toLowerCase()] = a[2] ?? a[3] ?? a[4] ?? '';
+    const line = html.slice(0, m.index).split('\n').length;
+    tags.push({ name: m[1].toLowerCase(), attrs, line });
+  }
+  return tags;
+}
+
+// Every visible attribute text in index.html must be bound to a key, so a
+// language switch updates it (applyTranslations()).
+test('every title, aria-label and placeholder in index.html has its data-i18n-* binding', () => {
+  const html = readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+  const tags = parseStartTags(html);
+  assert.ok(tags.some(t => t.name === 'footer'), 'tokenizer should reach the end of index.html');
+  const unbound = [];
+  for (const { name, attrs, line } of tags) {
+    for (const a of ['title', 'aria-label', 'placeholder']) {
+      if (Object.hasOwn(attrs, a) && !Object.hasOwn(attrs, `data-i18n-${a}`)) {
+        unbound.push(`line ${line}: <${name}> ${a}="${attrs[a]}"`);
+      }
+    }
+  }
+  assert.deepEqual(unbound, []);
+});
+
+// Numbers use a decimal point in both languages, and units are separated
+// by a space ("55 mm"). Hyphenated compounds such as "26-mm-PHBL" are
+// fine: the digit is followed by '-', not by "mm".
+test('no decimal comma in de and no number glued to "mm" in en or de', () => {
+  const problems = [];
+  for (const [key, value] of Object.entries(de)) {
+    if (/\d,\d/.test(value)) problems.push(`de:${key} uses a decimal comma: ${value.match(/\S*\d,\d\S*/)[0]}`);
+  }
+  for (const [lang, table] of Object.entries({ en, de })) {
+    for (const [key, value] of Object.entries(table)) {
+      if (/\dmm\b/.test(value)) problems.push(`${lang}:${key} lacks a space before "mm": ${value.match(/\S*\dmm\b/)[0]}`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});
+
+// Attribute texts rendered from JS must come from t() via ${…}; a literal
+// value (title="Setup name") would stay English in DE. readdirSync() is not
+// recursive, so the vendored code in js/vendor/ is skipped. The lookbehind
+// leaves data-i18n-title="key" etc. alone.
+test('no literal title, aria-label or placeholder text in js/*.js', () => {
+  const jsDir = path.join(REPO_ROOT, 'js');
+  const literal = /(?<![\w-])(?:title|aria-label|placeholder)="[A-Za-z]/g;
+  const found = [];
+  for (const file of readdirSync(jsDir).filter(f => f.endsWith('.js'))) {
+    const lines = readFileSync(path.join(jsDir, file), 'utf8').split('\n');
+    lines.forEach((line, i) => {
+      if (literal.test(line)) found.push(`js/${file}:${i + 1}: ${line.trim()}`);
+      literal.lastIndex = 0;
+    });
+  }
+  assert.deepEqual(found, []);
+});

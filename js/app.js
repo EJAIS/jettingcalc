@@ -219,7 +219,7 @@ function renderTable() {
     <tr data-row-id="${s.id}">
       <td>
         <input type="text" class="cell-input" data-id="${s.id}" data-field="name"
-               value="${escapeHtml(s.name)}" title="Setup name">
+               value="${escapeHtml(s.name)}" title="${t('field.setupName.title')}">
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="needleType">
@@ -252,11 +252,11 @@ function renderTable() {
       <td class="cutaway-col-cell">${cutawayCell}</td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="nd"
-               value="${s.nd ?? ''}" min="0" max="200" placeholder="ND">
+               value="${s.nd ?? ''}" min="0" max="200" placeholder="${t('col.nd')}">
       </td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
-               value="${s.hd ?? ''}" min="0" max="300" placeholder="HD">
+               value="${s.hd ?? ''}" min="0" max="300" placeholder="${t('col.hd')}">
       </td>
       <td class="row-actions">
         <button type="button" class="btn-icon" data-action="duplicate-row"
@@ -1082,11 +1082,12 @@ function renderCustomNeedleList() {
   list.innerHTML = custom.map(n => {
     const tapers = n.F != null ? '3T' : n.E != null ? '2T' : '1T';
     const typeEsc = escapeHtml(n.type);
+    const deleteLabel = escapeHtml(fillPlaceholder(t('btn.deleteNeedle'), '{type}', n.type));
     return `<li>
       <span class="cn-name">${typeEsc}</span>
       ${n.carbType ? `<span class="cn-carb-badge">${escapeHtml(n.carbType)}</span>` : ''}
       <span class="cn-detail">${tapers} · A=${n.A} B=${n.B} C=${n.C}${n.D != null ? ` D=${n.D} E=${n.E}` : ''}${n.F != null ? ` F=${n.F}` : ''}</span>
-      <button class="btn-delete-needle" data-type="${typeEsc}" title="Delete">✕</button>
+      <button class="btn-delete-needle" data-type="${typeEsc}" title="${deleteLabel}" aria-label="${deleteLabel}">✕</button>
     </li>`;
   }).join('');
 }
@@ -1647,7 +1648,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tipTarget = null;
   }
 
-  document.addEventListener('mouseover', e => {
+  // A tap fires compatibility mouse events: mouseover, then click. Hover
+  // therefore listens to pointerover and ignores touch — otherwise the
+  // mouseover opened the tooltip and the click right after closed it again.
+  let lastPointerType = 'mouse';
+  document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType; }, true);
+
+  document.addEventListener('pointerover', e => {
+    if (e.pointerType === 'touch') return;
     const anchor = e.target.closest('[data-tooltip]');
     if (anchor) showTooltip(anchor);
     else if (tipTarget && !tipTarget.contains(e.target)) hideTooltip();
@@ -1655,6 +1663,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', e => {
     const anchor = e.target.closest('[data-tooltip]');
+    // Tapping a real button runs its action; its tooltip is only a hover hint.
+    if (anchor?.matches('button') && lastPointerType === 'touch') {
+      if (tipTarget) hideTooltip();
+      return;
+    }
     if (anchor) {
       if (tipTarget === anchor) { hideTooltip(); return; }
       showTooltip(anchor);

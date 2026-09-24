@@ -32,7 +32,7 @@
     <button id="btn-lang" class="btn-secondary">DE</button>
     <button id="btn-load-demo" class="btn-secondary" data-i18n="btn.loadDemo">Load Demo</button>
     <button id="btn-reset" class="btn-secondary" data-i18n="btn.reset">Reset</button>
-    <button id="btn-darkmode" class="btn-secondary" title="Toggle dark mode">Dark Mode</button>
+    <button id="btn-darkmode" class="btn-secondary" data-i18n-title="btn.darkMode.title" title="Toggle dark mode">Dark Mode</button>
     <button id="btn-install" class="btn-secondary" data-i18n="btn.install" hidden>Install App</button>
   </div>
 </header>
@@ -71,26 +71,32 @@
     </div>
     <div class="carb-type-beta">
       <span class="beta-divider-label" data-i18n="carbType.betaLabel">Beta Features</span>
-      <label class="carb-type-option beta">
-        <input type="radio" name="carbType" value="PHBH">
-        <span data-i18n="carbType.PHBH">PHBH</span>
-        <span class="beta-badge" data-i18n="carbType.betaBadge">BETA</span>
-      </label>
-      <span class="cutaway-info"
-            data-i18n-tooltip="carbType.phbhBetaDisclaimer"
-            data-tooltip=""
-            role="button" tabindex="0"
-            aria-label="PHBH beta disclaimer">ℹ</span>
-      <label class="carb-type-option beta">
-        <input type="radio" name="carbType" value="PHBL">
-        <span data-i18n="carbType.PHBL">PHBL</span>
-        <span class="beta-badge" data-i18n="carbType.betaBadge">BETA</span>
-      </label>
-      <span class="cutaway-info"
-            data-i18n-tooltip="carbType.phblBetaDisclaimer"
-            data-tooltip=""
-            role="button" tabindex="0"
-            aria-label="PHBL beta disclaimer">ℹ</span>
+      <div class="carb-type-beta-item">
+        <label class="carb-type-option beta">
+          <input type="radio" name="carbType" value="PHBH">
+          <span data-i18n="carbType.PHBH">PHBH</span>
+          <span class="beta-badge" data-i18n="carbType.betaBadge">BETA</span>
+        </label>
+        <span class="cutaway-info"
+              data-i18n-tooltip="carbType.phbhBetaDisclaimer"
+              data-tooltip=""
+              role="button" tabindex="0"
+              data-i18n-aria-label="carbType.phbhInfo.aria"
+              aria-label="PHBH beta notes">ℹ</span>
+      </div>
+      <div class="carb-type-beta-item">
+        <label class="carb-type-option beta">
+          <input type="radio" name="carbType" value="PHBL">
+          <span data-i18n="carbType.PHBL">PHBL</span>
+          <span class="beta-badge" data-i18n="carbType.betaBadge">BETA</span>
+        </label>
+        <span class="cutaway-info"
+              data-i18n-tooltip="carbType.phblBetaDisclaimer"
+              data-tooltip=""
+              role="button" tabindex="0"
+              data-i18n-aria-label="carbType.phblInfo.aria"
+              aria-label="PHBL beta notes">ℹ</span>
+      </div>
     </div>
   </div>
 
@@ -117,7 +123,8 @@
                     data-i18n-tooltip="col.maxHD.tooltip"
                     data-tooltip=""
                     role="button" tabindex="0"
-                    aria-label="Max HD info">ℹ</span>
+                    data-i18n-aria-label="col.maxHD.aria"
+                    aria-label="About Max HD">ℹ</span>
             </th>
             <th data-i18n="col.cutaway">Cutaway</th>
             <th data-i18n="col.nd">ND</th>
@@ -138,7 +145,7 @@
     <div class="card">
       <div class="card-header">
         <h2 data-i18n="section.needleProfile">Needle Profile</h2>
-        <button id="expand-needle" class="btn-expand" title="Expand chart">⛶</button>
+        <button id="expand-needle" class="btn-expand" data-i18n-title="chart.expand" title="Click to expand">⛶</button>
       </div>
       <div class="card-body">
         <div class="chart-wrap chart-clickable" data-i18n-title="chart.expand" title="Click to expand" id="needle-wrap">
@@ -150,7 +157,7 @@
     <div class="card">
       <div class="card-header">
         <h2 data-i18n="section.carbProfile">Carb Profile</h2>
-        <button id="expand-carb" class="btn-expand" title="Expand chart">⛶</button>
+        <button id="expand-carb" class="btn-expand" data-i18n-title="chart.expand" title="Click to expand">⛶</button>
       </div>
       <div class="card-body">
         <div class="chart-wrap chart-clickable" data-i18n-title="chart.expand" title="Click to expand" id="carb-wrap">
@@ -235,15 +242,15 @@
               <span data-i18n="field.C">C – from tip *</span>
               <input id="cn-C" type="number" step="0.1" min="1" max="80" data-i18n-placeholder="placeholder.mm" placeholder="mm">
             </label>
-            <label title="ØD: diameter at junction between Taper 1 and Taper 2">
+            <label data-i18n-title="ref.D.desc" title="Diameter at junction between Taper 1 &amp; 2 (mm)">
               <span data-i18n="field.D">ØD – junction Ø</span>
               <input id="cn-D" type="number" step="0.001" min="1" max="4" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
-            <label title="E: distance from tip to start of Taper 2">
+            <label data-i18n-title="ref.E.desc" title="Distance from tip to start of Taper 2 (mm)">
               <span data-i18n="field.E">E – from tip</span>
               <input id="cn-E" type="number" step="0.1" min="0" max="80" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
-            <label title="F: length of cylindrical section at tip">
+            <label data-i18n-title="ref.F.desc" title="Length of cylindrical section at tip (mm)">
               <span data-i18n="field.F">F – cyl. tip</span>
               <input id="cn-F" type="number" step="0.1" min="0" max="80" data-i18n-placeholder="placeholder.opt" placeholder="opt.">
             </label>
@@ -328,7 +335,7 @@
   <!-- ── Chart modal ────────────────────────────────────────────────────── -->
   <div id="chart-modal" class="chart-modal-backdrop" hidden>
     <div class="chart-modal-box">
-      <button id="chart-modal-close" class="chart-modal-close" title="Close">✕</button>
+      <button id="chart-modal-close" class="chart-modal-close" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
       <div class="chart-modal-canvas-wrap">
         <canvas id="modal-canvas"></canvas>
       </div>

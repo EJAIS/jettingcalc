@@ -1648,7 +1648,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tipTarget = null;
   }
 
-  document.addEventListener('mouseover', e => {
+  // A tap fires compatibility mouse events: mouseover, then click. Hover
+  // therefore listens to pointerover and ignores touch — otherwise the
+  // mouseover opened the tooltip and the click right after closed it again.
+  let lastPointerType = 'mouse';
+  document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType; }, true);
+
+  document.addEventListener('pointerover', e => {
+    if (e.pointerType === 'touch') return;
     const anchor = e.target.closest('[data-tooltip]');
     if (anchor) showTooltip(anchor);
     else if (tipTarget && !tipTarget.contains(e.target)) hideTooltip();
@@ -1656,6 +1663,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('click', e => {
     const anchor = e.target.closest('[data-tooltip]');
+    // Tapping a real button runs its action; its tooltip is only a hover hint.
+    if (anchor?.matches('button') && lastPointerType === 'touch') {
+      if (tipTarget) hideTooltip();
+      return;
+    }
     if (anchor) {
       if (tipTarget === anchor) { hideTooltip(); return; }
       showTooltip(anchor);

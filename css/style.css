@@ -218,6 +218,29 @@ body.dark .btn-secondary:hover { background: #50565f; }
   flex-shrink: 0;
 }
 
+/* One beta option plus its info icon. The gap equals the one in
+   .carb-type-beta, so on wide screens the row looks as before; on narrow
+   screens the pair stays together instead of wrapping apart. */
+.carb-type-beta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.carb-type-beta .cutaway-info { margin-left: 0; }
+
+/* Larger hit area for the info icons (≈ 37 × 37 px) without changing the
+   layout. The options are raised above it, so where the hit area overlaps
+   an option the option still wins; isolation keeps these z-indexes local. */
+.carb-type-selector { isolation: isolate; }
+.carb-type-selector .carb-type-option { position: relative; z-index: 1; }
+.carb-type-selector .cutaway-info { position: relative; }
+.carb-type-selector .cutaway-info::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+
 .beta-badge {
   font-size: 9px;
   font-weight: 700;
@@ -1488,6 +1511,56 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 
   /* Card body: tighter */
   .card-body { padding: 12px 10px; }
+}
+
+/* ── Mobile (≤ 600px): carb type selector, stacked ─────────────────────────── */
+@media (max-width: 600px) {
+  .carb-type-selector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .carb-type-main .carb-type-option {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  /* Beta heading on its own row, PHBH and PHBL side by side below it.
+     Column gap 12px (not 8px): the info icon's 12px hit area then ends in
+     the gap instead of under the neighbouring option. */
+  .carb-type-beta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .beta-divider-label {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .beta-divider-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: color-mix(in srgb, var(--warning) 35%, var(--border));
+  }
+
+  /* flex-wrap: on very narrow screens (320px) the BETA badge moves below
+     the name instead of overflowing the option */
+  .carb-type-beta-item .carb-type-option {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
 }
 
 /* ── Mobile (≤ 600px): view tabs + needle catalog ──────────────────────────── */

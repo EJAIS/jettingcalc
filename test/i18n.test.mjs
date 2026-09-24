@@ -159,3 +159,19 @@ test('every title, aria-label and placeholder in index.html has its data-i18n-* 
   }
   assert.deepEqual(unbound, []);
 });
+
+// Numbers use a decimal point in both languages, and units are separated
+// by a space ("55 mm"). Hyphenated compounds such as "26-mm-PHBL" are
+// fine: the digit is followed by '-', not by "mm".
+test('no decimal comma in de and no number glued to "mm" in en or de', () => {
+  const problems = [];
+  for (const [key, value] of Object.entries(de)) {
+    if (/\d,\d/.test(value)) problems.push(`de:${key} uses a decimal comma: ${value.match(/\S*\d,\d\S*/)[0]}`);
+  }
+  for (const [lang, table] of Object.entries({ en, de })) {
+    for (const [key, value] of Object.entries(table)) {
+      if (/\dmm\b/.test(value)) problems.push(`${lang}:${key} lacks a space before "mm": ${value.match(/\S*\dmm\b/)[0]}`);
+    }
+  }
+  assert.deepEqual(problems, []);
+});

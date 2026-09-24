@@ -219,7 +219,7 @@ function renderTable() {
     <tr data-row-id="${s.id}">
       <td>
         <input type="text" class="cell-input" data-id="${s.id}" data-field="name"
-               value="${escapeHtml(s.name)}" title="Setup name">
+               value="${escapeHtml(s.name)}" title="${t('field.setupName.title')}">
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="needleType">
@@ -252,11 +252,11 @@ function renderTable() {
       <td class="cutaway-col-cell">${cutawayCell}</td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="nd"
-               value="${s.nd ?? ''}" min="0" max="200" placeholder="ND">
+               value="${s.nd ?? ''}" min="0" max="200" placeholder="${t('col.nd')}">
       </td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
-               value="${s.hd ?? ''}" min="0" max="300" placeholder="HD">
+               value="${s.hd ?? ''}" min="0" max="300" placeholder="${t('col.hd')}">
       </td>
       <td class="row-actions">
         <button type="button" class="btn-icon" data-action="duplicate-row"

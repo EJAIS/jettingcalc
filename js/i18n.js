@@ -112,6 +112,7 @@ export const TRANSLATIONS = {
     'field.F':    'F – cyl. tip',
     'field.clips': 'Clip positions',
     'field.needleLengthType': 'Needle length type',
+    'field.setupName.title': 'Setup name',
     'field.needleLengthType.K': 'K-type (73.5 mm)',
     'field.needleLengthType.U': 'U-type (68.0 mm)',
     'placeholder.type': 'e.g. K99',
@@ -337,6 +338,7 @@ export const TRANSLATIONS = {
     'field.F':    'F – zyl. Spitze',
     'field.clips': 'Clip-Positionen',
     'field.needleLengthType': 'Nadellänge-Typ',
+    'field.setupName.title': 'Setup-Name',
     'field.needleLengthType.K': 'K-Typ (73.5 mm)',
     'field.needleLengthType.U': 'U-Typ (68.0 mm)',
     'placeholder.type': 'z.B. K99',
@@ -464,11 +466,13 @@ export function getLang() { return currentLang; }
 export function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('dellorto_lang', lang);
-  document.documentElement.lang = lang;
   applyTranslations();
 }
 
+// Applies the active language to the whole document, <html lang> included.
+// The only place that sets it, so it is right from the first load on.
 export function applyTranslations() {
+  document.documentElement.lang = currentLang;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = t(el.getAttribute('data-i18n'));
   });

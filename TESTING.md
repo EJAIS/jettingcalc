@@ -156,6 +156,9 @@ in EN and once in DE:
   opens its tooltip. A tap on PHBL's left edge still selects PHBL; on
   desktop the edges of PHBH and PHBL next to the ⓘ still hit the options,
   and mouse hover still opens the tooltip.
+- **Stored language on first load** — with `dellorto_lang = 'de'` set
+  before loading, `<html lang>` is `de` right away, without the language
+  button.
 - **Touch on row actions** — tapping a row action button (a `<button>`
   with a tooltip) runs its click, and no tooltip stays open.
 - **No raw i18n keys** — no `view.`/`catalog.`/`svg.`/`carbType.`/`col.`/

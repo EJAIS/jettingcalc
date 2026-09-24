@@ -175,3 +175,21 @@ test('no decimal comma in de and no number glued to "mm" in en or de', () => {
   }
   assert.deepEqual(problems, []);
 });
+
+// Attribute texts rendered from JS must come from t() via ${…}; a literal
+// value (title="Setup name") would stay English in DE. readdirSync() is not
+// recursive, so the vendored code in js/vendor/ is skipped. The lookbehind
+// leaves data-i18n-title="key" etc. alone.
+test('no literal title, aria-label or placeholder text in js/*.js', () => {
+  const jsDir = path.join(REPO_ROOT, 'js');
+  const literal = /(?<![\w-])(?:title|aria-label|placeholder)="[A-Za-z]/g;
+  const found = [];
+  for (const file of readdirSync(jsDir).filter(f => f.endsWith('.js'))) {
+    const lines = readFileSync(path.join(jsDir, file), 'utf8').split('\n');
+    lines.forEach((line, i) => {
+      if (literal.test(line)) found.push(`js/${file}:${i + 1}: ${line.trim()}`);
+      literal.lastIndex = 0;
+    });
+  }
+  assert.deepEqual(found, []);
+});

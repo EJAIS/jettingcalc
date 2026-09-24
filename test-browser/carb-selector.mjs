@@ -262,6 +262,23 @@ for (const lang of ['en', 'de']) {
   });
 }
 
+// A stored language applies on the first load, <html lang> included —
+// without touching the language button.
+test('stored dellorto_lang = de: <html lang> is "de" right after the first load', async () => {
+  const context = await browser.newContext({ serviceWorkers: 'block' });
+  try {
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await page.goto(`${baseUrl}/index.html`);
+    await page.waitForSelector('#setup-tbody tr');
+    assert.equal(await page.evaluate(() => document.documentElement.lang), 'de');
+    assert.equal(await page.textContent('#btn-lang'), 'EN', 'UI is German (button offers EN)');
+    assert.equal(await page.getAttribute('#setup-tbody tr input[data-field="name"]', 'title'), 'Setup-Name');
+  } finally {
+    await context.close();
+  }
+});
+
 // Tooltip anchors that are real buttons (row actions) keep acting on the
 // first tap: the touch fix for the info icons must not swallow their click.
 test('touch: tapping a row action button runs it instead of opening its tooltip', async () => {

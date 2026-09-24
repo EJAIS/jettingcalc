@@ -49,7 +49,9 @@ Rules for all future UI implementations:
   its `data-i18n-*` binding — enforced by `test/i18n.test.mjs`, which
   tokenizes the markup tag by tag (attributes may span several lines).
   Attributes rendered from JS use `t()` (e.g. the delete button in the
-  custom needle list: `btn.deleteNeedle` with `{type}`, escaped).
+  custom needle list: `btn.deleteNeedle` with `{type}`, escaped); the same
+  test fails on a literal `title="…"`, `aria-label="…"` or
+  `placeholder="…"` text in `js/*.js` (`js/vendor/` excluded).
 - Numbers use a decimal point in both languages and a space before the
   unit (`23.8 mm`; compounds like `26-mm-PHBL` are fine) — also enforced
   by `test/i18n.test.mjs`
@@ -62,7 +64,9 @@ Rules for all future UI implementations:
 - localStorage key: `dellorto_lang`
 - Values: `'en'` (default) | `'de'`
 - Toggle button shows the TARGET language (clicking EN shows DE and vice versa)
-- `document.documentElement.lang` is updated on every language change
+- `document.documentElement.lang` is set in `applyTranslations()` (the only
+  place that sets it) — on the first load with the stored language and on
+  every language change
 
 ---
 

@@ -29,17 +29,51 @@ function precacheUrlToRelativePath(url) {
   return url === './' ? 'index.html' : url.replace(/^\.\//, '');
 }
 
-// Hashes both the relative path string and the file's bytes for each entry,
-// so a same-content-different-path collision still changes the version.
-export function computeCacheVersion() {
+// Extensions whose content is hashed with CRLF normalized to LF, so a
+// Windows checkout that converted line endings (core.autocrlf, an editor
+// saving CRLF) computes the same version as the LF bytes the server
+// actually ships. .gitattributes enforces LF in the repo; this keeps the
+// hash stable even where a working tree ignores that. Everything else
+// (e.g. .png, .ico) is binary, where a CR LF byte pair is real data and
+// must not be touched.
+const TEXT_EXTENSIONS = new Set(['.html', '.js', '.mjs', '.css', '.json', '.webmanifest', '.svg', '.txt', '.md']);
+
+function isTextFile(relativePath) {
+  return TEXT_EXTENSIONS.has(path.extname(relativePath).toLowerCase());
+}
+
+// Replaces every CR LF byte pair with a single LF; a lone CR is left as is.
+// Returns the input unchanged when there is nothing to replace, so LF files
+// hash byte-for-byte as they did before normalization existed.
+function normalizeLineEndings(bytes) {
+  if (!bytes.includes(0x0d)) return bytes;
+  const out = Buffer.allocUnsafe(bytes.length);
+  let length = 0;
+  for (let i = 0; i < bytes.length; i++) {
+    if (bytes[i] === 0x0d && bytes[i + 1] === 0x0a) continue;
+    out[length++] = bytes[i];
+  }
+  return out.subarray(0, length);
+}
+
+// Pure core of computeCacheVersion(), exported so the normalization rules
+// can be tested without touching the file system. Hashes both the relative
+// path string and the file's bytes for each entry, so a
+// same-content-different-path collision still changes the version.
+export function hashEntries(entries) {
   const hash = createHash('sha256');
-  for (const url of PRECACHE_URLS) {
-    const relativePath = precacheUrlToRelativePath(url);
-    const bytes = readFileSync(path.join(REPO_ROOT, relativePath));
+  for (const { relativePath, bytes } of entries) {
     hash.update(relativePath);
-    hash.update(bytes);
+    hash.update(isTextFile(relativePath) ? normalizeLineEndings(bytes) : bytes);
   }
   return hash.digest('hex').slice(0, 12);
+}
+
+export function computeCacheVersion() {
+  return hashEntries(PRECACHE_URLS.map(url => {
+    const relativePath = precacheUrlToRelativePath(url);
+    return { relativePath, bytes: readFileSync(path.join(REPO_ROOT, relativePath)) };
+  }));
 }
 
 function isRunDirectly() {

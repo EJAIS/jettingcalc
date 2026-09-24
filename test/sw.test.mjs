@@ -18,7 +18,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation } from '../sw.js';
 import { hasShareParams, shareParamKeys } from '../js/share.js';
-import { computeCacheVersion } from '../scripts/sync-sw-cache-version.mjs';
+import { computeCacheVersion, hashEntries } from '../scripts/sync-sw-cache-version.mjs';
 
 test('CACHE_NAME is derived from JETTINGCALC_CACHE_VERSION', () => {
   assert.equal(CACHE_NAME, `jettingcalc-${JETTINGCALC_CACHE_VERSION}`);
@@ -116,6 +116,36 @@ test('sw.js JETTINGCALC_CACHE_VERSION matches the current content of every preca
     JETTINGCALC_CACHE_VERSION,
     computeCacheVersion(),
     'JETTINGCALC_CACHE_VERSION is stale — a precached file changed since the last sync. Run `npm run sync-sw-version` and commit the result.',
+  );
+});
+
+// A Windows checkout with CRLF working-tree files must compute the same
+// version as the LF bytes the server ships, or the pre-commit hook would
+// flip JETTINGCALC_CACHE_VERSION back and forth between machines.
+test('hashEntries: a text file hashes the same with LF and with CRLF line endings', () => {
+  const lf = Buffer.from('const a = 1;\nconst b = 2;\n');
+  const crlf = Buffer.from('const a = 1;\r\nconst b = 2;\r\n');
+  assert.equal(
+    hashEntries([{ relativePath: 'js/example.js', bytes: crlf }]),
+    hashEntries([{ relativePath: 'js/example.js', bytes: lf }]),
+  );
+});
+
+test('hashEntries: a content change in a text file changes the hash', () => {
+  const before = Buffer.from('const a = 1;\n');
+  const after = Buffer.from('const a = 2;\n');
+  assert.notEqual(
+    hashEntries([{ relativePath: 'js/example.js', bytes: after }]),
+    hashEntries([{ relativePath: 'js/example.js', bytes: before }]),
+  );
+});
+
+test('hashEntries: CR LF bytes in a binary file are not normalized', () => {
+  const withCrlf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const withLf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0a, 0x1a, 0x0a]);
+  assert.notEqual(
+    hashEntries([{ relativePath: 'icons/icon.png', bytes: withCrlf }]),
+    hashEntries([{ relativePath: 'icons/icon.png', bytes: withLf }]),
   );
 });
 

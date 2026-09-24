@@ -9,16 +9,17 @@
 // sw.js only registers its install/activate/fetch listeners when it
 // detects an actual ServiceWorkerGlobalScope (see `inServiceWorkerScope`
 // in sw.js), so importing it here under plain Node is safe and exercises
-// just the pure, testable pieces: the cache manifest and the
-// share-link-aware navigation check. The caches/fetch event wiring itself
-// needs a real browser and is covered by the later Playwright pass.
+// just the pure, testable pieces: the cache manifest, the
+// share-link-aware navigation check, the app-shell URL used by the offline
+// navigation fallback, and the cache-version hash. The caches/fetch event
+// wiring itself needs a real browser and is covered by test-browser/pwa.mjs.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation } from '../sw.js';
+import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation, appShellUrl } from '../sw.js';
 import { hasShareParams, shareParamKeys } from '../js/share.js';
-import { computeCacheVersion } from '../scripts/sync-sw-cache-version.mjs';
+import { computeCacheVersion, hashEntries } from '../scripts/sync-sw-cache-version.mjs';
 
 test('CACHE_NAME is derived from JETTINGCALC_CACHE_VERSION', () => {
   assert.equal(CACHE_NAME, `jettingcalc-${JETTINGCALC_CACHE_VERSION}`);
@@ -111,11 +112,56 @@ test('isShareNavigation stays in sync with share.js hasShareParams() across samp
   }
 });
 
+// appShellUrl() must resolve to the precached './' entry for whatever
+// scope the worker is registered under — a mismatch would make the offline
+// navigation fallback miss the cache.
+test('appShellUrl: root scope with trailing slash', () => {
+  assert.equal(appShellUrl('https://example.com/'), 'https://example.com/');
+});
+
+test('appShellUrl: scope without trailing slash resolves to its parent directory', () => {
+  assert.equal(appShellUrl('https://example.com/jettingcalc'), 'https://example.com/');
+});
+
+test('appShellUrl: subdirectory deploy resolves to the subdirectory itself', () => {
+  assert.equal(appShellUrl('https://ejais.de/jettingcalc/'), 'https://ejais.de/jettingcalc/');
+});
+
 test('sw.js JETTINGCALC_CACHE_VERSION matches the current content of every precached file', () => {
   assert.equal(
     JETTINGCALC_CACHE_VERSION,
     computeCacheVersion(),
     'JETTINGCALC_CACHE_VERSION is stale — a precached file changed since the last sync. Run `npm run sync-sw-version` and commit the result.',
+  );
+});
+
+// A Windows checkout with CRLF working-tree files must compute the same
+// version as the LF bytes the server ships, or the pre-commit hook would
+// flip JETTINGCALC_CACHE_VERSION back and forth between machines.
+test('hashEntries: a text file hashes the same with LF and with CRLF line endings', () => {
+  const lf = Buffer.from('const a = 1;\nconst b = 2;\n');
+  const crlf = Buffer.from('const a = 1;\r\nconst b = 2;\r\n');
+  assert.equal(
+    hashEntries([{ relativePath: 'js/example.js', bytes: crlf }]),
+    hashEntries([{ relativePath: 'js/example.js', bytes: lf }]),
+  );
+});
+
+test('hashEntries: a content change in a text file changes the hash', () => {
+  const before = Buffer.from('const a = 1;\n');
+  const after = Buffer.from('const a = 2;\n');
+  assert.notEqual(
+    hashEntries([{ relativePath: 'js/example.js', bytes: after }]),
+    hashEntries([{ relativePath: 'js/example.js', bytes: before }]),
+  );
+});
+
+test('hashEntries: CR LF bytes in a binary file are not normalized', () => {
+  const withCrlf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const withLf = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0a, 0x1a, 0x0a]);
+  assert.notEqual(
+    hashEntries([{ relativePath: 'icons/icon.png', bytes: withCrlf }]),
+    hashEntries([{ relativePath: 'icons/icon.png', bytes: withLf }]),
   );
 });
 

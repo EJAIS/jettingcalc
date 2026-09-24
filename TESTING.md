@@ -66,6 +66,16 @@ browser context, so they don't share service-worker/cache state.
 - **Offline reload** — fresh load, populate a setup (Load Demo), go
   offline (`context.setOffline(true)`), reload: the page, both charts
   (`Chart.instances`), and the persisted setup data all still render.
+  The first load goes to `./index.html`, which the worker does not yet
+  control and so never caches; the reload is answered by the navigation
+  fallback to the precached app shell (`navigationCacheFirst()` in
+  `sw.js`).
+- **Offline navigation to an uncached URL** — online visit of `./`, then
+  offline direct navigation to `./index.html?foo=bar` (neither path nor
+  query was ever cached): the app shell renders fully, charts included.
+- **Online 404 stays a 404** — with the worker in control, navigating to
+  `./does-not-exist.html` returns the server's 404, not the app shell;
+  the fallback applies only when the network is unreachable.
 - **Share link online is network-first** — poisons the cache with a fake
   stale response under the *exact* share-link URL, then navigates to it
   and asserts the live network response won (not the poisoned cache
@@ -92,7 +102,8 @@ browser context, so they don't share service-worker/cache state.
   `#btn-install` stays hidden even when a real `beforeinstallprompt` is
   dispatched.
 
-All 5 passed against the current `feature/pwa` branch.
+All 7 pass. The offline reload test was red until the navigation
+fallback was added (branch `bugfix/sw-navigation-fallback`).
 
 `test-browser/catalog.mjs` covers the needle catalog view (service
 workers are blocked there — the tests are about the UI, not caching):

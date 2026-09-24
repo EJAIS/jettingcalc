@@ -124,3 +124,38 @@ test('needle length texts match NEEDLE_LENGTHS in en and de', () => {
   }
   assert.deepEqual(problems, []);
 });
+
+// Minimal HTML start-tag tokenizer: walks the markup tag by tag (comments
+// skipped), so attributes spread over several lines and quoted values
+// containing '>' are handled — a per-line regex would miss both. Enough
+// for the project's own index.html; not a general-purpose HTML parser.
+function parseStartTags(html) {
+  const tag = /<!--[\s\S]*?-->|<([a-zA-Z][\w-]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g;
+  const attr = /([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+  const tags = [];
+  for (const m of html.matchAll(tag)) {
+    if (!m[1]) continue; // comment
+    const attrs = {};
+    for (const a of (m[2] ?? '').matchAll(attr)) attrs[a[1].toLowerCase()] = a[2] ?? a[3] ?? a[4] ?? '';
+    const line = html.slice(0, m.index).split('\n').length;
+    tags.push({ name: m[1].toLowerCase(), attrs, line });
+  }
+  return tags;
+}
+
+// Every visible attribute text in index.html must be bound to a key, so a
+// language switch updates it (applyTranslations()).
+test('every title, aria-label and placeholder in index.html has its data-i18n-* binding', () => {
+  const html = readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+  const tags = parseStartTags(html);
+  assert.ok(tags.some(t => t.name === 'footer'), 'tokenizer should reach the end of index.html');
+  const unbound = [];
+  for (const { name, attrs, line } of tags) {
+    for (const a of ['title', 'aria-label', 'placeholder']) {
+      if (Object.hasOwn(attrs, a) && !Object.hasOwn(attrs, `data-i18n-${a}`)) {
+        unbound.push(`line ${line}: <${name}> ${a}="${attrs[a]}"`);
+      }
+    }
+  }
+  assert.deepEqual(unbound, []);
+});

@@ -11,6 +11,7 @@ export const TRANSLATIONS = {
     'btn.reset':     'Reset',
     'btn.darkMode':  'Dark Mode',
     'btn.lightMode': 'Light Mode',
+    'btn.darkMode.title': 'Toggle dark mode',
     'btn.share':     'Share',
     'btn.copyLink':  'Copy link',
     'btn.copied':    'Copied!',
@@ -30,6 +31,8 @@ export const TRANSLATIONS = {
     'carbType.phblBetaBanner': '⚠ Beta: PHBL calculations are experimental and not fully verified.',
     'carbType.phbhBetaDisclaimer': 'PHBH support is experimental. The needle length (55 mm) and needle-exposure constant (23.8 mm) were measured together on a 30 mm PHBH with an X2 needle and AS266 atomizer. It is not yet confirmed whether the carburetor-size scaling term applies equally to other PHBH bore sizes — needle positions for smaller/larger PHBH sizes may deviate. Verify against real-world testing.',
     'carbType.phbhBetaBanner': '⚠ Beta: PHBH calculations are experimental and not fully verified.',
+    'carbType.phbhInfo.aria': 'PHBH beta notes',
+    'carbType.phblInfo.aria': 'PHBL beta notes',
 
     // Setups table
     'section.setups':  'Setups',
@@ -42,6 +45,7 @@ export const TRANSLATIONS = {
     'col.jetType.title': 'DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs · AQ = PHBL carbs',
     'col.maxHD':         'Max HD',
     'col.maxHD.tooltip': 'Equivalent main jet at 100 % throttle (WOT).',
+    'col.maxHD.aria':    'About Max HD',
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
@@ -115,6 +119,7 @@ export const TRANSLATIONS = {
     'placeholder.opt':  'opt.',
     'btn.saveNeedle':   'Save locally',
     'btn.submitNeedle': 'Submit to developer',
+    'btn.deleteNeedle': 'Delete {type}',
     'needle.savedTitle': 'Saved custom needles (marked with * in dropdown)',
     'needle.empty':      'No custom needles saved.',
 
@@ -231,6 +236,7 @@ export const TRANSLATIONS = {
     'btn.reset':     'Zurücksetzen',
     'btn.darkMode':  'Dunkelmodus',
     'btn.lightMode': 'Hellmodus',
+    'btn.darkMode.title': 'Dunkelmodus umschalten',
     'btn.share':     'Teilen',
     'btn.copyLink':  'Link kopieren',
     'btn.copied':    'Kopiert!',
@@ -250,6 +256,8 @@ export const TRANSLATIONS = {
     'carbType.phblBetaBanner': '⚠ Beta: PHBL-Berechnungen sind experimentell und nicht vollständig verifiziert.',
     'carbType.phbhBetaDisclaimer': 'Die PHBH-Unterstützung ist experimentell. Die Nadellänge (55mm) und die Konstante für die Nadel-Exposition (23,8mm) wurden gemeinsam an einem 30mm PHBH mit X2-Nadel und AS266-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für andere PHBH-Bohrungsgrößen gilt, ist noch nicht bestätigt — bei kleineren/größeren PHBH-Größen kann die Nadelposition abweichen. Durch Praxistests bestätigen.',
     'carbType.phbhBetaBanner': '⚠ Beta: PHBH-Berechnungen sind experimentell und nicht vollständig verifiziert.',
+    'carbType.phbhInfo.aria': 'Hinweise zur PHBH-Beta',
+    'carbType.phblInfo.aria': 'Hinweise zur PHBL-Beta',
 
     // Setups table
     'section.setups':  'Setups',
@@ -262,6 +270,7 @@ export const TRANSLATIONS = {
     'col.jetType.title': 'DP/DQ = VHSA/VHSB Vergaser · AV/AS = PHBH Vergaser · AQ = PHBL Vergaser',
     'col.maxHD':         'Max HD',
     'col.maxHD.tooltip': 'Äquivalente Hauptdüse bei 100 % Gasstellung (Vollgas).',
+    'col.maxHD.aria':    'Erläuterung zu Max HD',
     'col.cutaway':       'Cutaway',
     'col.nd':          'ND',
     'col.hd':          'HD',
@@ -335,6 +344,7 @@ export const TRANSLATIONS = {
     'placeholder.opt':  'opt.',
     'btn.saveNeedle':   'Lokal speichern',
     'btn.submitNeedle': 'An Entwickler senden',
+    'btn.deleteNeedle': '{type} löschen',
     'needle.savedTitle': 'Gespeicherte Nadeln (mit * im Dropdown)',
     'needle.empty':      'Keine eigenen Nadeln gespeichert.',
 

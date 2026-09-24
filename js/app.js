@@ -1082,11 +1082,12 @@ function renderCustomNeedleList() {
   list.innerHTML = custom.map(n => {
     const tapers = n.F != null ? '3T' : n.E != null ? '2T' : '1T';
     const typeEsc = escapeHtml(n.type);
+    const deleteLabel = escapeHtml(fillPlaceholder(t('btn.deleteNeedle'), '{type}', n.type));
     return `<li>
       <span class="cn-name">${typeEsc}</span>
       ${n.carbType ? `<span class="cn-carb-badge">${escapeHtml(n.carbType)}</span>` : ''}
       <span class="cn-detail">${tapers} · A=${n.A} B=${n.B} C=${n.C}${n.D != null ? ` D=${n.D} E=${n.E}` : ''}${n.F != null ? ` F=${n.F}` : ''}</span>
-      <button class="btn-delete-needle" data-type="${typeEsc}" title="Delete">✕</button>
+      <button class="btn-delete-needle" data-type="${typeEsc}" title="${deleteLabel}" aria-label="${deleteLabel}">✕</button>
     </li>`;
   }).join('');
 }

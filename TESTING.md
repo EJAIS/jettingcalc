@@ -138,8 +138,35 @@ in EN and once in DE:
 - **Catalog** — the PHBH catalog lists both needles with length `55.0`.
 - **Idempotence** — a reload shows no notice and leaves the values as is.
 
+`test-browser/carb-selector.mjs` covers the carburetor type selector
+(service workers blocked as above), each case in EN and DE:
+
+- **Portrait 412×915** — the "Beta" heading sits above PHBH and PHBL;
+  PHBH and PHBL share one row (same y ± 2 px), side by side; each ⓘ sits
+  right of its option in the same row; VHSx spans the selector's content
+  box; all three options are ≥ 44 px tall; no element sticks out of the
+  selector and the page has no horizontal overflow.
+- **Narrow 320×640** — no horizontal overflow, PHBH and PHBL still in
+  one row.
+- **Landscape 915×412 and desktop 1280×800** — VHSx, beta label, PHBH and
+  PHBL in one row, in the order VHSx, PHBH, ⓘ, PHBL, ⓘ (layout as before).
+- **Tap area** — the point 15 px right of the PHBH ⓘ's centre hit-tests to
+  the icon (`elementFromPoint`; a tap alone isn't proof, since Chromium's
+  touch adjustment snaps taps to nearby targets), and a touch tap there
+  opens its tooltip. A tap on PHBL's left edge still selects PHBL; on
+  desktop the edges of PHBH and PHBL next to the ⓘ still hit the options,
+  and mouse hover still opens the tooltip.
+- **Touch on row actions** — tapping a row action button (a `<button>`
+  with a tooltip) runs its click, and no tooltip stays open.
+- **No raw i18n keys** — no `view.`/`catalog.`/`svg.`/`carbType.`/`col.`/
+  `btn.` key in the text, `title`, `aria-label`, `placeholder` or
+  `data-tooltip` of the selector and the custom needle list; the PHBH ⓘ
+  and the delete button carry the expected translated labels.
+
 Set `CHROMIUM_PATH` to run these against a preinstalled Chromium when the
-Playwright package and its downloaded browser versions don't match.
+Playwright package and its downloaded browser versions don't match — an
+installed Google Chrome works too (e.g. on Windows
+`C:/Program Files/Google/Chrome/Application/chrome.exe`).
 
 ## Manual test checklist
 

@@ -188,7 +188,10 @@ whole app: `en` and `de` in `js/i18n.js` have identical key sets, no empty
 values and identical `{placeholder}` sets per key, and every key used in
 `index.html` (`data-i18n`, `-placeholder`, `-title`, `-aria-label`,
 `-tooltip`) or in a literal `t('…')` call in `js/*.js` exists. Keys built
-dynamically (template strings, variables) are not covered.
+dynamically (template strings, variables) are not covered. It also checks
+that every `title`, `aria-label` and `placeholder` in `index.html` has its
+`data-i18n-*` binding, that no German text uses a decimal comma and that
+no text glues a number to "mm" (`55mm`).
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 

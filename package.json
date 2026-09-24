@@ -1,6 +1,7 @@
 {
   "name": "dellorto-jetting-calculator",
   "private": true,
+  "type": "module",
   "description": "Dev-only dependency declaration for the optional Playwright browser test suite (test-browser/). The app itself ships as plain HTML/CSS/JS with zero dependencies and no build step — see README.md.",
   "scripts": {
     "test": "node --test",

@@ -276,6 +276,39 @@ export function getNeedleLength(needle, needleType) {
   return needle.length ?? NEEDLE_LENGTHS[needleType[0]] ?? 73.5;
 }
 
+// NEEDLE_LENGTHS prefix that defines the total length of a custom needle,
+// by carb type. VHSx is ambiguous (K- and U-type needles differ in length)
+// and is resolved via the user's K/U selection instead.
+export const CUSTOM_LENGTH_PREFIX = { PHBH: 'X', PHBL: 'D' };
+
+// Total length (mm) stored with a custom needle. Single source of truth for
+// the custom needle form and the startup migration. lengthType ('K' | 'U')
+// is only used for VHSx; returns null if the length cannot be determined.
+export function getCustomNeedleLength(carbType, lengthType) {
+  if (carbType === 'VHSx') {
+    return lengthType === 'K' || lengthType === 'U' ? NEEDLE_LENGTHS[lengthType] : null;
+  }
+  const prefix = CUSTOM_LENGTH_PREFIX[carbType];
+  return prefix ? NEEDLE_LENGTHS[prefix] : null;
+}
+
+// Brings stored custom needles in line with NEEDLE_LENGTHS. Pure: returns
+// new objects and never mutates the input. Only carb types with a fixed
+// length (CUSTOM_LENGTH_PREFIX) are touched — there the length is never a
+// user input, so correcting it loses nothing. VHSx needles are left as they
+// are, since K vs. U is the user's choice.
+export function migrateCustomNeedles(needles) {
+  const changes = [];
+  const migrated = needles.map(n => {
+    if (!Object.hasOwn(CUSTOM_LENGTH_PREFIX, n.carbType)) return { ...n };
+    const to = getCustomNeedleLength(n.carbType);
+    if (n.length === to) return { ...n };
+    changes.push({ type: n.type, carbType: n.carbType, from: n.length ?? null, to });
+    return { ...n, length: to };
+  });
+  return { needles: migrated, changes };
+}
+
 // Number of tapers (1–3) for a needle entry. Truthy checks on purpose:
 // F/E of 0 count as absent, same as the original spreadsheet (Excel B14).
 export function getTaperCount(needle) {

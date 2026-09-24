@@ -27,6 +27,7 @@ globalThis.localStorage = {
 };
 const { TRANSLATIONS } = await import('../js/i18n.js');
 const { CATALOG_COLUMNS } = await import('../js/needlecatalog.js');
+const { NEEDLE_LENGTHS } = await import('../js/needledb.js');
 
 const { en, de } = TRANSLATIONS;
 const PLACEHOLDER = /\{[a-zA-Z]+\}/g;
@@ -98,4 +99,28 @@ test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', (
     }
   }
   assert.deepEqual(missing, []);
+});
+
+// Custom needle length texts must match NEEDLE_LENGTHS (the single source
+// for custom needle lengths), with a decimal point in both languages.
+test('needle length texts match NEEDLE_LENGTHS in en and de', () => {
+  const EXPECTED_PREFIXES = {
+    'ref.note': ['K', 'U', 'X', 'D'],
+    'field.needleLengthType.K': ['K'],
+    'field.needleLengthType.U': ['U'],
+  };
+  const problems = [];
+  for (const lang of ['en', 'de']) {
+    for (const [key, prefixes] of Object.entries(EXPECTED_PREFIXES)) {
+      const text = TRANSLATIONS[lang][key];
+      for (const prefix of prefixes) {
+        const mm = `${NEEDLE_LENGTHS[prefix].toFixed(1)} mm`;
+        if (!text.includes(mm)) problems.push(`${lang}:${key} lacks "${mm}" (${prefix})`);
+      }
+      if (/\d,\d/.test(text)) problems.push(`${lang}:${key} uses a decimal comma`);
+      if (/U\s*=\s*X/.test(text)) problems.push(`${lang}:${key} claims U = X`);
+      if (/PHBH[^.,;]*\b68\b/.test(text)) problems.push(`${lang}:${key} gives PHBH as 68 mm`);
+    }
+  }
+  assert.deepEqual(problems, []);
 });

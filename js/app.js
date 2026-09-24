@@ -5,7 +5,8 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
-import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount } from './needledb.js';
+import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount,
+         getCustomNeedleLength, migrateCustomNeedles } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
@@ -1014,14 +1015,20 @@ function hideImportBanner() {
 
 // ── Custom Needle form ────────────────────────────────────────────────────────
 
-// Total needle length by carb family — mirrors NEEDLE_LENGTHS in needledb.js.
-// VHSx is ambiguous (covers both K- and U-type needles with different lengths),
-// so it is resolved separately via the cnLengthType radio selection.
-const CARB_TYPE_NEEDLE_LENGTH = {
-  PHBH: 68.0,
-  PHBL: 52.0,
-};
-const VHSX_LENGTH_BY_TYPE = { K: 73.5, U: 68.0 };
+// One-time correction of stored custom needle lengths (see
+// migrateCustomNeedles() in needledb.js). Idempotent: once saved, a second
+// run finds nothing to change and shows no notice. showNotice() writes via
+// textContent, so needle types are not HTML-escaped here (that would show
+// literal entities).
+function migrateStoredCustomNeedles() {
+  const { needles, changes } = migrateCustomNeedles(loadCustomNeedles());
+  if (changes.length === 0) return;
+  saveCustomNeedles(needles);
+  const list = changes
+    .map(c => `${c.type} (${c.carbType}): ${c.from != null ? Number(c.from).toFixed(1) : '–'} → ${c.to.toFixed(1)} mm`)
+    .join(', ');
+  showNotice(t('msg.customLengthMigrated').replace('{n}', changes.length).replace('{needles}', list));
+}
 
 function updateLengthTypeVisibility() {
   const row = document.getElementById('cn-length-type-row');
@@ -1036,16 +1043,10 @@ function readNeedleForm() {
   const carbType = carbTypeEl?.value ?? null;
   const lengthTypeEl = document.querySelector('input[name="cnLengthType"]:checked');
 
-  let length = null;
-  if (carbType === 'VHSx') {
-    length = lengthTypeEl ? VHSX_LENGTH_BY_TYPE[lengthTypeEl.value] : null;
-  } else if (carbType) {
-    length = CARB_TYPE_NEEDLE_LENGTH[carbType] ?? null;
-  }
-
   return {
     carbType,
-    length,
+    // VHSx: from the K/U selection; PHBH/PHBL: fixed per carb type.
+    length: getCustomNeedleLength(carbType, lengthTypeEl?.value),
     type: get('cn-type')?.toUpperCase(),
     A: getNum('cn-A'),
     B: getNum('cn-B'),
@@ -1386,6 +1387,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // `setups`/`carbType`, so the very first render already reflects it.
   const shareOfflineStale = hasShareParams(location.search) && isShareLinkPossiblyStale();
   applyShareFromUrl({ offlineStale: shareOfflineStale });
+
+  // Correct stored custom needle lengths before the first render. Runs after
+  // the share import so its one-time notice is not replaced by a share notice.
+  migrateStoredCustomNeedles();
 
   // iOS Safari never fires 'beforeinstallprompt', so it needs its own
   // one-time check to decide whether #btn-install should appear at all.

@@ -78,7 +78,7 @@ icons/                      PWA-Icons
 scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CACHE_VERSION
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
-test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs)
+test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
@@ -271,11 +271,19 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
   `NEEDLE_DB` existieren. `D` und `E` nur gemeinsam; `F` nur mit `D`/`E`.
   Eine bereits vorhandene Custom Needle gleichen Typs wird nur nach
   Rückfrage überschrieben.
-- **Länge je Vergasertyp (`readNeedleForm()`):** VHSx über die Auswahl
-  K- oder U-Typ (`VHSX_LENGTH_BY_TYPE`), PHBH/PHBL fest über
-  `CARB_TYPE_NEEDLE_LENGTH` in `app.js`. Die Länge wird in der Custom Needle
-  gespeichert. Achtung: `CARB_TYPE_NEEDLE_LENGTH.PHBH` entspricht derzeit
-  nicht `NEEDLE_LENGTHS.X` — offener Punkt.
+- **Länge je Vergasertyp:** einzige Quelle ist `getCustomNeedleLength()`
+  (`needledb.js`), die aus `NEEDLE_LENGTHS` liest — VHSx über die Auswahl
+  K- oder U-Typ, PHBH/PHBL fest über `CUSTOM_LENGTH_PREFIX` (X bzw. D).
+  `readNeedleForm()` speichert das Ergebnis als `length` in der Custom
+  Needle. In `app.js` gibt es bewusst keine eigenen Längen-Konstanten.
+- **Migration beim Start:** Der `DOMContentLoaded`-Handler ruft vor dem
+  ersten Rendern `migrateCustomNeedles()` auf. Eigene PHBH-/PHBL-Nadeln,
+  deren gespeicherte `length` fehlt oder von `getCustomNeedleLength()`
+  abweicht (z. B. PHBH 68 → 55 mm), werden korrigiert, gespeichert und per
+  Hinweis `msg.customLengthMigrated` gemeldet. Verlustfrei, weil die Länge
+  bei diesen Typen nie eine Nutzereingabe ist; idempotent (ein zweiter
+  Start meldet nichts). VHSx-Nadeln bleiben unangetastet, da K/U eine
+  Nutzerentscheidung ist.
 - **Clip-Geometrie:** Custom Needles bekommen immer die 4-Nuten-Referenz
   (Korrektur 0), weil die nach Nut-Anzahl gemessene Geometrie nur für
   `NEEDLE_DB` gilt (`getClipGeometry()`). Per-Nadel-Overrides
@@ -608,7 +616,7 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   ausschließlich das **unveränderte** Original `Dellorto_Jetting_Gue.xlsx`
   (Download-Stand 2022, byte-identisch committet, SHA-256
   `4138cb52c7d108c9308d4c50ff540bf419f3d8d4cc387862600e00cafb6e1807`, ohne
-  `docProps/`-Verzeichnis und ohne `MSIP_`-Klassifizierungsmetadaten).
+  Dokument-Metadaten).
   **Nie öffnen und neu speichern** — auch nicht mit openpyxl oder
   LibreOffice —, nur lesend auswerten (z. B. über `zipfile`), und aus
   demselben Grund keine lokal geöffneten oder neu gespeicherten Kopien

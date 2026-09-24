@@ -151,6 +151,14 @@ kein Datenfehler).
   = 4`) für mindestens diese eine Nadel.
 - Basis: eine Messung, methodisch identisch zur PHBL-Messung (eine
   Nadel/Mischrohr/Bohrungs-Kombination bei Clip 1).
+- **Nachtrag (2026-09):** Der Pfad für eigene Nadeln hatte die Korrektur
+  auf 55,0mm bis zu diesem Fix nicht übernommen — `app.js` speicherte
+  eigene PHBH-Nadeln mit einer eigenen Konstante (68,0mm), während
+  `minExposed` bereits 23,8mm war; die Leerlaufposition lag dadurch um
+  13mm zu hoch. Die Länge eigener Nadeln kommt jetzt aus
+  `getCustomNeedleLength()` (`NEEDLE_LENGTHS`), und gespeicherte eigene
+  PHBH-/PHBL-Nadeln mit abweichender oder fehlender Länge werden beim
+  Start einmalig migriert (`migrateCustomNeedles()`).
 
 ---
 

@@ -116,7 +116,18 @@ workers are blocked there — the tests are about the UI, not caching):
   leaves the sticky first column at the same x position, and the page
   itself has no horizontal overflow.
 
-Set `CHROMIUM_PATH` to run it against a preinstalled Chromium when the
+`test-browser/custom-needles.mjs` covers the one-time startup migration
+of stored custom needle lengths (service workers blocked as above), once
+in EN and once in DE:
+
+- **Migration** — with a custom PHBH needle stored at 68 mm and one
+  without `length`, the page load shows the `msg.customLengthMigrated`
+  notice (translated, no raw key or placeholder) and localStorage holds
+  55 mm for both.
+- **Catalog** — the PHBH catalog lists both needles with length `55.0`.
+- **Idempotence** — a reload shows no notice and leaves the values as is.
+
+Set `CHROMIUM_PATH` to run these against a preinstalled Chromium when the
 Playwright package and its downloaded browser versions don't match.
 
 ## Manual test checklist

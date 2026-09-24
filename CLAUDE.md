@@ -62,7 +62,7 @@ Rules for all future UI implementations:
 ```
 index.html                  Haupt-UI: Rechner- und Katalog-Ansicht, Dialoge, Nadel-Schema-<template>, Footer
 manifest.json               PWA-Manifest (relative start_url/scope)
-sw.js                       Service Worker: Precache, Cache-first, Share-Links network-first
+sw.js                       Service Worker: Precache, Cache-first, Navigations-Fallback, Share-Links network-first
 css/style.css               Styling inkl. Dark Mode (CSS-Variablen)
 js/app.js                   UI-Logik, Event-Handling, Ansichten, Share-UI, Katalog-UI
 js/calc.js                  Berechnungs-Engine (calcSetup)
@@ -77,6 +77,7 @@ js/vendor/                  Vendored Chart.js (Version und Herkunft: js/vendor/R
 icons/                      PWA-Icons
 scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CACHE_VERSION
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
+.gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
 test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
@@ -551,10 +552,22 @@ gespiegelten Liste in `test/sw.test.mjs`.
 - `sw.js` precacht alle Dateien aus `PRECACHE_URLS`; `test/sw.test.mjs`
   spiegelt die Liste und prüft zusätzlich, dass jedes in `manifest.json`
   und `index.html` referenzierte Icon enthalten ist.
-- Navigationen werden cache-first bedient; Navigationen mit
-  Share-Parametern (`isShareNavigation()`, nutzt `hasShareParams()` aus
-  `share.js`) network-first mit Timeout, damit ein Link gegen die aktuelle
-  Nadeldatenbank dekodiert wird.
+- Navigationen ohne Share-Parameter laufen über `navigationCacheFirst()`:
+  exakte URL im Cache, dann derselbe Pfad mit `ignoreSearch`, dann Netz
+  (bei `ok` wird die Antwort gecacht). Nur wenn `fetch()` wirft (offline,
+  Netzfehler), wird die precachte Startseite unter
+  `appShellUrl(registration.scope)` (= `./` des Scopes, auch im
+  Unterverzeichnis) ausgeliefert. Grund: Der erste Aufruf von z. B.
+  `./index.html` ist noch nicht vom Service Worker kontrolliert und landet
+  nie im Cache; ohne Fallback schlug ein Offline-Reload fehl. Eine
+  Online-Antwort mit HTTP-Fehler (404 usw.) bleibt unverändert — ein
+  vertippter Pfad zeigt den Server-404, nicht still die App.
+- Navigationen mit Share-Parametern (`isShareNavigation()`, nutzt
+  `hasShareParams()` aus `share.js`) laufen über `networkFirst()` mit
+  Timeout, damit ein Link gegen die aktuelle Nadeldatenbank dekodiert wird.
+  Offline: `ignoreSearch`-Treffer, sonst derselbe Rückgriff auf
+  `appShellUrl()`.
+- Asset-Requests laufen unverändert über `cacheFirst()` (ohne Fallback).
 - Ein neuer Service Worker aktiviert sich nicht selbst, sondern wartet, bis
   der Nutzer im Update-Banner „Update now“ wählt (`SKIP_WAITING`-Nachricht).
 - **`JETTINGCALC_CACHE_VERSION` ist generiert** (Hash über Pfad und Inhalt
@@ -562,11 +575,13 @@ gespiegelten Liste in `test/sw.test.mjs`.
   mit `npm run sync-sw-version`, automatisch über den pre-commit-Hook
   (unten). Die eigentliche Absicherung ist `test/sw.test.mjs`: er schlägt
   fehl, sobald der Wert nicht zum Inhalt der precachten Dateien passt.
-- **Bekannter offener Punkt:** Es gibt keinen Navigations-Fallback für nicht
-  gecachte URLs. Precacht ist `./`, eine Offline-Navigation auf z. B.
-  `/index.html` findet daher keinen Cache-Eintrag und schlägt fehl. Das ist
-  der rote Test „offline: fresh load, then offline reload …“ in
-  `test-browser/pwa.mjs`.
+- **Zeilenenden im Hash:** `hashEntries()`
+  (`scripts/sync-sw-cache-version.mjs`) normalisiert bei Textdateien
+  (`.html`, `.js`, `.mjs`, `.css`, `.json`, `.webmanifest`, `.svg`, `.txt`,
+  `.md`) CRLF zu LF vor dem Hashen; Binärdateien (`.png`, `.ico` usw.)
+  werden unverändert gehasht. Ein Windows-Arbeitsbaum mit CRLF-Dateien
+  ergibt so dieselbe Version wie die ausgelieferten LF-Bytes. Für LF-Dateien
+  ist der Hash identisch zum Stand vor der Normalisierung.
 
 ### Git Hooks (optional, empfohlen)
 
@@ -591,9 +606,25 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   Chromium; `npm install` nötig). Mit der Umgebungsvariable
   `CHROMIUM_PATH` lässt sich ein vorinstalliertes Chromium verwenden.
   Details und manuelle Checkliste: `TESTING.md`.
-- **Konvention:** vor jedem Merge ist `node --test` grün; die Browsertests
-  laufen ebenfalls grün, abgesehen von bekannten, dokumentierten Fehlern
-  (derzeit der Offline-Test in `pwa.mjs`, siehe oben).
+- **Konvention:** vor jedem Merge ist `node --test` grün (ohne
+  Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
+  `custom-needles.mjs`) laufen ebenfalls vollständig grün.
+
+### Tooling
+
+- **`.gitattributes`:** `* text=auto eol=lf` macht LF für alle Textdateien
+  verbindlich, unabhängig von `core.autocrlf`; `*.png`, `*.ico` und
+  `*.xlsx` sind als `binary` markiert (keine Zeilenend-Konvertierung, kein
+  Text-Diff). Die Original-Excel bleibt dadurch byte-identisch.
+- **`"type": "module"` in `package.json`:** aller unter Node laufende Code
+  (`scripts/`, `test/`, `test-browser/`, `js/`, `sw.js`) ist ES-Modul-Code.
+  Ohne die Angabe meldet Node beim Import der `.js`-Dateien
+  `MODULE_TYPELESS_PACKAGE_JSON`. Das vendored Chart.js-UMD-Bundle lädt nur
+  der Browser als klassisches `<script>`; es ist davon nicht betroffen.
+- **Windows:** Node muss als echtes `node` im `PATH` liegen (z. B.
+  `C:\Program Files\nodejs`), nicht nur als Shell-Alias oder
+  Editor-internes Node — der Pre-Commit-Hook läuft über `sh` (Git Bash) und
+  ruft `node` direkt auf. Ohne das scheitert der Commit.
 
 ---
 

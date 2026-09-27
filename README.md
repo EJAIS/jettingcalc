@@ -60,9 +60,16 @@ change.
 - **When nothing helps.** If a range is **HD-limited** (from 35 % throttle
   on, the main jet, not the needle, meters fuel at every point of the
   range), + is disabled with
-  "HD-limited → adjust HD" and the HD row in the jet block is highlighted.
-  If no needle changes a range by at least 1 %, the button says so. If the
-  chosen step shifts other ranges a lot, a warning appears above the table.
+  "HD-limited → adjust HD" and the HD row in the jet block is highlighted
+  with a "lever" badge. If no needle changes a range by at least 1 %, the
+  button says so. If the chosen step shifts other ranges a lot, a warning
+  appears in the options area, and a ⚠ marks every range the last step
+  moved noticeably besides the one you asked for.
+- **Nothing jumps.** Hints, warnings and the options appear either in
+  places of fixed size or below the last button, so the buttons you are
+  about to press never move — the options for a step and the result of
+  "Apply" therefore sit at the end of the tab, the sticky status line at
+  the top shows the effect right away.
 - **Jets.** ND and HD step by 1, the needle jet through the factory sizes
   of the atomizer type; at a limit the button is disabled and says why.
 - **Clip only.** If the current needle has an identical twin (e.g. K27 and

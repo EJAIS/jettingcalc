@@ -506,6 +506,110 @@ test(`one updateUI() reads the custom needles at most ${MAX_CUSTOM_NEEDLE_READS_
   }
 });
 
+// ── Layout stability ─────────────────────────────────────────────────────────
+
+// No control may move under the pointer: whatever changes height through
+// interaction sits below the last control or in a slot of fixed height.
+const CONTROLS = '#view-tuning [data-tuning-step], #view-tuning [data-tuning-jet], #view-tuning [data-tuning-action]';
+const controlTops = page => page.evaluate(sel => Object.fromEntries([...document.querySelectorAll(sel)]
+  .map(b => [b.dataset.tuningStep ?? b.dataset.tuningJet ?? b.dataset.tuningAction, b.getBoundingClientRect().top])), CONTROLS);
+
+for (const [name, contextOptions] of [
+  ['1280×800', { viewport: { width: 1280, height: 800 } }],
+  ['360×740 mobile', MOBILE],
+]) {
+  test(`layout stability (${name}): steps, undo, jet steps and apply never move a control`, async () => {
+    await withPage(async page => {
+      const mobile = !!contextOptions.hasTouch;
+      const press = await openTuningWithK27(page, { tap: mobile });
+      // Scroll the next target into view first, then measure, then press:
+      // the pointer stays where it was, so any change is a layout shift.
+      const event = async (label, selector) => {
+        await page.locator(selector).scrollIntoViewIfNeeded();
+        const before = await controlTops(page);
+        await press(selector);
+        const after = await controlTops(page);
+        for (const [key, top] of Object.entries(before)) {
+          if (!(key in after)) continue;
+          assert.ok(Math.abs(after[key] - top) <= 1,
+            `${name}, ${label}: control ${key} moved from ${top} to ${after[key]}`);
+        }
+      };
+
+      // a) Needle step with side-effect warning: r3 leaner → K58 C2.
+      await event('a) needle step with warning', '[data-tuning-step="3:-1"]');
+      assert.match(await status(page), /K27 C3 → K58 C2/);
+      assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 1,
+        'warning sits in the suggestions area');
+      const flaggedRows = await page.$$eval('tr[data-range]:not(.is-last-step) .tuning-side-flag', els => els.length);
+      assert.ok(flaggedRows >= 1, 'a ⚠ marks at least one row besides the target');
+      assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no ⚠ on the target row');
+      assert.ok(await page.getAttribute('tr[data-range]:not(.is-last-step) .tuning-side-flag >> nth=0', 'aria-label'));
+
+      // b) Step back: warning, cards and flags disappear.
+      await event('b) step back', '[data-tuning-action="undo"]');
+      assert.equal(await page.locator('#tuning-warning').count(), 0);
+      assert.equal(await page.locator('.tuning-side-flag').count(), 0);
+
+      // Cards again, so the jet steps below have something to remove.
+      await event('needle step', '[data-tuning-step="1:1"]');
+      assert.equal(await page.locator('.tuning-sugg').count(), 3);
+
+      // c) HD + twice: cards go, HD-limited badges and hints change.
+      await event('c) HD + (1)', '[data-tuning-jet="hd:1"]');
+      await event('c) HD + (2)', '[data-tuning-jet="hd:1"]');
+      assert.equal(await page.locator('.tuning-sugg').count(), 0);
+      assert.match(await status(page), /HD 130/);
+
+      // d) Apply to a free slot: the message appears below the buttons.
+      await event('d) apply to free slot', '[data-tuning-action="applyFree"]');
+      assert.equal(await isVisible(page, '#tuning-apply-banner'), true);
+      const [buttonsBottom, messageTop] = await page.evaluate(() => [
+        document.getElementById('tuning-actions').getBoundingClientRect().bottom,
+        document.getElementById('tuning-apply-banner').getBoundingClientRect().top,
+      ]);
+      assert.ok(messageTop >= buttonsBottom - 1, 'message field below the action buttons');
+    }, contextOptions);
+  });
+}
+
+test('320 px German: every reason text under the bar fits one line', async () => {
+  await withPage(async page => {
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await openTuningWithK27(page, { tap: true });
+    // Every text tuningReasonLine() can produce, built from the live
+    // translations, measured in a real reason line of the table.
+    const results = await page.evaluate(async () => {
+      const { t } = await import('./js/i18n.js');
+      const fill = (tpl, map) => Object.entries(map).reduce((str, [k, v]) => str.replace(`{${k}}`, v), tpl);
+      const dir = d => t(d > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner');
+      const texts = [];
+      for (const reason of ['hdLimited', 'noCandidates']) {
+        texts.push(t(`tuning.reasonShort.${reason}`));
+        for (const d of [-1, 1]) texts.push(fill(t('tuning.reasonLine'), { dir: dir(d), reason: t(`tuning.reasonShort.${reason}`) }));
+      }
+      for (const [lean, rich] of [['hdLimited', 'noCandidates'], ['noCandidates', 'hdLimited']]) {
+        texts.push([fill(t('tuning.reasonLine'), { dir: dir(-1), reason: t(`tuning.reasonTiny.${lean}`) }),
+          fill(t('tuning.reasonLine'), { dir: dir(1), reason: t(`tuning.reasonTiny.${rich}`) })].join(' · '));
+      }
+      const el = document.querySelector('tr[data-range="r4"] .tuning-reason');
+      const original = el.textContent;
+      const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+      const out = texts.map(text => {
+        el.textContent = text;
+        return { text, height: el.getBoundingClientRect().height, lineHeight, overflow: el.scrollWidth - el.clientWidth };
+      });
+      el.textContent = original;
+      return out;
+    });
+    assert.equal(results.length, 8);
+    for (const r of results) {
+      assert.ok(r.height <= r.lineHeight + 1, `"${r.text}" is ${r.height} px high`);
+      assert.ok(r.overflow <= 0, `"${r.text}" overflows its line by ${r.overflow} px`);
+    }
+  }, { ...MOBILE, viewport: { width: 320, height: 740 } });
+});
+
 // ── i18n, carb type, mobile ──────────────────────────────────────────────────
 
 test('language switch keeps the tuning state, cards and apply banner', async () => {

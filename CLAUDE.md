@@ -773,14 +773,22 @@ Prozentpunkten flow:
   `every()` über die leere Menge wäre `true` und markierte sie bei jeder
   HD als begrenzt. (Regel bestätigt; die ursprüngliche Fassung „jeder
   Punkt ≥ 35 %“ schloss 1/4–1/2 grundsätzlich aus.) Badge „HD-begrenzt“ in
-  der Zeile, Hervorhebung der HD-Zeile im Düsenblock.
+  der Zeile; im Düsenblock ist die HD-Zeile hervorgehoben und trägt das
+  Badge „Hebel“ (`tuning.jets.leverBadge`, Tooltip `tuning.jets.hdHint`
+  mit den Bereichen).
 - **`reason`** bei leerem Ergebnis: `'hdLimited'` (Bereich in current
   HD-begrenzt) oder `'noCandidates'` (`TUNING_REASONS`). Der ±-Button ist
   dann deaktiviert, der Grund steht als sichtbarer Text in der Zeile und
   zusätzlich als Tooltip.
 - **`warning`**: side > `WARN_SIDE_RATIO` (3) · inc beim besten Vorschlag —
   die gewünschte Korrektur geht mit der Nadel nicht sauber. Die UI wendet
-  dieselbe Regel auf die gerade übernommene Karte an.
+  dieselbe Regel auf die gerade übernommene Karte an und zeigt die Warnung
+  im Variantenbereich unter dessen Überschrift. Zusätzlich trägt jede
+  Bereichszeile außer dem Ziel des letzten Nadelschritts, deren flow sich
+  durch diesen Schritt um ≥ `SIGNIFICANT` geändert hat (Vergleich mit dem
+  Stand **vor** dem Schritt, `lastStep.flowBefore`, nicht mit der
+  Referenz), ein ⚠ im immer reservierten Platz der Δ-Zelle (`aria-label`
+  und Tooltip `tuning.warn.sideFlag`).
 - **Custom Needle gelöscht, umgetypt oder neu gespeichert**:
   `validateTuningState()` (in jedem `updateUI()`) prüft ref, current und
   jeden `history`-Eintrag mit `validateTuningSetup()` — also auch die
@@ -793,7 +801,60 @@ Prozentpunkten flow:
   sonst eine gelöschte Nadel laden.
 - **Düsen am Anschlag** (Grenze von ND/HD, Ende der Nadeldüsen-Liste):
   Button deaktiviert, Grund als Text in der Hinweiszeile unter der Düse
-  und als Tooltip an der Zelle.
+  (immer vorhanden, eine Zeile hoch) und als Tooltip an der Zelle.
+
+### Layout-Stabilität (verbindlich)
+
+**Regel:** Oberhalb eines Bedienelements des Tabs darf sich die Höhe durch
+Interaktion nie ändern. Veränderlicher Inhalt steht entweder am Ende des
+Tabs oder in einem Platz mit fest reservierter Höhe. Grund: Nach einem
+±-Klick schoben Warnung, Hinweiszeilen, eine umbrechende Statuszeile oder
+wegfallende Karten die Tabelle bzw. den Düsenblock unter den Mauszeiger;
+der nächste Klick traf einen anderen Bereich (gemessen: bis 205 px auf dem
+Desktop, bis 507 px auf dem Handy).
+
+- **Reihenfolge** (Desktop und Mobil): Referenz → Statuszeile →
+  Bereichstabelle → Düsenblock → Aktionen, darunter das Meldungsfeld der
+  Übernahme → Variantenbereich (mit der Seiteneffekt-Warnung) →
+  Modellhinweis. Die Karten stehen bewusst nicht mehr direkt unter der
+  Tabelle; die klebende Statuszeile gibt die sofortige Rückmeldung.
+- **Feste Plätze:**
+  - Statuszeile: eine Zeile, feste Höhe, Ellipsis, voller Text als `title`.
+  - Bereichszeile: Meta-Zeile unter dem Label (Haupthebel bzw. Badge
+    „HD-begrenzt“, `nowrap`), ⚠-Platz fester Breite in der Δ-Zelle und
+    die Hinweiszeile unter dem Balken sind immer vorhanden, auch leer.
+    Hinweiszeile: im Tabellenlayout zwei Zeilen hoch, im Grid-Layout eine
+    Zeile über die volle Breite. Texte (`tuningReasonLine()`): eine
+    Richtung „Fetter: HD-begrenzt → HD anpassen“; beide Richtungen mit
+    gleichem Grund nur der Grund; verschiedene Gründe die Kurzformen
+    `tuning.reasonTiny.*` („Magerer: keine Nadel · Fetter: HD-begrenzt“) —
+    alle bei 320 px auf Deutsch einzeilig (`tuning.mjs` misst alle acht
+    Varianten).
+  - Tabelle: `table-layout: fixed` mit festen Spaltenbreiten, damit
+    wechselnde Zahlen keine Spalten verschieben.
+  - Düsenblock: `table-layout: fixed`; unter jeder Düse eine immer
+    vorhandene, einzeilige Hinweiszeile (Anschlag). Der HD-Hebel ist ein
+    Badge neben „HD“ statt einer Textzeile, damit er nicht mit dem
+    Anschlag-Hinweis um dieselbe Zeile konkurriert.
+- **Bereichstabelle ≤ 767 px als Grid** (Label + Meta | flow + Ø; Ref ≙ |
+  Aktuell ≙; − | Balken | +; Hinweiszeile), mit gleich breiten
+  `fr`-Spalten. Abweichung von der früheren Grenze 600 px: Zwischen 601
+  und 767 px bliebe dem Balken in der Tabelle nur 50–90 px, zu wenig für
+  Balken und Hinweis. Alle übrigen Mobil-Regeln gelten weiter ab ≤ 600 px.
+- **Dynamisch bleiben nur** das Meldungsfeld (unter den Aktions-Buttons;
+  es verschiebt nur die Varianten) und der Variantenbereich (Karten nach
+  Nadelschritten, weg nach Düsenschritten, „Schritt zurück“,
+  „Zurücksetzen“) — darunter liegt kein Bedienelement mehr.
+- **Scroll-Begrenzung:** Werden Karten am Seitenende entfernt, wäre die
+  Seite womöglich kürzer, als die aktuelle Scroll-Position erlaubt; der
+  Browser würde `scrollY` begrenzen und alles verschieben.
+  `renderTuning()` füllt dafür `#tuning-scroll-spacer` am Ende des Tabs
+  mit genau der fehlenden Höhe (bei jedem Rendern zurückgesetzt).
+- **Ausnahme:** das bewusste Auf-/Zuklappen des manuellen
+  Referenzformulars im Referenzblock ganz oben.
+- Abgesichert durch `tuning.mjs` („layout stability“ bei 1280 × 800 und
+  360 × 740): Nadelschritt mit Warnung, „Schritt zurück“, zweimal HD +,
+  Übernehmen — kein Bedienelement verschiebt sich um mehr als 1 px.
 
 ### Zustand: `tuningState`
 
@@ -869,12 +930,12 @@ nennen den Grund sichtbar.
 - Keine Information nur im Tooltip: deaktivierte Buttons haben ihren Grund
   als sichtbaren Text; der Tooltip sitzt zusätzlich auf dem Wrapper (der
   Button selbst hat `pointer-events: none`).
-- Bereichszeile ≤ 600 px zweizeilig (Label + Ref/Aktuell-Zeile | flow + Ø,
-  darunter − | Δ-Balken | +); Desktop behält die Tabelle. Kein
-  horizontaler Überlauf bis 320 px.
-- Statuszeile `position: sticky`, einzeilig mit Ellipsis, direkt unter der
-  mobilen Tab-Leiste. Varianten-Karten stehen direkt unter der
-  Bereichstabelle, vor dem Düsenblock. Kein automatisches Scrollen.
+- Bereichstabelle ≤ 767 px als Grid aus festen Teilen (siehe
+  „Layout-Stabilität“); darüber die Tabelle. Kein horizontaler Überlauf
+  bis 320 px.
+- Statuszeile `position: sticky`, einzeilig mit fester Höhe und Ellipsis,
+  direkt unter der mobilen Tab-Leiste. Varianten-Karten stehen am Ende
+  des Tabs (siehe „Layout-Stabilität“). Kein automatisches Scrollen.
 - Alle ±-Buttons 44 × 44 px, `touch-action: manipulation`, ≥ 8 px
   Abstand. Die ganze Varianten-Karte ist Trefferfläche ihres Buttons
   (`::after`); Badges mit Tooltip liegen darüber.

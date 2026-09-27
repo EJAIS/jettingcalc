@@ -868,6 +868,15 @@ function renderTuning(snap = readNeedleSnapshot()) {
   // The apply banner (and its Undo) only describes the session as it was
   // right after applying; any further tuning action ends it.
   if (tuningApplyMessage && tuningApplyMessage.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
+
+  // Content at the end of the tab (the cards) may shrink. If the page gets
+  // shorter than the current scroll position allows, the browser clamps
+  // scrollY and every control moves under the pointer — so pad the end of
+  // the tab by exactly that much instead (reset on every render).
+  const spacer = document.getElementById('tuning-scroll-spacer');
+  const scrollYBefore = window.scrollY;
+  if (spacer) spacer.style.height = '0px';
+
   withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
     const carbLabel = document.getElementById('tuning-carb-type');
     if (carbLabel) carbLabel.textContent = fillPlaceholder(t('tuning.carbType'), '{type}', carbType);
@@ -880,29 +889,31 @@ function renderTuning(snap = readNeedleSnapshot()) {
     if (empty) empty.hidden = hasRef;
     view.querySelectorAll('[data-tuning-block]').forEach(block => { block.hidden = !hasRef; });
 
-    // Same rule as rankNextSteps()' warning, applied to whichever
-    // suggestion is in use (for the best one both agree).
-    const adopted = hasRef ? adoptedSuggestion() : null;
-    const warning = document.getElementById('tuning-warning');
-    if (warning) {
-      warning.hidden = !(adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc);
-      warning.textContent = t('tuning.warn.sideEffects');
-    }
     if (!hasRef) return;
 
+    // Order in the tab (index.html): status, ranges, jets, actions + apply
+    // message, suggestions, model note. Everything whose height changes
+    // through interaction sits below the last control or in a slot of fixed
+    // height, so no control moves under the pointer (see CLAUDE.md).
     const evaluation = getTuningEvaluation(snap);
     renderTuningStatus();
     renderTuningRanges(evaluation);
-    renderTuningSuggestions();
     renderTuningJets(evaluation);
     renderTuningActions();
+    renderTuningSuggestions();
   });
 
   // The pressed ± button can become disabled (no further step that way):
   // keep keyboard focus in the same row (its header) instead of <body>.
   if (pairAttr && document.activeElement?.getAttribute(pairAttr) !== pairValue) {
     view.querySelector(`[${pairAttr}="${CSS.escape(pairValue)}"]`)
-      ?.closest('tr')?.querySelector('th[scope="row"]')?.focus();
+      ?.closest('tr')?.querySelector('th[scope="row"]')?.focus({ preventScroll: true });
+  }
+
+  const clamped = scrollYBefore - window.scrollY;
+  if (spacer && !view.hidden && clamped > 0.5) {
+    spacer.style.height = `${clamped}px`;
+    window.scrollTo(0, scrollYBefore);
   }
 }
 
@@ -967,6 +978,8 @@ function renderTuningStatus() {
     val(`${t('col.hd')} ${cur.hd}`, cur.hd !== ref.hd),
     val(`${cur.jetType} ${cur.needleJet}`, cur.jetType !== ref.jetType || cur.needleJet !== ref.needleJet),
   ].join(' · ');
+  // One line of fixed height (ellipsis); the full text as tooltip.
+  el.title = el.textContent;
 }
 
 function tuningBar(flow) {
@@ -993,21 +1006,40 @@ function tuningStepCell(rangeIndex, dir, ranking, rangeLabel) {
     + ` aria-label="${escapeHtml(`${label} — ${reason}`)}" disabled>${symbol}</button></td>`;
 }
 
-function tuningReasonLines(rankings) {
-  return [-1, 1]
-    .filter(dir => rankings[dir].suggestions.length === 0)
-    .map(dir => {
-      const text = fillPlaceholder(
-        fillPlaceholder(t('tuning.reasonLine'), '{dir}', t(dir > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner')),
-        '{reason}', t(`tuning.reasonShort.${rankings[dir].reason}`));
-      return `<span class="tuning-reason">${escapeHtml(text)}</span>`;
-    }).join('');
+// The visible reason for disabled ± buttons: always exactly one line, so
+// the row height never changes (the element exists even when empty).
+// One direction: "Richer: HD-limited → adjust HD"; both with the same
+// reason: just the reason; different reasons: the tiny forms of both
+// ("Leaner: no needle · Richer: HD-limited") — sized to fit one line at
+// 320 px in German.
+function tuningReasonLine(rankings) {
+  const reasons = { [-1]: rankings[-1].reason, [1]: rankings[1].reason };
+  const dirLabel = dir => t(dir > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner');
+  const line = (dir, reason) =>
+    fillPlaceholder(fillPlaceholder(t('tuning.reasonLine'), '{dir}', dirLabel(dir)), '{reason}', reason);
+  let text = '';
+  if (reasons[-1] && reasons[1]) {
+    text = reasons[-1] === reasons[1]
+      ? t(`tuning.reasonShort.${reasons[1]}`)
+      : [-1, 1].map(dir => line(dir, t(`tuning.reasonTiny.${reasons[dir]}`))).join(' · ');
+  } else {
+    const dir = reasons[-1] ? -1 : reasons[1] ? 1 : null;
+    if (dir) text = line(dir, t(`tuning.reasonShort.${reasons[dir]}`));
+  }
+  return `<div class="tuning-reason">${escapeHtml(text)}</div>`;
 }
 
 function renderTuningRanges({ summary, rankings }) {
   const table = document.getElementById('tuning-ranges');
   if (!table) return;
 
+  // Flows before the last needle step: rows other than its target that
+  // moved by >= SIGNIFICANT get a ⚠ in a slot that is always reserved.
+  const before = tuningState.lastStep?.flowBefore;
+  const target = tuningState.lastStep?.rangeIndex;
+  const sideTip = t('tuning.warn.sideFlag');
+  const colgroup = `<colgroup><col class="tuning-col-range"><col class="tuning-col-eq"><col class="tuning-col-eq">`
+    + `<col class="tuning-col-delta"><col class="tuning-col-step"><col><col class="tuning-col-step"></colgroup>`;
   const head = `<thead><tr>
     <th scope="col">${escapeHtml(t('tuning.col.range'))}</th>
     <th scope="col" class="num">${escapeHtml(t('tuning.col.ref'))}</th>
@@ -1019,35 +1051,38 @@ function renderTuningRanges({ summary, rankings }) {
   const rows = TUNING_RANGES.map((range, i) => {
     const r = summary[i];
     const rangeLabel = t(`tuning.range.${range.key}`);
-    const lever = range.lever === 'nd'
-      ? `<span class="tuning-lever">${escapeHtml(t('tuning.lever.nd'))}</span>` : '';
+    const lever = range.lever === 'nd' ? escapeHtml(t('tuning.lever.nd')) : '';
     const badgeTip = t('tuning.badge.hdLimited.tooltip');
     const badge = r.hdLimited
       ? `<span class="tuning-badge" data-tooltip="${escapeHtml(badgeTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.badge.hdLimited')} — ${badgeTip}`)}">${escapeHtml(t('tuning.badge.hdLimited'))}</span>`
       : '';
-    const eqLine = `${t('tuning.col.ref')} ${formatEq(r.eqRef)} · ${t('tuning.col.current')} ${formatEq(r.eqCand)}`;
     const significant = r.flow != null && Math.abs(r.flow) >= SIGNIFICANT;
+    const sideEffect = before && i !== target && r.flow != null && before[i] != null
+      && Math.abs(r.flow - before[i]) >= SIGNIFICANT;
+    const flag = sideEffect
+      ? `<span class="tuning-side-flag" data-tooltip="${escapeHtml(sideTip)}" role="button" tabindex="0" aria-label="${escapeHtml(sideTip)}">⚠</span>`
+      : '';
     const diameter = fillPlaceholder(t('tuning.diameter'), '{value}', formatSignedPercent(r.diameter));
     const isLast = tuningState.lastStep?.rangeIndex === i;
 
     return `<tr class="tuning-row${isLast ? ' is-last-step' : ''}" data-range="${range.key}">
       <th scope="row" class="tuning-range" tabindex="-1">
-        <span class="tuning-range-label">${escapeHtml(rangeLabel)}</span>${lever}${badge}
-        <span class="tuning-eq-inline">${escapeHtml(eqLine)}</span>
+        <span class="tuning-range-label">${escapeHtml(rangeLabel)}</span>
+        <span class="tuning-range-meta">${lever}${badge}</span>
       </th>
-      <td class="num tuning-eq">${formatEq(r.eqRef)}</td>
-      <td class="num tuning-eq">${formatEq(r.eqCand)}</td>
+      <td class="num tuning-eq is-ref" data-label="${escapeHtml(t('tuning.col.ref'))}">${formatEq(r.eqRef)}</td>
+      <td class="num tuning-eq is-cur" data-label="${escapeHtml(t('tuning.col.current'))}">${formatEq(r.eqCand)}</td>
       <td class="num tuning-delta">
-        <span class="tuning-flow${significant ? ' is-significant' : ''}">${escapeHtml(formatSignedPercent(r.flow))}</span>
+        <span class="tuning-flow-line"><span class="tuning-side-slot">${flag}</span><span class="tuning-flow${significant ? ' is-significant' : ''}">${escapeHtml(formatSignedPercent(r.flow))}</span></span>
         <span class="tuning-diameter">${escapeHtml(diameter)}</span>
       </td>
       ${tuningStepCell(i, -1, rankings[i][-1], rangeLabel)}
-      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLines(rankings[i])}</td>
+      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLine(rankings[i])}</td>
       ${tuningStepCell(i, 1, rankings[i][1], rangeLabel)}
     </tr>`;
   }).join('');
 
-  table.innerHTML = `${head}<tbody>${rows}</tbody>`;
+  table.innerHTML = `${colgroup}${head}<tbody>${rows}</tbody>`;
 }
 
 function tuningClipLabel(needleType, clipPos) {
@@ -1075,6 +1110,9 @@ function renderTuningSuggestions() {
   }
   const adopted = adoptedSuggestion();
   const target = tuningState.lastStep?.rangeIndex;
+  // Same rule as rankNextSteps()' warning, applied to whichever suggestion
+  // is in use (for the best one both agree).
+  const warn = adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc;
   let anyUnverified = false;
 
   const cards = ranking.suggestions.map((sugg, idx) => {
@@ -1111,6 +1149,7 @@ function renderTuningSuggestions() {
 
   el.innerHTML = `
     <h3 class="tuning-subhead">${escapeHtml(t('tuning.suggestions.title'))}</h3>
+    ${warn ? `<p id="tuning-warning" class="tuning-warning" role="status">${escapeHtml(t('tuning.warn.sideEffects'))}</p>` : ''}
     <p class="tuning-hint">${escapeHtml(t('tuning.suggestions.hint'))}</p>
     <div class="tuning-cards">${cards}</div>
     ${anyUnverified ? `<p class="tuning-hint">* ${escapeHtml(t('catalog.clipsDefault.tooltip'))}</p>` : ''}`;
@@ -1131,7 +1170,13 @@ function renderTuningJets({ summary }) {
     const changed = current[field] !== ref[field];
     const highlight = field === 'hd' && hdRanges.length > 0;
     const hints = [];
-    if (highlight) hints.push(fillPlaceholder(t('tuning.jets.hdHint'), '{ranges}', hdRanges.join(', ')));
+    // HD as the lever: a badge next to the label (its tooltip names the
+    // ranges, which also carry their HD-limited badge in the table) — the
+    // hint row below stays free for the limit message.
+    const leverTip = fillPlaceholder(t('tuning.jets.hdHint'), '{ranges}', hdRanges.join(', '));
+    const lever = highlight
+      ? ` <span class="tuning-badge" data-tooltip="${escapeHtml(leverTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.jets.leverBadge')} — ${leverTip}`)}">${escapeHtml(t('tuning.jets.leverBadge'))}</span>`
+      : '';
     // A button at its limit is disabled; like the range rows, the reason is
     // visible text (hint row) and a tooltip on the cell.
     const button = dir => {
@@ -1149,13 +1194,12 @@ function renderTuningJets({ summary }) {
         + ` aria-label="${escapeHtml(`${aria} — ${reason}`)}" disabled>${symbol}</button></td>`;
     };
     const buttons = button(-1) + button(1);
-    // Own full-width row, so the hints never squeeze the label column.
-    const hintRow = hints.length
-      ? `<tr class="tuning-jet-row is-hint${highlight ? ' is-lever' : ''}"><td colspan="5" class="tuning-jet-hint">`
-        + hints.map(h => `<span>${escapeHtml(h)}</span>`).join('') + `</td></tr>`
-      : '';
-    return `<tr class="tuning-jet-row${highlight ? ' is-lever' : ''}${hintRow ? ' has-hint' : ''}" data-jet="${field}">
-      <th scope="row" tabindex="-1">${escapeHtml(label)}</th>
+    // Own full-width row of fixed one-line height, present even when empty,
+    // so a limit message never moves the rows and buttons below.
+    const hintRow = `<tr class="tuning-jet-row is-hint${highlight ? ' is-lever' : ''}"><td colspan="5" class="tuning-jet-hint">`
+      + escapeHtml(hints.join(' · ')) + `</td></tr>`;
+    return `<tr class="tuning-jet-row has-hint${highlight ? ' is-lever' : ''}" data-jet="${field}">
+      <th scope="row" tabindex="-1">${escapeHtml(label)}${lever}</th>
       <td class="num">${escapeHtml(ref[field])}</td>
       <td class="num${changed ? ' is-changed' : ''}">${escapeHtml(current[field])}</td>
       ${buttons}
@@ -1165,6 +1209,7 @@ function renderTuningJets({ summary }) {
   el.innerHTML = `
     <h3 class="tuning-subhead">${escapeHtml(t('tuning.jets.title'))}</h3>
     <table class="tuning-jets-table">
+      <colgroup><col class="tuning-jets-col-label"><col class="tuning-jets-col-val"><col class="tuning-jets-col-val"><col class="tuning-jets-col-step"><col class="tuning-jets-col-step"></colgroup>
       <thead><tr>
         <th scope="col"><span class="visually-hidden">${escapeHtml(t('tuning.jets.title'))}</span></th>
         <th scope="col" class="num">${escapeHtml(t('tuning.jets.ref'))}</th>
@@ -1297,14 +1342,18 @@ function undoTuningApply() {
 
 // ±: take the best suggestion for that range and direction.
 function applyTuningStep(rangeIndex, dir) {
-  const ranking = getTuningEvaluation().rankings[rangeIndex]?.[dir];
+  const evaluation = getTuningEvaluation();
+  const ranking = evaluation.rankings[rangeIndex]?.[dir];
   const best = ranking?.suggestions[0];
   if (!best) return;
+  // Flows before this step, for the per-row side-effect ⚠ (still valid when
+  // another card of the same step is picked).
+  const flowBefore = evaluation.summary.map(r => r.flow);
   tuningState.history.push(tuningState.current);
   tuningState.current = pickTuningFields(best.setup);
   tuningState.suggestions = ranking;
   tuningState.suggestionsNeedles = customNeedlesVersion;
-  tuningState.lastStep = { rangeIndex, dir };
+  tuningState.lastStep = { rangeIndex, dir, flowBefore };
 }
 
 function handleTuningClick(e) {

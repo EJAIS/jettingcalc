@@ -246,6 +246,16 @@ match the regression values in `test/tuning.test.mjs`:
   one `updateUI()` (an ND edit) reads `dellorto_custom_needles` at most
   once, with the calculator, the catalog and the fine tuning tab visible
   (before `readNeedleSnapshot()`: 15, 19 and 17 reads).
+- **Layout stability** — at 1280×800 and 360×740 (touch): around a
+  needle step with side-effect warning (r3 leaner → K58 C2), "Step back",
+  a needle step, HD + twice and "Save to free slot", no ± button, jet
+  button or action button moves by more than 1 px (each target scrolled
+  into view first, so only layout changes count). After the warning step
+  the warning sits in the options area and a ⚠ marks at least one row
+  besides the target; the apply message appears below the action buttons.
+- **Reason lines at 320 px (DE)** — all eight texts the reason line can
+  show (one direction, both alike, both different) fit one line without
+  overflow.
 - **Keyboard** — Enter steps and keeps focus; at a limit focus moves to
   the row label, so further Enters never step the other way.
 - **Carb type** — switching the calculator to PHBH resets the tab (empty

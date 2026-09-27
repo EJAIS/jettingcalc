@@ -107,7 +107,7 @@ test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', (
 test('every tuning range and reason code has its tuning.* translations in en and de', () => {
   const keys = [
     ...TUNING_RANGES.flatMap(({ key }) => [`tuning.range.${key}`, `tuning.rangeShort.${key}`]),
-    ...TUNING_REASONS.flatMap(code => [`tuning.reason.${code}`, `tuning.reasonShort.${code}`]),
+    ...TUNING_REASONS.flatMap(code => [`tuning.reason.${code}`, `tuning.reasonShort.${code}`, `tuning.reasonTiny.${code}`]),
   ];
   const missing = [];
   for (const key of keys) {

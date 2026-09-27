@@ -30,7 +30,25 @@ const catalogState = {
   legendOpen: false,
 };
 
-// Currently shown view: 'calc' | 'needles'
+// Fine tuning view state — in-memory only (never persisted), like
+// catalogState. refSource: slot id (number) | 'manual' | null. ref is a
+// structuredClone taken when the reference is loaded, never a live link to
+// the slot; current is the tuning state being worked on (starts as ref).
+// evalKey/evalCache memoise evaluateCandidates() per current state.
+function initialTuningState() {
+  return {
+    refSource: null, ref: null, current: null, history: [],
+    manual: { needleType: null, clipPos: null, carbSize: null, jetType: null, needleJet: null, nd: null, hd: null },
+    suggestions: null, lastStep: null, evalKey: null, evalCache: null,
+  };
+}
+const tuningState = initialTuningState();
+
+function resetTuningState() {
+  Object.assign(tuningState, initialTuningState());
+}
+
+// Currently shown view: 'calc' | 'needles' | 'tuning'
 let currentView = 'calc';
 
 // ── Install App (PWA) ────────────────────────────────────────────────────────
@@ -377,16 +395,21 @@ function updateUI() {
   renderCrossSection();
   // Covers setup edits, custom-needle save/delete and language changes.
   if (currentView === 'needles') renderNeedleCatalog();
+  if (currentView === 'tuning') renderTuning();
 }
 
-// ── Views (calculator / needle catalog) ─────────────────────────────────────
+// ── Views (calculator / needle catalog / fine tuning) ───────────────────────
 
-const VIEW_PANELS = { calc: 'view-calc', needles: 'view-needles' };
-const VIEW_TABS   = { calc: 'tab-calc',  needles: 'tab-catalog' };
-const CATALOG_HASH = '#needles';
+// Key order = tab order (handleViewTabKeydown walks Object.keys(VIEW_TABS)).
+const VIEW_PANELS = { calc: 'view-calc', needles: 'view-needles', tuning: 'view-tuning' };
+const VIEW_TABS   = { calc: 'tab-calc',  needles: 'tab-catalog',  tuning: 'tab-tuning' };
+// Location hash per view — the only place views and hashes are mapped. The
+// calculator has no hash, so plain and share-link URLs open it.
+const VIEW_HASHES = { calc: '', needles: '#needles', tuning: '#tuning' };
 
 function hashToView() {
-  return location.hash === CATALOG_HASH ? 'needles' : 'calc';
+  const match = Object.entries(VIEW_HASHES).find(([, hash]) => hash !== '' && hash === location.hash);
+  return match ? match[0] : 'calc';
 }
 
 function showView(view, { push = true } = {}) {
@@ -406,11 +429,12 @@ function showView(view, { push = true } = {}) {
   }
   if (push) {
     // Keep pathname + search (e.g. unrelated query params), only swap the hash.
-    const url = location.pathname + location.search + (view === 'needles' ? CATALOG_HASH : '');
+    const url = location.pathname + location.search + VIEW_HASHES[view];
     if (url !== location.pathname + location.search + location.hash) history.pushState(null, '', url);
   }
   if (changed || push) window.scrollTo(0, 0);
   if (view === 'needles') renderNeedleCatalog();
+  if (view === 'tuning') renderTuning();
 }
 
 function handleViewTabKeydown(e) {
@@ -652,6 +676,24 @@ function handleCatalogSortClick(e) {
   renderCatalogTable();
 }
 
+// ── Fine tuning ─────────────────────────────────────────────────────────────
+
+// The tuning view follows the calculator's carbType and only displays it.
+// Stub for now: shows the carb type and the empty state until a reference
+// is loaded; the reference, range table, alternatives, jet block and
+// actions are filled in by later steps.
+function renderTuning() {
+  const carbLabel = document.getElementById('tuning-carb-type');
+  if (carbLabel) carbLabel.textContent = fillPlaceholder(t('tuning.carbType'), '{type}', carbType);
+
+  const hasRef = tuningState.ref != null;
+  const empty = document.getElementById('tuning-empty');
+  if (empty) empty.hidden = hasRef;
+  document.querySelectorAll('#view-tuning [data-tuning-block]').forEach(block => {
+    block.hidden = !hasRef;
+  });
+}
+
 // ── Carb type change ──────────────────────────────────────────────────────────
 
 function handleCarbTypeChange(newCarbType) {
@@ -660,6 +702,8 @@ function handleCarbTypeChange(newCarbType) {
   // The catalog follows the calculator again after an explicit change here.
   catalogState.carbType = null;
   catalogState.series = 'all';
+  // A tuning reference of another carb type is meaningless — start over.
+  resetTuningState();
 
   const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
@@ -1416,6 +1460,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // applied, so a direct '#needles' load renders dots in the right colors).
   document.getElementById('tab-calc')?.addEventListener('click', () => showView('calc'));
   document.getElementById('tab-catalog')?.addEventListener('click', () => showView('needles'));
+  document.getElementById('tab-tuning')?.addEventListener('click', () => showView('tuning'));
   document.getElementById('view-tabs')?.addEventListener('keydown', handleViewTabKeydown);
   const syncViewFromHash = () => {
     if (hashToView() !== currentView) showView(hashToView(), { push: false });

@@ -149,7 +149,8 @@ mit Quelle in `KONSTANTEN_VERIFIKATION.md` festgehalten.
   und wählt bei nur einem möglichen Mischrohr dieses automatisch aus.
 
 **UI-Zustand, der bewusst NICHT persistiert wird:** `catalogState`
-(Nadelkatalog) und der Undo-Snapshot eines Share-Imports (`importUndo`).
+(Nadelkatalog), `tuningState` (Feinabstimmung) und der Undo-Snapshot eines
+Share-Imports (`importUndo`).
 
 ---
 
@@ -540,9 +541,14 @@ Entscheidung zur Vermeidung redundanter Einstiege.
 
 ### Routing
 
-- `#needles` = Katalog, ohne Hash = Rechner. `showView()` setzt per
-  `history.pushState()` nur den Hash (pathname + search bleiben erhalten);
-  `popstate`/`hashchange` synchronisieren die Ansicht zurück.
+- `VIEW_HASHES` (`app.js`) ist die einzige Zuordnung Ansicht ↔ Hash:
+  `#needles` = Katalog, `#tuning` = Feinabstimmung, ohne Hash (oder mit
+  unbekanntem Hash) = Rechner. `hashToView()` und `showView()` lesen nur
+  diese Map. `showView()` setzt per `history.pushState()` nur den Hash
+  (pathname + search bleiben erhalten); `popstate`/`hashchange`
+  synchronisieren die Ansicht zurück.
+- Tab-Reihenfolge (auch für die Pfeiltasten) = Key-Reihenfolge von
+  `VIEW_TABS`: Rechner | Nadelkatalog | Feinabstimmung.
 - Die Startansicht wird im `DOMContentLoaded`-Handler nach
   `applyShareFromUrl()` aus `location.hash` bestimmt. Verträglich mit den
   Share-Links: `scrubShareParamsFromUrl()` entfernt nur die Share-Parameter
@@ -590,8 +596,24 @@ gespiegelten Liste in `test/sw.test.mjs`.
 
 Reines ES-Modul wie `share.js`/`needlecatalog.js` (Imports nur `calc.js`,
 `needledb.js`, `needlecatalog.js`, `share.js`; Custom Needles kommen als
-Parameter `allNeedles`/`customTypes`). Noch nicht an die UI angebunden und
-noch nicht in `PRECACHE_URLS` — beides kommt mit der UI.
+Parameter `allNeedles`/`customTypes`). Noch nicht von `app.js` importiert
+und noch nicht in `PRECACHE_URLS` — beides kommt mit der UI.
+
+**UI-Gerüst (Tab „Feinabstimmung“, `#tuning`):**
+- `<section id="view-tuning">` mit festen Containern (Referenz, Status,
+  Bereichstabelle, Alternativen, Düsenblock, Aktionen, Hinweis).
+  `renderTuning()` ist vorerst ein Stub: Vergasertyp-Anzeige plus leerer
+  Zustand; Blöcke mit `data-tuning-block` sind ohne Referenz versteckt.
+  Neu gerendert wird in `showView()` und zentral in `updateUI()`.
+- `tuningState` nur im Speicher (Felder: siehe `initialTuningState()`).
+  `ref` ist eine Kopie zum Ladezeitpunkt, keine Live-Referenz auf den Slot.
+- Der Tab folgt dem Vergasertyp des Rechners und zeigt ihn nur an;
+  `handleCarbTypeChange()` setzt `tuningState` vollständig zurück.
+- Tab-Leiste ≤ 600 px: drei gleich breite Tabs, lange Beschriftungen
+  brechen zweizeilig um (≥ 44 px, kein Überlauf bis 320 px). Das deutsche
+  `view.tuning` enthält dafür ein weiches Trennzeichen
+  (`Fein\u00ADabstimmung`), weil `hyphens: auto` nicht überall ein
+  deutsches Wörterbuch hat.
 
 - Alle Deltas gegen die **Referenz**, berechnet aus `curve[].overall` von
   `calcSetup()`; `calc.js` bleibt unverändert. Fünf Bereiche

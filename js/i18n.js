@@ -197,6 +197,12 @@ export const TRANSLATIONS = {
     'view.nav.label': 'View',
     'view.calc':      'Calculator',
     'view.catalog':   'Needle catalog',
+    'view.tuning':    'Fine tuning',
+
+    // Fine tuning
+    'tuning.heading':  'Fine tuning',
+    'tuning.carbType': 'Carburetor type: {type} (as in the calculator)',
+    'tuning.empty':    'Pick a setup from the calculator as reference, or enter one manually, to start fine tuning.',
 
     // Needle catalog
     'catalog.count':              '{n} of {total} needles',
@@ -423,6 +429,14 @@ export const TRANSLATIONS = {
     'view.nav.label': 'Ansicht',
     'view.calc':      'Rechner',
     'view.catalog':   'Nadelkatalog',
+    // \u00AD: soft hyphen, so the narrow three-tab bar (≤ 600 px) breaks
+    // this as "Fein-abstimmung" rather than mid-syllable (see style.css).
+    'view.tuning':    'Fein\u00ADabstimmung',
+
+    // Fine tuning
+    'tuning.heading':  'Feinabstimmung',
+    'tuning.carbType': 'Vergasertyp: {type} (wie im Rechner)',
+    'tuning.empty':    'Wähle ein Setup aus dem Rechner als Referenz oder gib eines manuell ein, um mit der Feinabstimmung zu beginnen.',
 
     // Needle catalog
     'catalog.count':              '{n} von {total} Nadeln',

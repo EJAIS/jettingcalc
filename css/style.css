@@ -1167,7 +1167,26 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   gap: 24px;
 }
 .view-panel[hidden],
-.catalog-card[hidden] { display: none; }
+.catalog-card[hidden],
+.tuning-card[hidden],
+.tuning-card [hidden] { display: none; }
+
+/* ── Fine tuning ───────────────────────────────────────────────────────────── */
+.tuning-carb-type {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tuning-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tuning-ref:empty { display: none; }
+.tuning-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
 
 /* ── Needle catalog ────────────────────────────────────────────────────────── */
 .catalog-count {
@@ -1572,10 +1591,21 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
     gap: 0;
     padding: 0;
   }
+  /* Three equal tabs: min-width 0 lets a long label wrap onto a second
+     line instead of pushing the bar past the viewport; the tab stays
+     ≥ 44 px tall either way. "Feinabstimmung" carries a soft hyphen
+     (view.tuning in i18n.js), since hyphens: auto has no German
+     dictionary in every browser; overflow-wrap is the last resort for
+     unusually wide fallback fonts. */
   .view-tabs [role="tab"] {
     flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
-    padding: 8px 6px 6px;
+    padding: 8px 4px 6px;
+    font-size: 13px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .view-panel { gap: 16px; }
@@ -1585,6 +1615,13 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   .catalog-legend-toggle {
     flex: 1 1 100%;
     min-height: 44px;
+  }
+
+  /* Tuning header: carb type on its own row below the heading */
+  .tuning-card .card-header { flex-wrap: wrap; }
+  .tuning-carb-type {
+    flex: 1 1 100%;
+    margin-left: 0;
   }
 
   /* nowrap: a wrapping column flexbox sizes each line to its widest item

@@ -118,6 +118,36 @@ test('every tuning range and reason code has its tuning.* translations in en and
   assert.deepEqual(missing, []);
 });
 
+// German quotation marks: „ (U+201E) opens, “ (U+201C) closes. A straight
+// " after „ — the mix „…" that crept into several texts — fails, as does an
+// unclosed „ or a stray “.
+test('de: every „ is closed with “', () => {
+  const bad = [];
+  for (const [key, value] of Object.entries(de)) {
+    let open = false;
+    for (const ch of value) {
+      if (ch === '\u201E') {
+        if (open) bad.push(`${key}: „ inside „…“`);
+        open = true;
+      } else if (ch === '\u201C') {
+        if (!open) bad.push(`${key}: “ without „`);
+        open = false;
+      } else if (ch === '"' && open) {
+        bad.push(`${key}: „ closed with "`);
+        open = false;
+      }
+    }
+    if (open) bad.push(`${key}: „ never closed`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+// Uniform German quotes: no straight "…" pairs in German texts either.
+test('de: no straight double quotes', () => {
+  const found = Object.entries(de).filter(([, value]) => value.includes('"')).map(([key]) => key);
+  assert.deepEqual(found, []);
+});
+
 // Custom needle length texts must match NEEDLE_LENGTHS (the single source
 // for custom needle lengths), with a decimal point in both languages.
 test('needle length texts match NEEDLE_LENGTHS in en and de', () => {

@@ -457,9 +457,9 @@ export const TRANSLATIONS = {
     'msg.noActiveSetups':      'Keine aktiven Setups vorhanden.',
     'confirm.loadDemo':        'Demo-Setups laden? Aktuelle Daten werden überschrieben.',
     'confirm.resetAll':        'Alle Setups zurücksetzen?',
-    'confirm.resetRow':        '„{name}" zurücksetzen?',
-    'confirm.overwriteNeedle': '"${type}" existiert bereits als eigene Nadel. Überschreiben?',
-    'confirm.deleteNeedle':    'Eigene Nadel "${type}" löschen?',
+    'confirm.resetRow':        '„{name}“ zurücksetzen?',
+    'confirm.overwriteNeedle': '„${type}“ existiert bereits als eigene Nadel. Überschreiben?',
+    'confirm.deleteNeedle':    'Eigene Nadel „${type}“ löschen?',
     'confirm.replaceTuningRef': '„{name}“ als neue Referenz laden? Die bisherigen Abstimmungsschritte gehen verloren.',
 
     // Share links
@@ -479,7 +479,7 @@ export const TRANSLATIONS = {
 
     // Install App (PWA)
     'install.iosDialogTitle': 'App installieren',
-    'install.iosDialogSteps': 'Tippe in der Safari-Werkzeugleiste auf das Teilen-Symbol und wähle dann „Zum Home-Bildschirm".',
+    'install.iosDialogSteps': 'Tippe in der Safari-Werkzeugleiste auf das Teilen-Symbol und wähle dann „Zum Home-Bildschirm“.',
 
     // SVG needle schematic labels
     'svg.shank':         'Schaft',

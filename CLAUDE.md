@@ -55,6 +55,10 @@ Rules for all future UI implementations:
 - Numbers use a decimal point in both languages and a space before the
   unit (`23.8 mm`; compounds like `26-mm-PHBL` are fine) — also enforced
   by `test/i18n.test.mjs`
+- German texts quote with „…“ (U+201E opening, U+201C closing) — never a
+  straight `"`, neither as the closing mark after „ nor as a `"…"` pair.
+  Enforced by `test/i18n.test.mjs`. English texts keep their quotes; the
+  documentation files are not affected.
 - After any dynamic DOM update that adds translatable text, call
   `applyTranslations()` from i18n.js
 - Chart axis labels and legends must also go through `t('key')` —

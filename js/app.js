@@ -9,9 +9,9 @@ import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZE
          getCustomNeedleLength, migrateCustomNeedles } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys,
-         JET_MIN, ND_MAX, HD_MAX } from './share.js';
+         JET_MIN, ND_MAX, HD_MAX, MAX_NAME_LENGTH } from './share.js';
 import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, WARN_SIDE_RATIO, evaluateCandidates, rankNextSteps,
-         rangeSummary, stepJet, formatSignedPercent } from './tuning.js';
+         rangeSummary, stepJet, formatSignedPercent, validateTuningSetup } from './tuning.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
          sortCatalogRows, formatCatalogValue, CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 
@@ -49,6 +49,13 @@ const tuningState = initialTuningState();
 function resetTuningState() {
   Object.assign(tuningState, initialTuningState());
 }
+
+// Last "apply to slot" from the fine tuning view — in-memory only, never
+// persisted, like importUndo. { kind: 'free' | 'overwrite', slotName,
+// snapshot: { setups, tuning } | null (only for 'overwrite'), appliedKey }.
+// Drives the result banner in the tab; appliedKey (stateKey after writing)
+// lets updateUI() drop it once setups or carbType change.
+let tuningApplyUndo = null;
 
 // Currently shown view: 'calc' | 'needles' | 'tuning'
 let currentView = 'calc';
@@ -399,6 +406,10 @@ function updateUI() {
   if (importUndo && stateKey({ carbType, setups }) !== importUndo.importedKey) {
     hideImportBanner();
   }
+  // Same central check for the fine tuning apply banner.
+  if (tuningApplyUndo && stateKey({ carbType, setups }) !== tuningApplyUndo.appliedKey) {
+    hideTuningApplyBanner();
+  }
   renderTable();
   renderCharts(setups, getAllNeedles());
   renderCalcResults();
@@ -703,6 +714,12 @@ const TUNING_FOCUS_ATTRS = ['data-tuning-step', 'data-tuning-jet', 'data-tuning-
 // disabled after a re-render, focus moves to its partner in the same row.
 const TUNING_PAIR_ATTRS = ['data-tuning-step', 'data-tuning-jet'];
 
+// Label key per setup field, for messages naming a field.
+const FIELD_LABEL_KEYS = {
+  needleType: 'col.needle', clipPos: 'col.clip', carbSize: 'col.carbSize',
+  jetType: 'col.jetType', needleJet: 'col.needleJet', nd: 'col.nd', hd: 'col.hd',
+};
+
 // Jet rows of the jet block, in display order, with their label keys.
 const TUNING_JET_FIELDS = [
   { field: 'nd',        labelKey: 'col.nd' },
@@ -830,6 +847,7 @@ function renderTuning() {
     renderTuningRanges(evaluation);
     renderTuningSuggestions();
     renderTuningJets(evaluation);
+    renderTuningApplyBanner();
     renderTuningActions();
   });
 
@@ -1094,14 +1112,106 @@ function renderTuningJets({ summary }) {
     </table>`;
 }
 
+// A disabled apply button: the reason is a tooltip on the wrapper (the
+// button itself gets no pointer events) and visible text below the buttons.
+function tuningApplyButton(action, labelKey, reasonKey) {
+  const label = escapeHtml(t(labelKey));
+  if (!reasonKey) {
+    return `<span class="tuning-apply-item"><button type="button" class="btn-primary" data-tuning-action="${action}">${label}</button></span>`;
+  }
+  return `<span class="tuning-apply-item" data-tooltip="${escapeHtml(t(reasonKey))}">`
+    + `<button type="button" class="btn-primary" data-tuning-action="${action}" disabled>${label}</button></span>`;
+}
+
 function renderTuningActions() {
   const el = document.getElementById('tuning-actions');
   if (!el) return;
-  const { ref, current, history } = tuningState;
-  const canReset = history.length > 0 || !sameTuningFields(ref, current);
+  const { ref, current, history, refSource } = tuningState;
+  const changed = !sameTuningFields(ref, current);
+  const canReset = history.length > 0 || changed;
+
+  // Applying is only offered once current differs from the reference.
+  const freeReason = !changed ? 'tuning.apply.unchanged'
+    : !setups.some(isSlotEmpty) ? 'tuning.apply.noFreeSlot' : null;
+  const overwriteReason = !changed ? 'tuning.apply.unchanged'
+    : typeof refSource !== 'number' ? 'tuning.apply.manualRef' : null;
+  const reasons = [...new Set([freeReason, overwriteReason].filter(Boolean))];
+
   el.innerHTML = `
-    <button type="button" class="btn-ghost" data-tuning-action="undo"${history.length ? '' : ' disabled'}>${escapeHtml(t('tuning.action.undo'))}</button>
-    <button type="button" class="btn-ghost" data-tuning-action="reset"${canReset ? '' : ' disabled'}>${escapeHtml(t('tuning.action.reset'))}</button>`;
+    <div class="tuning-action-row">
+      <button type="button" class="btn-ghost" data-tuning-action="undo"${history.length ? '' : ' disabled'}>${escapeHtml(t('tuning.action.undo'))}</button>
+      <button type="button" class="btn-ghost" data-tuning-action="reset"${canReset ? '' : ' disabled'}>${escapeHtml(t('tuning.action.reset'))}</button>
+    </div>
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.apply.title'))}</h3>
+    <div class="tuning-action-row">
+      ${tuningApplyButton('applyFree', 'tuning.apply.free', freeReason)}
+      ${tuningApplyButton('applyRef', 'tuning.apply.overwrite', overwriteReason)}
+    </div>
+    ${reasons.map(key => `<p class="tuning-hint">${escapeHtml(t(key))}</p>`).join('')}`;
+}
+
+// Result of the last apply, shown right above the action buttons (the
+// global #app-notice sits at the top of the page, out of view here).
+function renderTuningApplyBanner() {
+  const banner = document.getElementById('tuning-apply-banner');
+  if (!banner) return;
+  banner.hidden = !tuningApplyUndo;
+  if (!tuningApplyUndo) return;
+  const key = tuningApplyUndo.kind === 'overwrite' ? 'tuning.apply.doneOverwrite' : 'tuning.apply.doneFree';
+  document.getElementById('tuning-apply-text').textContent =
+    fillPlaceholder(t(key), '{name}', tuningApplyUndo.slotName);
+  document.getElementById('btn-tuning-apply-undo').hidden = !tuningApplyUndo.snapshot;
+}
+
+function hideTuningApplyBanner() {
+  tuningApplyUndo = null;
+  const banner = document.getElementById('tuning-apply-banner');
+  if (banner) banner.hidden = true;
+}
+
+// Writes `current` into the first empty slot ('free') or over the
+// reference slot ('overwrite'). Validated first (validateTuningSetup), then
+// persisted only through saveSetups() — never touches dellorto_carb_type.
+function applyTuningToSlot(kind) {
+  const values = pickTuningFields(tuningState.current);
+  const check = validateTuningSetup(values, { allNeedles: getAllNeedles(), carbType });
+  if (!check.ok) {
+    showNotice(fillPlaceholder(t('tuning.apply.invalid'), '{field}', t(FIELD_LABEL_KEYS[check.field])));
+    return;
+  }
+
+  let slot;
+  let snapshot = null;
+  if (kind === 'free') {
+    slot = setups.find(isSlotEmpty);
+    if (!slot) return;
+    Object.assign(slot, values, { name: `${values.needleType} C${values.clipPos}`.slice(0, MAX_NAME_LENGTH) });
+  } else {
+    slot = setups.find(s => s.id === tuningState.refSource);
+    if (!slot) return;
+    // Undo restores the setups and the tuning session as they were.
+    snapshot = {
+      setups: structuredClone(setups),
+      tuning: structuredClone({ ...tuningState, evalKey: null, evalCache: null }),
+    };
+    Object.assign(slot, values); // the slot keeps its name
+    // Start over with the written setup as the new reference.
+    loadTuningReference(slot.id, slot);
+  }
+
+  saveSetups(setups);
+  tuningApplyUndo = { kind, slotName: slot.name, snapshot, appliedKey: stateKey({ carbType, setups }) };
+  updateUI();
+}
+
+function undoTuningApply() {
+  const snapshot = tuningApplyUndo?.snapshot;
+  if (!snapshot) return;
+  setups = snapshot.setups;
+  Object.assign(tuningState, snapshot.tuning);
+  saveSetups(setups);
+  hideTuningApplyBanner();
+  updateUI();
 }
 
 // ±: take the best suggestion for that range and direction.
@@ -1152,6 +1262,15 @@ function handleTuningClick(e) {
   } else if (tuningAction === 'loadManual') {
     if (calcSetup(tuningState.manual, getAllNeedles()) == null) return;
     loadTuningReference('manual', tuningState.manual);
+  } else if (tuningAction === 'applyFree' || tuningAction === 'applyRef') {
+    applyTuningToSlot(tuningAction === 'applyFree' ? 'free' : 'overwrite');
+    // The pressed button is disabled now (current == ref after an
+    // overwrite): hand focus to the result banner instead of <body>.
+    if (document.activeElement === document.body || document.activeElement?.disabled) {
+      const next = tuningApplyUndo?.snapshot ? 'btn-tuning-apply-undo' : 'btn-tuning-view-calc';
+      document.getElementById(next)?.focus();
+    }
+    return; // applyTuningToSlot() already re-rendered via updateUI()
   } else if (tuningAction === 'undo') {
     if (tuningState.history.length === 0) return;
     tuningState.current = tuningState.history.pop();
@@ -1950,6 +2069,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-tuning')?.addEventListener('click', () => showView('tuning'));
   document.getElementById('view-tuning')?.addEventListener('click', handleTuningClick);
   document.getElementById('view-tuning')?.addEventListener('change', handleTuningFieldChange);
+  document.getElementById('btn-tuning-apply-undo')?.addEventListener('click', undoTuningApply);
+  document.getElementById('btn-tuning-apply-close')?.addEventListener('click', hideTuningApplyBanner);
+  document.getElementById('btn-tuning-view-calc')?.addEventListener('click', () => showView('calc'));
   document.getElementById('view-tabs')?.addEventListener('keydown', handleViewTabKeydown);
   const syncViewFromHash = () => {
     if (hashToView() !== currentView) showView(hashToView(), { push: false });

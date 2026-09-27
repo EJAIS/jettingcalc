@@ -8,7 +8,7 @@
 // Copyright (C) 2014 GUE — GPL v2.0
 
 import { calcSetup } from './calc.js';
-import { ATOMIZER_SIZES, getClipCount } from './needledb.js';
+import { ATOMIZER_SIZES, CARB_BORE_SIZES, CARB_TYPES, getClipCount } from './needledb.js';
 import { compareNeedleTypes, getNeedleSeries, getClipsSource,
          CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 import { JET_MIN, ND_MAX, HD_MAX } from './share.js';
@@ -129,6 +129,12 @@ function curveKey(result) {
     .join('|');
 }
 
+// Clip positions of a needle: its own `clips` (custom needles included),
+// else the series default — same resolution as resolveClipCount() in app.js.
+function clipCountOf(allNeedles, needleType) {
+  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
+}
+
 function compareTypeClip(a, b) {
   return compareNeedleTypes(a.needleType, b.needleType) || a.clipPos - b.clipPos;
 }
@@ -153,7 +159,7 @@ export function evaluateCandidates({ allNeedles, ref, current, customTypes = [] 
   for (const needleType of Object.keys(allNeedles)) {
     const needle = allNeedles[needleType];
     if (needle?.carbType !== carbType) continue;
-    const clips = needle.clips ?? getClipCount(needleType);
+    const clips = clipCountOf(allNeedles, needleType);
     for (let clipPos = 1; clipPos <= clips; clipPos++) {
       if (needleType === current.needleType && clipPos === current.clipPos) continue;
       const setup = { needleType, clipPos, carbSize, jetType, needleJet, nd, hd };
@@ -246,6 +252,30 @@ export function rankNextSteps(evaluated, {
     reason,
     warning: best != null && best.side > WARN_SIDE_RATIO * best.inc,
   };
+}
+
+// Whitelist check before a tuning state is written into a setup slot —
+// the same rules decodeShare() (share.js) applies to a share link, but
+// against `allNeedles` (custom needles included) and the given carbType.
+// Returns { ok: true } or { ok: false, field } for the first invalid field
+// in calcSetup() input order.
+export function validateTuningSetup(setup, { allNeedles, carbType }) {
+  const fail = field => ({ ok: false, field });
+  const { needleType, clipPos, carbSize, jetType, needleJet } = setup;
+
+  if (allNeedles[needleType]?.carbType !== carbType) return fail('needleType');
+  if (!Number.isInteger(clipPos) || clipPos < 1 || clipPos > clipCountOf(allNeedles, needleType)) {
+    return fail('clipPos');
+  }
+  if (!CARB_BORE_SIZES[carbType]?.includes(carbSize)) return fail('carbSize');
+  if (!CARB_TYPES[carbType]?.atomizers.includes(jetType)) return fail('jetType');
+  if (!ATOMIZER_SIZES[jetType]?.includes(needleJet)) return fail('needleJet');
+  for (const field of ['nd', 'hd']) {
+    const [min, max] = JET_BOUNDS[field];
+    const value = setup[field];
+    if (!Number.isFinite(value) || value < min || value > max) return fail(field);
+  }
+  return { ok: true };
 }
 
 // Display string for a signed percentage: '+6.3 %', '−2.0 %' (U+2212

@@ -149,8 +149,9 @@ mit Quelle in `KONSTANTEN_VERIFIKATION.md` festgehalten.
   und wählt bei nur einem möglichen Mischrohr dieses automatisch aus.
 
 **UI-Zustand, der bewusst NICHT persistiert wird:** `catalogState`
-(Nadelkatalog), `tuningState` (Feinabstimmung) und der Undo-Snapshot eines
-Share-Imports (`importUndo`).
+(Nadelkatalog), `tuningState` (Feinabstimmung), der Undo-Snapshot eines
+Share-Imports (`importUndo`) und der einer Übernahme aus der
+Feinabstimmung (`tuningApplyUndo`).
 
 ---
 
@@ -656,6 +657,28 @@ gespiegelten Liste in `test/sw.test.mjs`.
   `stepJet()`; `null` → Button deaktiviert. Jeder Schritt pusht `history`
   und leert `suggestions`. Ist ein Bereich HD-begrenzt, wird die HD-Zeile
   hervorgehoben, der Hinweis steht in einer eigenen Tabellenzeile.
+- **Ergebnis übernehmen** (`applyTuningToSlot()`), nur aktiv, wenn
+  `current` von `ref` abweicht:
+  - „In freien Slot übernehmen“: erster Slot mit `isSlotEmpty()`, Name
+    `<Nadel> C<Clip>` (gekürzt auf `MAX_NAME_LENGTH` aus `share.js`).
+  - „Referenz-Slot überschreiben“: nur bei `refSource` = Slot-id; der
+    Slot behält seinen Namen. Vorher Snapshot von `setups` **und**
+    `tuningState` in `tuningApplyUndo` (nur im Speicher); danach startet
+    die Feinabstimmung mit dem geschriebenen Setup als Referenz neu.
+    Rückgängig stellt beides wieder her.
+  - Vor dem Schreiben `validateTuningSetup()` (`tuning.js`, gleiche
+    Whitelist-Regeln wie `decodeShare()`, aber gegen `allNeedles`);
+    Fehlschlag → `showNotice()`, nichts wird geschrieben. Persistenz nur
+    über `saveSetups()`, `dellorto_carb_type` wird nie geschrieben.
+  - Rückmeldung im Banner `#tuning-apply-banner` direkt über den
+    Aktionen (Slot-Name, „Im Rechner ansehen“, bei Überschreiben
+    „Rückgängig“, ✕) statt in `#app-notice`, das oben auf der Seite
+    außer Sicht läge. Es verschwindet per ✕ oder automatisch, sobald
+    `stateKey({carbType, setups})` vom gemerkten `appliedKey` abweicht —
+    geprüft zentral in `updateUI()` wie bei `importUndo`, damit ein
+    Sprachwechsel es nicht schließt.
+  - Deaktivierte Übernahme-Buttons: Grund als sichtbarer Text unter den
+    Buttons und als Tooltip am Wrapper.
 - **Robustheit:** `validateTuningState()` läuft in jedem `updateUI()`. Fehlt
   die Nadel von `ref` oder `current` (Custom Needle gelöscht/umgetypt),
   wird zurückgesetzt und `msg.tuningReset` gemeldet.

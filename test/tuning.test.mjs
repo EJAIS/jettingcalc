@@ -15,7 +15,7 @@ import { ND_MAX, HD_MAX } from '../js/share.js';
 import {
   TUNING_RANGES, TUNING_REASONS, MIN_STEP, MAX_SUGGESTIONS,
   hdLimited, rangeSummary, evaluateCandidates, rankNextSteps, stepJet,
-  formatSignedPercent,
+  formatSignedPercent, validateTuningSetup,
 } from '../js/tuning.js';
 
 // Reference values below come from the accepted prototype — if one of them
@@ -340,4 +340,52 @@ test('formatSignedPercent: sign, decimal point, space before %', () => {
   assert.equal(formatSignedPercent(12.345, 2), '+12.35 %');
   assert.equal(formatSignedPercent(null), '–');
   assert.equal(formatSignedPercent(NaN), '–');
+});
+
+// ── validateTuningSetup ──────────────────────────────────────────────────────
+
+test('validateTuningSetup: accepts complete, whitelisted setups', () => {
+  assert.deepEqual(validateTuningSetup(REF_VHSX, { allNeedles: NEEDLE_DB, carbType: 'VHSx' }), { ok: true });
+  assert.deepEqual(validateTuningSetup(REF_PHBL, { allNeedles: NEEDLE_DB, carbType: 'PHBL' }), { ok: true });
+  // Bounds are inclusive.
+  assert.deepEqual(validateTuningSetup({ ...REF_VHSX, nd: 0, hd: HD_MAX }, { allNeedles: NEEDLE_DB, carbType: 'VHSx' }), { ok: true });
+  assert.deepEqual(validateTuningSetup({ ...REF_VHSX, nd: ND_MAX, hd: 0 }, { allNeedles: NEEDLE_DB, carbType: 'VHSx' }), { ok: true });
+});
+
+test('validateTuningSetup: reports the first invalid field', () => {
+  const check = (patch, carbType = 'VHSx', allNeedles = NEEDLE_DB) =>
+    validateTuningSetup({ ...REF_VHSX, ...patch }, { allNeedles, carbType });
+  assert.deepEqual(check({ needleType: 'K999' }), { ok: false, field: 'needleType' });
+  assert.deepEqual(check({ needleType: null }), { ok: false, field: 'needleType' });
+  assert.deepEqual(check({}, 'PHBL'), { ok: false, field: 'needleType' });
+  assert.deepEqual(check({ clipPos: 0 }), { ok: false, field: 'clipPos' });
+  assert.deepEqual(check({ clipPos: 6 }), { ok: false, field: 'clipPos' }); // K27 has 5 grooves
+  assert.deepEqual(check({ clipPos: 2.5 }), { ok: false, field: 'clipPos' });
+  assert.deepEqual(check({ carbSize: 33 }), { ok: false, field: 'carbSize' });
+  assert.deepEqual(check({ jetType: 'AQ' }), { ok: false, field: 'jetType' });
+  assert.deepEqual(check({ needleJet: 259 }), { ok: false, field: 'needleJet' });
+  assert.deepEqual(check({ nd: ND_MAX + 1 }), { ok: false, field: 'nd' });
+  assert.deepEqual(check({ nd: null }), { ok: false, field: 'nd' });
+  assert.deepEqual(check({ hd: -1 }), { ok: false, field: 'hd' });
+  assert.deepEqual(check({ hd: NaN }), { ok: false, field: 'hd' });
+  assert.deepEqual(check({ needleType: 'K999', hd: -1 }), { ok: false, field: 'needleType' });
+});
+
+test('validateTuningSetup: custom needles via allNeedles, with their own clip count', () => {
+  const allNeedles = { ...NEEDLE_DB, Z1: CUSTOM_VHSX, Z2: CUSTOM_PHBL };
+  const ok = s => validateTuningSetup({ ...REF_VHSX, ...s }, { allNeedles, carbType: 'VHSx' });
+  assert.deepEqual(ok({ needleType: 'Z1', clipPos: 4 }), { ok: true });
+  assert.deepEqual(ok({ needleType: 'Z1', clipPos: 5 }), { ok: false, field: 'clipPos' });
+  assert.deepEqual(ok({ needleType: 'Z2', clipPos: 1 }), { ok: false, field: 'needleType' });
+  // Without allNeedles containing it, a custom type is unknown.
+  assert.deepEqual(validateTuningSetup({ ...REF_VHSX, needleType: 'Z1' }, { allNeedles: NEEDLE_DB, carbType: 'VHSx' }),
+    { ok: false, field: 'needleType' });
+});
+
+test('validateTuningSetup: does not mutate its inputs', () => {
+  const setup = { ...REF_VHSX };
+  const allNeedles = { ...NEEDLE_DB, Z1: { ...CUSTOM_VHSX } };
+  const snapshot = structuredClone({ setup, allNeedles });
+  validateTuningSetup(setup, { allNeedles, carbType: 'VHSx' });
+  assert.deepEqual({ setup, allNeedles }, snapshot);
 });

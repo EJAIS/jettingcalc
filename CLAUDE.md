@@ -741,9 +741,11 @@ Prozentpunkten flow:
   Überblendete Punkte (≤ 30 %) bleiben außen vor, statt den Bereich
   auszuschließen: sonst könnte 1/4–1/2 (beginnt bei 30 %) nie HD-begrenzt
   sein. Bereiche nur aus überblendeten Punkten (0–1/8, 1/8–1/4) sind es
-  nie. (Die ursprüngliche Vorgabe verlangte „jeder Punkt ≥ 35 %“; geändert
-  nach Code-Review.) Badge „HD-begrenzt“ in der Zeile, Hervorhebung der
-  HD-Zeile im Düsenblock.
+  nie: Ohne Punkt ≥ 35 % ist das Ergebnis ausdrücklich `false` — ein
+  `every()` über die leere Menge wäre `true` und markierte sie bei jeder
+  HD als begrenzt. (Regel bestätigt; die ursprüngliche Fassung „jeder
+  Punkt ≥ 35 %“ schloss 1/4–1/2 grundsätzlich aus.) Badge „HD-begrenzt“ in
+  der Zeile, Hervorhebung der HD-Zeile im Düsenblock.
 - **`reason`** bei leerem Ergebnis: `'hdLimited'` (Bereich in current
   HD-begrenzt) oder `'noCandidates'` (`TUNING_REASONS`). Der ±-Button ist
   dann deaktiviert, der Grund steht als sichtbarer Text in der Zeile und

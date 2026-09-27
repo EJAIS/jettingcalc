@@ -135,17 +135,32 @@ test('hdLimited: judged on the points past the idle-jet blend (≥ 35 %) only', 
   const result = calcSetup(REF_VHSX, NEEDLE_DB);
   assert.equal(hdLimited(result, REF_VHSX, 4), true);
   assert.equal(hdLimited(result, REF_VHSX, 2), false);
-  // 0–1/8 and 1/8–1/4 lie entirely inside the blend: never limited, even
-  // with a tiny main jet.
-  const tinyHd = { ...REF_VHSX, hd: 1 };
-  const tiny = calcSetup(tinyHd, NEEDLE_DB);
-  assert.equal(hdLimited(tiny, tinyHd, 0), false);
-  assert.equal(hdLimited(tiny, tinyHd, 1), false);
-  // 1/4–1/2 starts at the blended 30 % point, which is left out — its
-  // 35–50 % points decide.
-  assert.equal(hdLimited(tiny, tinyHd, 2), true);
-  const smallHd = { ...REF_VHSX, hd: 95 };
-  assert.equal(hdLimited(calcSetup(smallHd, NEEDLE_DB), smallHd, 2), true);
+});
+
+test('hdLimited: 0–1/8 and 1/8–1/4 are never limited — no point ≥ 35 %, not an empty every()', () => {
+  // HD 0: every hdEquiv ≥ HD, so an every() over the blended points — or
+  // over an empty set — would call these ranges limited.
+  for (const hd of [0, 1, 20]) {
+    const setup = { ...REF_VHSX, hd };
+    const result = calcSetup(setup, NEEDLE_DB);
+    assert.equal(hdLimited(result, setup, 0), false, `r0, hd ${hd}`);
+    assert.equal(hdLimited(result, setup, 1), false, `r1, hd ${hd}`);
+    const summary = rangeSummary(calcSetup(REF_VHSX, NEEDLE_DB), result, setup);
+    assert.deepEqual(summary.slice(0, 2).map(r => r.hdLimited), [false, false], `summary, hd ${hd}`);
+  }
+});
+
+test('hdLimited: 1/4–1/2 can be limited while its blended 30 % point is not', () => {
+  // K27 C3: hdEquiv is 112.4 at 30 % and 118.0–133.0 at 35–50 %.
+  const setup = { ...REF_VHSX, hd: 115 };
+  const result = calcSetup(setup, NEEDLE_DB);
+  const at = pct => result.curve.find(p => Math.round(p.tp * 100) === pct).hdEquiv;
+  assert.ok(at(30) < setup.hd, '30 % point is not HD-limited');
+  assert.ok([35, 40, 45, 50].every(pct => at(pct) >= setup.hd), '35–50 % are');
+  assert.equal(hdLimited(result, setup, 2), true);
+  // Just below the 35 % value the range is no longer limited.
+  const higher = { ...REF_VHSX, hd: 119 };
+  assert.equal(hdLimited(calcSetup(higher, NEEDLE_DB), higher, 2), false);
 });
 
 test('diameter is smaller than flow for positive changes', () => {

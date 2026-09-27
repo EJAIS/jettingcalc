@@ -158,15 +158,17 @@ in EN and once in DE:
   one row.
 - **Landscape 915×412 and desktop 1280×800** — VHSx, beta label, PHBH and
   PHBL in one row, in the order VHSx, PHBH, ⓘ, PHBL, ⓘ (layout as before).
-  Between 601 and 1023 px the selector uses slightly less padding and gap,
-  so the row also fits with fonts wider than Segoe UI (Noto Sans on Linux,
-  Roboto on Android); the 915 px case failed there before by ~3 px.
+  All three options share the same `offsetTop`. Between 601 and 1023 px
+  the selector uses slightly less padding and gap, so the row also fits
+  with fonts wider than Segoe UI (Noto Sans on Linux, Roboto on Android);
+  the 915 px case failed there before by ~3 px.
 - **Tap area** — the point 15 px right of the PHBH ⓘ's centre hit-tests to
   the icon (`elementFromPoint`; a tap alone isn't proof, since Chromium's
   touch adjustment snaps taps to nearby targets), and a touch tap there
-  opens its tooltip. A tap on PHBL's left edge still selects PHBL; on
-  desktop the edges of PHBH and PHBL next to the ⓘ still hit the options,
-  and mouse hover still opens the tooltip.
+  opens its tooltip. A tap on PHBL's left edge still selects PHBL; at
+  915×412 (reduced padding/gap) and 1280×800 the edges of PHBH and PHBL
+  next to the ⓘ still hit the options, and mouse hover still opens the
+  tooltip.
 - **Stored language on first load** — with `dellorto_lang = 'de'` set
   before loading, `<html lang>` is `de` right away, without the language
   button.

@@ -182,6 +182,11 @@ for (const lang of ['en', 'de']) {
         assert.ok(near(m.betaLabel.cy, m.PHBH.cy), `${where}: beta label not inline with the options`);
         assert.ok(m.VHSx.right < m.PHBH.x && m.PHBH.right < m.infoPHBH.x && m.infoPHBH.right < m.PHBL.x
           && m.PHBL.right < m.infoPHBL.x, `${where}: unexpected order VHSx, PHBH, ⓘ, PHBL, ⓘ`);
+        // Single row, strictly: all three options share offsetParent and offsetTop.
+        const tops = await page.evaluate(() => [...document.querySelectorAll('#carb-type-selector .carb-type-option')]
+          .map(o => ({ top: o.offsetTop, parent: o.offsetParent?.tagName + '#' + (o.offsetParent?.id ?? '') })));
+        assert.equal(tops.length, 3);
+        assert.equal(new Set(tops.map(t => `${t.parent}@${t.top}`)).size, 1, `${where}: ${JSON.stringify(tops)}`);
         assertNoOverflow(m, where);
       });
     });
@@ -213,8 +218,9 @@ for (const lang of ['en', 'de']) {
     });
   });
 
-  test(`${lang}: desktop — the ⓘ hit area never covers the neighbouring options, hover still opens the tooltip`, async () => {
-    await withPage(lang, { viewport: { width: 1280, height: 800 } }, async page => {
+  // 915 × 412 is inside the 601–1023 px range with the tighter padding/gap.
+  for (const [width, height] of [[915, 412], [1280, 800]]) test(`${lang}: ${width}×${height} — the ⓘ hit area never covers the neighbouring options, hover still opens the tooltip`, async () => {
+    await withPage(lang, { viewport: { width, height } }, async page => {
       const opts = await page.evaluate(() => ['PHBH', 'PHBL'].map(v => {
         const r = document.querySelector(`input[name="carbType"][value="${v}"]`).closest('label').getBoundingClientRect();
         return { v, left: r.left, right: r.right, cy: r.y + r.height / 2 };

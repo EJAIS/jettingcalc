@@ -281,14 +281,18 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
 
 - Jede Beta-Option steht mit ihrem ⓘ in einem `.carb-type-beta-item`, damit
   beide nie getrennt umbrechen.
-- **> 600 px** (Desktop, Querformat): eine Zeile wie bisher — VHSx | Beta-
-  Label, PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht
-  dem der Gruppe, die Maße sind ab 1024 px identisch zum Stand vor dem
-  Wrapper. Zwischen 601 und 1023 px sind Innenabstand und Lücke der Box
-  etwas kleiner (14 px / 12 px statt 18 px / 16 px): Mit breiteren
-  Systemschriften als Segoe UI (Noto Sans unter Linux, Roboto unter
-  Android) fehlten bei 915 px (Handy quer) sonst rund 3 px und die
-  Beta-Gruppe brach um.
+- **> 600 px** (Desktop, Querformat): eine Zeile — VHSx | Beta-Label,
+  PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht dem der
+  Gruppe.
+  - **Ab 1024 px** sind die Maße identisch zum Stand vor dem Wrapper.
+  - **601–1023 px:** Innenabstand und Lücke der Box sind reduziert (14 px /
+    12 px statt 18 px / 16 px), damit die Auswahl auch mit breiteren
+    Systemschriften als Segoe UI (Noto Sans unter Linux, Roboto unter
+    Android) einzeilig bleibt. Grund ist das Querformat von Smartphones,
+    z. B. 915 px: dort fehlten sonst rund 3 px und die Beta-Gruppe brach
+    um. Die Optionen liegen weiter über der ⓘ-Trefferfläche.
+  - Abgesichert bei 915 × 412 und 1280 × 800: alle Optionen mit gleichem
+    `offsetTop`, kein Überlauf, Treffertest an den Rändern neben den ⓘ.
 - **≤ 600 px** (Hochformat): gestapelt — VHSx in voller Breite, darunter
   das Beta-Label als Zwischenüberschrift mit Linie, darunter PHBH und PHBL
   nebeneinander (zweispaltiges Grid), jeweils mit ⓘ; Tippziele ≥ 44 px,

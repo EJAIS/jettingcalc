@@ -21,6 +21,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 - Use **Reset** to clear all setups back to empty.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
 - Toggle the UI language between **English and German** with the DE/EN button in the header; preference is persisted in localStorage.
+- Hints (ⓘ, ⚠ and the tooltips on buttons) open on hover, on tap, and from the keyboard: a button shows its hint while it has keyboard focus and Enter still runs it; ⓘ / ⚠ toggle with Enter or Space; Escape closes any hint.
 - Switch to the **Needle catalog** tab (or open `#needles`) for a sortable geometry overview of every needle for a carburetor type — filter by series, taper count or name, highlight the needles your setups use, and show a dimension key explaining ØA, ØB, C, ØD, E and F.
 - Switch to the **Fine tuning** tab (or open `#tuning`) to tune a setup range by range: say "richer" or "leaner" for a throttle range and get the needle/clip change that does it with the fewest side effects — see [Fine tuning](#fine-tuning) below.
 - Use the **Custom Needles** section to define additional needle profiles — with an interactive measurement schematic and field reference table — save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
@@ -68,10 +69,14 @@ change.
   K33), a card for the same curve is shown as a clip change of the needle
   you have fitted, not as a needle swap.
 - **Step back / Reset to reference.** Undo one step or start over.
+- **Changing the reference.** Loading another setup (or a manual entry)
+  as reference asks first if tuning steps would be lost; tapping the
+  already loaded reference changes nothing.
 - **Apply result.** Save the current state to the first free setup slot
   (named e.g. "K96 C5"), or overwrite the reference slot (it keeps its
-  name; Undo is offered in a banner until you change the setups or take
-  the next tuning step). Nothing
+  name). The result — or why it could not be saved — appears right above
+  the buttons, with "View in calculator" and, after an overwrite, Undo;
+  it goes away with ✕, the next tuning step or a new reference. Nothing
   of the tuning session itself is stored — it lives only in the open tab.
 
 **Model limits.** All percentages come from the calculation model: flow is
@@ -247,6 +252,13 @@ of the same vs. another carburetor type, `stepJet()` at its bounds and
 through the atomizer sizes, `formatSignedPercent()` and the whitelist
 check `validateTuningSetup()`.
 
+`test/clipcount.test.mjs` guards the single clip-count resolution
+(`resolveNeedleClips()` in `js/needledb.js`): for a base needle with its
+own clip count, one on its series default and custom needles with and
+without one, `resolveClipCount()`, `getClipGeometry()`, the catalog rows,
+the fine tuning candidates and validation, and the clip-position cleanup
+in `loadSetups()` all see the same number.
+
 `test/i18n.test.mjs` is a standing guard for EN/DE completeness of the
 whole app: `en` and `de` in `js/i18n.js` have identical key sets, no empty
 values and identical `{placeholder}` sets per key, and every key used in
@@ -256,8 +268,9 @@ dynamically (template strings, variables) are not covered by that scan;
 the dynamic catalog column and fine tuning range/reason keys are checked
 explicitly against `CATALOG_COLUMNS`, `TUNING_RANGES` and `TUNING_REASONS`. It also checks
 that every `title`, `aria-label` and `placeholder` in `index.html` has its
-`data-i18n-*` binding, that no German text uses a decimal comma and that
-no text glues a number to "mm" (`55mm`).
+`data-i18n-*` binding, that no German text uses a decimal comma, that no
+text glues a number to "mm" (`55mm`), and that German texts quote with
+„…“ only (every „ closed by “, no straight `"`).
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 
@@ -265,9 +278,12 @@ See [TESTING.md](TESTING.md) for the browser-level test coverage: the
 Lighthouse installability audit, the Playwright browser test suite
 (`test-browser/`: offline reload, share-link network-first behavior, the
 update banner, the install button, the needle catalog, the carburetor
-type selector, custom needle migration and the fine tuning tab), and the
+type selector, tooltips by touch and keyboard, custom needle migration,
+the header controls on narrow screens and the fine tuning tab), and the
 manual checklists for what only a real device can exercise
-(Android/iOS install, standalone launch, fine tuning on a phone).
+(Android/iOS install, standalone launch, fine tuning on a phone). The
+browser tests need `npm install` and `npx playwright install chromium` —
+the latter again after every Playwright update.
 
 ## Verification
 

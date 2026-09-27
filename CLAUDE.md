@@ -951,9 +951,12 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   Worker (`sw`), Nadelkatalog (`needlecatalog`), Feinabstimmung
   (`tuning`) und die EN/DE-Vollständigkeit (`i18n`).
 - **Browsertests:** `node --test test-browser/*.mjs` (Playwright,
-  Chromium; `npm install` nötig). Mit der Umgebungsvariable
-  `CHROMIUM_PATH` lässt sich ein vorinstalliertes Chromium verwenden.
-  Details und manuelle Checkliste: `TESTING.md`.
+  Chromium). Einrichtung: `npm install`, dann `npx playwright install
+  chromium` — nach jedem Playwright-Update erneut, denn jede Version
+  erwartet ihre eigene Chromium-Revision (sonst „Executable doesn't
+  exist“). Alternative ohne Download: `CHROMIUM_PATH` auf ein
+  vorinstalliertes Chromium/Chrome. Details und manuelle Checkliste:
+  `TESTING.md`.
 - **Konvention:** vor jedem Merge ist `node --test` grün (ohne
   Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
   `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`, `header.mjs`)

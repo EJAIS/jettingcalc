@@ -55,6 +55,18 @@ Rules for all future UI implementations:
 - Numbers use a decimal point in both languages and a space before the
   unit (`23.8 mm`; compounds like `26-mm-PHBL` are fine) — also enforced
   by `test/i18n.test.mjs`
+- German texts quote with „…“ (U+201E opening, U+201C closing) — never a
+  straight `"`, neither as the closing mark after „ nor as a `"…"` pair.
+  Enforced by `test/i18n.test.mjs`, which rejects any straight `"` in a
+  `de` string. Why a blanket ban instead of only checking pairs: mixed
+  „…" had crept into several texts unnoticed, and a single rule without
+  exceptions is easy to test and to follow. This deliberately rules out
+  HTML attributes inside translations — translations carry no markup at
+  all. Where a text needs markup, build it in JS and insert it through a
+  placeholder (as the forum link in `footer.gsfNote` via `{link}` in
+  `applyTranslations()`); attributes are set through the `data-i18n-*`
+  bindings. English texts keep their quotes; the documentation files are
+  not affected.
 - After any dynamic DOM update that adds translatable text, call
   `applyTranslations()` from i18n.js
 - Chart axis labels and legends must also go through `t('key')` —
@@ -73,11 +85,11 @@ Rules for all future UI implementations:
 ## Dateistruktur
 
 ```
-index.html                  Haupt-UI: Rechner- und Katalog-Ansicht, Dialoge, Nadel-Schema-<template>, Footer
+index.html                  Haupt-UI: Rechner-, Katalog- und Feinabstimmungs-Ansicht, Dialoge, Nadel-Schema-<template>, Footer
 manifest.json               PWA-Manifest (relative start_url/scope)
 sw.js                       Service Worker: Precache, Cache-first, Navigations-Fallback, Share-Links network-first
 css/style.css               Styling inkl. Dark Mode (CSS-Variablen)
-js/app.js                   UI-Logik, Event-Handling, Ansichten, Share-UI, Katalog-UI
+js/app.js                   UI-Logik, Event-Handling, Ansichten, Share-UI, Katalog-UI, Feinabstimmungs-UI
 js/calc.js                  Berechnungs-Engine (calcSetup)
 js/needledb.js              Statische Nadeldatenbank + Stammdaten (Längen, Clip-Geometrie, Düsen, Bohrungen)
 js/storage.js               localStorage-Abstraktion (Setups, Custom Needles, Vergasertyp)
@@ -85,6 +97,7 @@ js/charts.js                Chart.js-Diagramme (Needle Profile, Carb Profile, Vo
 js/cutaway.js               Schieber-Ausschnitt-Empfehlung für 2-Takt-Rundschieber
 js/share.js                 Share-Links kodieren/dekodieren (rein, ohne DOM/localStorage)
 js/needlecatalog.js         Nadelkatalog: Zeilen, Filter, Sortierung, Formatierung (rein)
+js/tuning.js                Feinabstimmung: Bereichs-Deltas, Kandidaten, Schritt-Ranking, Düsenschritte, Validierung (rein)
 js/i18n.js                  EN/DE-Übersetzungen, t(), applyTranslations()
 js/vendor/                  Vendored Chart.js (Version und Herkunft: js/vendor/README.md)
 icons/                      PWA-Icons
@@ -92,7 +105,7 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 .gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
-test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs)
+test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
@@ -147,8 +160,22 @@ mit Quelle in `KONSTANTEN_VERIFIKATION.md` festgehalten.
   unpassende `needleType` (inkl. `clipPos`), `jetType` und `carbSize` zurück
   und wählt bei nur einem möglichen Mischrohr dieses automatisch aus.
 
+**Lesen pro Render-Durchlauf:** `updateUI()` liest die Nadeldaten genau
+einmal (`readNeedleSnapshot()` in `app.js`: `allNeedles`, `customNeedles`,
+`customTypes`) und reicht den Snapshot an alle Render-Funktionen und
+Builder weiter; die nehmen ihn als optionalen letzten Parameter und lesen
+ohne ihn selbst (Event-Handler). Der Snapshot gilt nur für diesen
+Durchlauf — kein Cache darüber hinaus, also keine Invalidierung bei
+`saveCustomNeedles()` oder Änderungen aus einem anderen Tab — und wird nie
+verändert (`allNeedles` teilt die Einträge von `NEEDLE_DB`).
+`getAllNeedles(custom)` (`storage.js`) nimmt die bereits gelesene Liste
+optional an. Ein `updateUI()` liest `dellorto_custom_needles` einmal
+(vorher 15–19-mal); `test-browser/tuning.mjs` schreibt die Obergrenze fest.
+
 **UI-Zustand, der bewusst NICHT persistiert wird:** `catalogState`
-(Nadelkatalog) und der Undo-Snapshot eines Share-Imports (`importUndo`).
+(Nadelkatalog), `tuningState` (Feinabstimmung), der Undo-Snapshot eines
+Share-Imports (`importUndo`) und der einer Übernahme aus der
+Feinabstimmung (`tuningApplyMessage`).
 
 ---
 
@@ -172,9 +199,13 @@ localStorage (siehe „Custom Needles“).
 **Clip-Anzahl:** `getClipCount()` nimmt den `clips`-Wert der Nadel, sonst
 `DEFAULT_CLIPS_BY_PREFIX` nach Präfix. Welche Präfix-Defaults physisch
 verifiziert sind, steht in `VERIFIED_DEFAULT_CLIP_PREFIXES` (derzeit nur D);
-die übrigen Defaults sind Platzhalter. Aufrufer, die auch Custom Needles
-kennen, prüfen zuerst deren eigenes `clips` (`resolveClipCount()` in
-`app.js`).
+die übrigen Defaults sind Platzhalter. **Einzige Stelle** der Auflösung
+„eigenes `clips` der Nadel, sonst `getClipCount()`“ ist
+`resolveNeedleClips(type, needle)` (`needledb.js`); `resolveClipCount(type,
+allNeedles)` schlägt die Nadel nur nach und ruft sie auf. Setup-Tabelle,
+`loadSetups()`, Katalog, Feinabstimmung und `getClipGeometry()` nutzen
+diese beiden Funktionen, statt `needle.clips ?? …` nachzubauen —
+`test/clipcount.test.mjs` prüft, dass alle dieselbe Anzahl sehen.
 
 **Weitere Stammdaten in `needledb.js`:** `CLIP_GEOMETRY_BY_COUNT` /
 `getClipGeometry()` (Nutabstand und Oberkanten-Offset je Nut-Anzahl),
@@ -274,9 +305,18 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
 
 - Jede Beta-Option steht mit ihrem ⓘ in einem `.carb-type-beta-item`, damit
   beide nie getrennt umbrechen.
-- **> 600 px** (Desktop, Querformat): eine Zeile wie bisher — VHSx | Beta-
-  Label, PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht
-  dem der Gruppe, die Maße sind identisch zum Stand vor dem Wrapper.
+- **> 600 px** (Desktop, Querformat): eine Zeile — VHSx | Beta-Label,
+  PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht dem der
+  Gruppe.
+  - **Ab 1024 px** sind die Maße identisch zum Stand vor dem Wrapper.
+  - **601–1023 px:** Innenabstand und Lücke der Box sind reduziert (14 px /
+    12 px statt 18 px / 16 px), damit die Auswahl auch mit breiteren
+    Systemschriften als Segoe UI (Noto Sans unter Linux, Roboto unter
+    Android) einzeilig bleibt. Grund ist das Querformat von Smartphones,
+    z. B. 915 px: dort fehlten sonst rund 3 px und die Beta-Gruppe brach
+    um. Die Optionen liegen weiter über der ⓘ-Trefferfläche.
+  - Abgesichert bei 915 × 412 und 1280 × 800: alle Optionen mit gleichem
+    `offsetTop`, kein Überlauf, Treffertest an den Rändern neben den ⓘ.
 - **≤ 600 px** (Hochformat): gestapelt — VHSx in voller Breite, darunter
   das Beta-Label als Zwischenüberschrift mit Linie, darunter PHBH und PHBL
   nebeneinander (zweispaltiges Grid), jeweils mit ⓘ; Tippziele ≥ 44 px,
@@ -288,11 +328,20 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
   abfängt; im Hochformat ist der Spaltenabstand deshalb 12 px, so endet
   die Fläche in der Lücke. Andere `.cutaway-info` (z. B. Max HD) sind
   davon nicht betroffen.
-- **Tooltips auf Touch-Geräten** (`app.js`): Ein Tap löst erst
-  `mouseover`, dann `click` aus; früher öffnete das Hover den Tooltip und
-  der Klick schloss ihn sofort wieder. Hover hört deshalb auf
-  `pointerover` und ignoriert Touch. Ein Tap auf einen echten `<button>`
-  mit Tooltip (Zeilenaktionen) führt weiter direkt die Aktion aus.
+- **Tooltips** (`data-tooltip`, Block im `DOMContentLoaded` von `app.js`):
+  - Hover hört auf `pointerover` und ignoriert Touch: Ein Tap löst erst
+    `mouseover`, dann `click` aus; früher öffnete das Hover den Tooltip und
+    der Klick schloss ihn sofort wieder.
+  - Echte `<button>` mit Tooltip (Zeilenaktionen ⧉/↺ u. a.) werden vom
+    Klick-Handler **nie** abgefangen — egal ob Maus, Touch oder Tastatur;
+    ein offener Tooltip wird nur geschlossen. Früher ließ der Handler
+    Buttons nur bei Touch durch; ein Tastatur-Klick (ohne `pointerdown`)
+    öffnete deshalb nur den Tooltip. Bei Tastaturfokus (`:focus-visible`)
+    zeigt ein Button seinen Tooltip, bei `focusout` verschwindet er.
+  - Reine Tooltip-Elemente (`role="button"`: ⚠ Cutaway, ⓘ, Badges)
+    schalten ihren Tooltip per Klick/Tap sowie Enter/Space um; beim Fokus
+    allein öffnen sie ihn nicht (sonst schlösse das Enter ihn gleich
+    wieder). Escape schließt jeden offenen Tooltip.
 - Abgesichert durch `test-browser/carb-selector.mjs`.
 
 ---
@@ -486,6 +535,31 @@ der Empfänger beim Öffnen kommentarlos nur die betroffenen Felder (mit
 
 ---
 
+## Ansichten und Routing
+
+Drei Ansichten als Tabs (`role="tablist"`): Rechner, Nadelkatalog,
+Feinabstimmung. Jede Ansicht rendert beim Anzeigen (`showView()`) und bei
+jeder Zustandsänderung zentral aus `updateUI()`, solange sie sichtbar ist.
+
+- `VIEW_HASHES` (`app.js`) ist die einzige Zuordnung Ansicht ↔ Hash:
+  `#needles` = Katalog, `#tuning` = Feinabstimmung, ohne Hash (oder mit
+  unbekanntem Hash) = Rechner. `hashToView()` und `showView()` lesen nur
+  diese Map. `showView()` setzt per `history.pushState()` nur den Hash
+  (pathname + search bleiben erhalten); `popstate`/`hashchange`
+  synchronisieren die Ansicht zurück.
+- Tab-Reihenfolge (auch für die Pfeiltasten) = Key-Reihenfolge von
+  `VIEW_TABS`: Rechner | Nadelkatalog | Feinabstimmung.
+- Die Startansicht wird im `DOMContentLoaded`-Handler nach
+  `applyShareFromUrl()` aus `location.hash` bestimmt. Verträglich mit den
+  Share-Links: `scrubShareParamsFromUrl()` entfernt nur die Share-Parameter
+  und lässt den Hash stehen; ein Share-Link mit `#needles` oder `#tuning`
+  importiert also die Setups und öffnet danach die jeweilige Ansicht.
+- Tab-Leiste ≤ 600 px: Grid mit gleich breiten Spalten, Tabs mindestens
+  48 px hoch (`--view-tabs-height`), Beschriftungen brechen zweizeilig um
+  statt überzulaufen.
+
+---
+
 ## Nadelkatalog (Needle catalog)
 
 ### Zweck
@@ -539,14 +613,8 @@ Entscheidung zur Vermeidung redundanter Einstiege.
 
 ### Routing
 
-- `#needles` = Katalog, ohne Hash = Rechner. `showView()` setzt per
-  `history.pushState()` nur den Hash (pathname + search bleiben erhalten);
-  `popstate`/`hashchange` synchronisieren die Ansicht zurück.
-- Die Startansicht wird im `DOMContentLoaded`-Handler nach
-  `applyShareFromUrl()` aus `location.hash` bestimmt. Verträglich mit den
-  Share-Links: `scrubShareParamsFromUrl()` entfernt nur die Share-Parameter
-  und lässt den Hash stehen; ein Share-Link mit `#needles` importiert also
-  die Setups und öffnet danach den Katalog.
+`#needles` öffnet den Katalog; die gemeinsamen Regeln stehen im Abschnitt
+„Ansichten und Routing“.
 
 ### Formatierung
 
@@ -581,6 +649,339 @@ der Fußnote).
 ### Service Worker
 
 `./js/needlecatalog.js` steht in `PRECACHE_URLS` (`sw.js`) und in der
+gespiegelten Liste in `test/sw.test.mjs`.
+
+---
+
+## Feinabstimmung (Fine tuning)
+
+### Zweck
+
+Dritter Tab („Feinabstimmung“ / „Fine tuning“, `#tuning`): Direkttuning
+nach dem Vorbild von kyajet, aber auf Basis der vollständigen Kennlinie
+aus `calcSetup()`. Der Nutzer lädt ein Setup als **Referenz**, sagt je
+Gasbereich „fetter“ oder „magerer“, und der Tab schlägt den Nadel-/Clip-
+Wechsel vor, der genau das bewirkt und die übrigen Bereiche möglichst in
+Ruhe lässt. Düsen (ND, HD, Nadeldüse) werden getrennt schrittweise
+verstellt. Das Ergebnis kann in einen Setup-Slot übernommen werden.
+
+### Modulaufteilung
+
+- `js/tuning.js` — reine Logik, analog zu `share.js`/`needlecatalog.js`:
+  kein DOM, kein localStorage, kein i18n, keine sichtbaren Texte (nur
+  Keys, Codes, Zahlen; einzige Ausnahme ist die Zahlformatierung
+  `formatSignedPercent()`, wie `formatCatalogValue()`). Imports nur aus
+  `calc.js`, `needledb.js`, `needlecatalog.js`, `share.js`; Custom Needles
+  kommen als Parameter (`allNeedles`, `customTypes`), `storage.js` wird nie
+  importiert. `calc.js` bleibt für dieses Feature unverändert. Getestet in
+  `test/tuning.test.mjs` (inkl. transitiver Import-Prüfung).
+- `js/app.js` — UI: `renderTuning()` mit `renderTuningReference()`,
+  Status, `renderTuningRanges()`, `renderTuningSuggestions()`,
+  `renderTuningJets()`, Übernahme-Banner und Aktionen; Klicks über
+  `handleTuningClick()`.
+- Gemeinsam mit dem Rechner genutzt statt dupliziert: die Options-Builder
+  der Setup-Tabelle, `applyFieldValue()` (Zahlen begrenzen, abhängige
+  Felder leeren), `renderBetaBanner()`, `withPreservedFocus()`,
+  `getClipsSource()` (Katalog), `resolveClipCount()`/`resolveNeedleClips()`
+  (`needledb.js`), die
+  nd/hd-Grenzen `JET_FIELD_BOUNDS` bzw. `JET_MIN`/`ND_MAX`/
+  `HD_MAX` und `MAX_NAME_LENGTH` (beide `share.js`).
+
+### Kennzahlen
+
+- Basis ist `curve[].overall`, also das, was das Rechenmodell tatsächlich
+  dosiert: bis 30 % die BLEND-Mischung aus Leerlaufdüse und
+  HD-Äquivalent, ab 35 % `min(hd, hdEquiv)`. **Nicht** `hdEquiv`: das
+  ignoriert sowohl die Leerlaufdüse (unten) als auch die Begrenzung durch
+  die Hauptdüse (oben) und würde Nadelwechsel vorschlagen, die im Modell
+  nichts bewirken.
+- **flow** (Rechen- und Ranking-Größe): Mittel über die Bereichspunkte von
+  (overall_Kandidat² / overall_Referenz² − 1) × 100. Düsengrößen sind
+  Durchmesser, der Durchfluss folgt der offenen Fläche, also ≈ Düse². Eine
+  Düse +3 % entspricht ≈ +6 % Durchfluss.
+- **diameter** (nur Anzeige, „Ø“): dasselbe linear — die gewohnte
+  Düsengrößen-Denkweise. Für positive Änderungen immer kleiner als flow.
+- **eq**: mittlere äquivalente Düse (overall) je Bereich, Referenz und
+  aktueller Stand.
+- Alle Deltas immer **gegen die Referenz**. Punkte mit overall_Referenz ≤ 0
+  fallen weg; bleibt keiner, ist der Wert `null` (Anzeige `–`).
+
+### Bereiche (`TUNING_RANGES`)
+
+Fünf Bereiche auf dem 5-%-Raster von `calcSetup()`: 0–1/8, 1/8–1/4,
+1/4–1/2, 1/2–3/4, 3/4–1. 1/8 = 12.5 % liegt nicht auf dem Raster, die
+Grenze liegt deshalb zwischen 10 und 15 %. Werte über 100 % sind
+Extrapolation und fließen nie ein. Rasterpunkte werden über
+`Math.round(tp * 100)` zugeordnet, nie per Float-Vergleich. Der unterste
+Bereich trägt den Haupthebel „ND“ (`lever`), alle anderen die Nadel.
+
+### Schrittlogik (`rankNextSteps()`)
+
+Für Bereich R und Richtung dir (+1 fetter, −1 magerer), alles in
+Prozentpunkten flow:
+
+- inc = dir · (flow_R(Kandidat) − flow_R(current)); nur inc ≥ `MIN_STEP`
+  (1) — feinere Änderungen sind am Motor nicht wahrnehmbar.
+- side = Σ über die anderen Bereiche w · |flow_r(Kandidat) − flow_r(current)|,
+  w = `SIDE_WEIGHT_ADJACENT` (0.5) für Nachbarbereiche (bei einer
+  konischen Nadel teils unvermeidlich), sonst `SIDE_WEIGHT_FAR` (1).
+  **Nebenwirkung bewusst gegen current, nicht gegen die Referenz**: bereits
+  abgestimmte Bereiche sollen erhalten bleiben.
+- cost = (inc − `MIN_STEP`) + `LAMBDA` (2) · side − `CLIP_BONUS` (0.5) bei
+  reinem Clip-Wechsel (billigster Versuch, keine Teile nötig). Sortierung
+  nach cost, dann `compareNeedleTypes`, dann Clip.
+- Höchstens `MAX_SUGGESTIONS` (3) Vorschläge. `SIGNIFICANT` (2) steuert nur
+  die Hervorhebung in der Anzeige.
+- Tags je Vorschlag: `clipOnly`, `seriesChange` (andere Serie = andere
+  Nadellänge), `custom`, `clipsUnverified` (gleiche Logik wie der Katalog,
+  `getClipsSource()`).
+- Die 35-%-Grenze der BLEND-Überblendung ist in `tuning.js` gespiegelt
+  (`BLEND_END_PERCENT`), weil `calc.js` `BLEND` nicht exportiert — bei
+  einer Änderung von `BLEND` beide anpassen.
+- Die Regressionswerte in `test/tuning.test.mjs` stammen aus einem
+  abgenommenen Prototyp. Weicht ein Ergebnis ab, zuerst die Ursache
+  klären, nicht die Testwerte anpassen.
+
+### Kandidatenpool und Gruppierung (`evaluateCandidates()`)
+
+- Alle Nadeln mit dem `carbType` der Referenz-Nadel — **alle Serien**,
+  Custom Needles eingeschlossen — an jeder Clip-Position
+  (`resolveClipCount()`). Düsenwerte kommen aus current; die exakt
+  aktuelle Nadel + Clip ist ausgeschlossen.
+- Einmal je Zustand ausgewertet und für alle 10 Richtungen genutzt; die UI
+  memoisiert über `evalKey` (Referenz + current + `customNeedlesVersion`,
+  denn eine geänderte Custom Needle ändert die Kurven). Der Zähler steigt
+  bei jedem Speichern, Löschen und Migrieren von Custom Needles — billiger
+  als localStorage bei jedem Rendern zu parsen.
+- Kandidaten mit identischer overall- **und** hdEquiv-Kurve (auf 1e-6
+  gerundet) werden zu einem Vorschlag zusammengefasst, z. B. K27/K33
+  (gleiche Geometrie). Repräsentant ist der kleinste Typ, die anderen
+  stehen in `alsoTypes` („auch: K33 · Clip 4“). **Ausnahme** in
+  `rankNextSteps()`: enthält die Gruppe die aktuell eingebaute Nadel, wird
+  sie zum Repräsentanten — dieselbe Kurve ist dann ein reiner Clip-Wechsel
+  (`clipOnly`, `CLIP_BONUS`) statt eines Nadeltauschs.
+
+### Grenzfälle
+
+- **`hdLimited`**: der Bereich hat Punkte ab 35 % (außerhalb der
+  BLEND-Überblendung), und an **jedem** davon ist hdEquiv ≥ HD — dort
+  dosiert die Hauptdüse allein, keine Nadel macht sie fetter.
+  Überblendete Punkte (≤ 30 %) bleiben außen vor, statt den Bereich
+  auszuschließen: sonst könnte 1/4–1/2 (beginnt bei 30 %) nie HD-begrenzt
+  sein. Bereiche nur aus überblendeten Punkten (0–1/8, 1/8–1/4) sind es
+  nie: Ohne Punkt ≥ 35 % ist das Ergebnis ausdrücklich `false` — ein
+  `every()` über die leere Menge wäre `true` und markierte sie bei jeder
+  HD als begrenzt. (Regel bestätigt; die ursprüngliche Fassung „jeder
+  Punkt ≥ 35 %“ schloss 1/4–1/2 grundsätzlich aus.) Badge „HD-begrenzt“ in
+  der Zeile; im Düsenblock ist die HD-Zeile hervorgehoben und trägt das
+  Badge „Hebel“ (`tuning.jets.leverBadge`, Tooltip `tuning.jets.hdHint`
+  mit den Bereichen).
+- **`reason`** bei leerem Ergebnis: `'hdLimited'` (Bereich in current
+  HD-begrenzt) oder `'noCandidates'` (`TUNING_REASONS`). Der ±-Button ist
+  dann deaktiviert, der Grund steht als sichtbarer Text in der Zeile und
+  zusätzlich als Tooltip.
+- **`warning`**: side > `WARN_SIDE_RATIO` (3) · inc beim besten Vorschlag —
+  die gewünschte Korrektur geht mit der Nadel nicht sauber. Die UI wendet
+  dieselbe Regel auf die gerade übernommene Karte an und zeigt die Warnung
+  im Variantenbereich unter dessen Überschrift. Zusätzlich trägt jede
+  Bereichszeile außer dem Ziel des letzten Nadelschritts, deren flow sich
+  durch diesen Schritt um ≥ `SIGNIFICANT` geändert hat (Vergleich mit dem
+  Stand **vor** dem Schritt, `lastStep.flowBefore`, nicht mit der
+  Referenz), ein ⚠ im immer reservierten Platz der Δ-Zelle (`aria-label`
+  und Tooltip `tuning.warn.sideFlag`).
+- **Custom Needle gelöscht, umgetypt oder neu gespeichert**:
+  `validateTuningState()` (in jedem `updateUI()`) prüft ref, current und
+  jeden `history`-Eintrag mit `validateTuningSetup()` — also auch die
+  Clip-Position gegen die aktuelle Nut-Anzahl, was `calcSetup()` nicht
+  tut. Ist einer davon ungültig, startet der Tab neu und meldet
+  `msg.tuningReset`; ungültige History-Einträge still zu überspringen würde
+  „Schritt zurück“ unerwartet springen lassen. Varianten-Karten aus einem
+  älteren Custom-Needle-Stand (`suggestionsNeedles` ≠
+  `customNeedlesVersion`) werden verworfen — eine veraltete Karte könnte
+  sonst eine gelöschte Nadel laden.
+- **Düsen am Anschlag** (Grenze von ND/HD, Ende der Nadeldüsen-Liste):
+  Button deaktiviert, Grund als Text in der Hinweiszeile unter der Düse
+  (immer vorhanden, eine Zeile hoch) und als Tooltip an der Zelle.
+
+### Layout-Stabilität (verbindlich)
+
+**Regel:** Oberhalb eines Bedienelements des Tabs darf sich die Höhe durch
+Interaktion nie ändern. Veränderlicher Inhalt steht entweder am Ende des
+Tabs oder in einem Platz mit fest reservierter Höhe. Grund: Nach einem
+±-Klick schoben Warnung, Hinweiszeilen, eine umbrechende Statuszeile oder
+wegfallende Karten die Tabelle bzw. den Düsenblock unter den Mauszeiger;
+der nächste Klick traf einen anderen Bereich (gemessen: bis 205 px auf dem
+Desktop, bis 507 px auf dem Handy).
+
+- **Reihenfolge** (Desktop und Mobil): Referenz → Statuszeile →
+  Bereichstabelle → Düsenblock → Aktionen, darunter das Meldungsfeld der
+  Übernahme → Variantenbereich (mit der Seiteneffekt-Warnung) →
+  Modellhinweis. Die Karten stehen bewusst nicht mehr direkt unter der
+  Tabelle; die klebende Statuszeile gibt die sofortige Rückmeldung.
+- **Feste Plätze:**
+  - Statuszeile: eine Zeile, feste Höhe, Ellipsis, voller Text als `title`.
+  - Bereichszeile: Meta-Zeile unter dem Label (Haupthebel bzw. Badge
+    „HD-begrenzt“, `nowrap`), ⚠-Platz fester Breite in der Δ-Zelle und
+    die Hinweiszeile unter dem Balken sind immer vorhanden, auch leer.
+    Hinweiszeile: eine Zeile fester Höhe, im Grid-Layout über die volle
+    Breite, im Tabellenlayout in der Balkenspalte (die schmalen festen
+    Spalten lassen ihr bei 768 px ≥ 234 px). Texte (`tuningReasonLine()`): eine
+    Richtung „Fetter: HD-begrenzt → HD anpassen“; beide Richtungen mit
+    gleichem Grund nur der Grund; verschiedene Gründe die Kurzformen
+    `tuning.reasonTiny.*` („Magerer: keine Nadel · Fetter: HD-begrenzt“) —
+    alle auf Deutsch einzeilig bei 320 px (Grid) und 768 px (erste Breite
+    im Tabellenlayout); `tuning.mjs` misst alle acht Varianten in beiden.
+  - Tabelle: `table-layout: fixed` mit festen Spaltenbreiten, damit
+    wechselnde Zahlen keine Spalten verschieben.
+  - Düsenblock: `table-layout: fixed`; unter jeder Düse eine immer
+    vorhandene, einzeilige Hinweiszeile (Anschlag). Der HD-Hebel ist ein
+    Badge neben „HD“ statt einer Textzeile, damit er nicht mit dem
+    Anschlag-Hinweis um dieselbe Zeile konkurriert. Badges sind
+    Tooltip-Schalter wie ⓘ (`role="button"`, `tabindex="0"`, Enter/Space,
+    Tap) mit vergrößerter Trefferfläche.
+- **Bereichstabelle ≤ 767 px als Grid** (Label + Meta | flow + Ø; Ref ≙ |
+  Aktuell ≙; − | Balken | +; Hinweiszeile), mit gleich breiten
+  `fr`-Spalten. Abweichung von der früheren Grenze 600 px: Zwischen 601
+  und 767 px bliebe dem Balken in der Tabelle nur 50–90 px, zu wenig für
+  Balken und Hinweis. Alle übrigen Mobil-Regeln gelten weiter ab ≤ 600 px.
+- **Dynamisch bleiben nur** das Meldungsfeld (unter den Aktions-Buttons;
+  es verschiebt nur die Varianten) und der Variantenbereich (Karten nach
+  Nadelschritten, weg nach Düsenschritten, „Schritt zurück“,
+  „Zurücksetzen“) — darunter liegt kein Bedienelement mehr.
+- **Scroll-Begrenzung:** Werden Karten am Seitenende entfernt, wäre die
+  Seite womöglich kürzer, als die aktuelle Scroll-Position erlaubt; der
+  Browser würde `scrollY` begrenzen und alles verschieben. Dafür gibt es
+  `#tuning-scroll-spacer` am Ende des Tabs (leer, `aria-hidden`, nichts
+  Fokussierbares). **Regel:** Höhe = max(0, scrollY + innerHeight −
+  Dokumenthöhe ohne Platzhalter), also genau so viel, dass die aktuelle
+  Scroll-Position erreichbar bleibt — nur ungleich 0, wenn der Browser
+  sonst tatsächlich begrenzen würde (Nutzer am Seitenende). Nie
+  kumulativ: jedes Rendern beginnt bei 0 und gleicht danach nur das
+  tatsächlich begrenzte Stück aus; das Dokument wird so nie länger als vor
+  dem Rendern. Freigabe auf 0 beim Tab-Wechsel (`showView()`), beim Laden
+  einer Referenz, bei „Zurücksetzen“ (dort kein Ausgleich) und
+  schrittweise beim Hochscrollen (`onTuningScroll()`: schrumpft nur,
+  wächst nie). Der leere Variantenbereich bleibt mit Höhe 0 im Layout,
+  sonst fiele beim Entfernen der Karten auch die Flex-Lücke davor weg und
+  der Ausgleich wäre größer als die Karten. Gewählt statt einer festen
+  `min-height` für den Variantenbereich (mit horizontal scrollenden
+  Karten auf dem Handy): keine dauerhafte Leerfläche, Karten auf dem
+  Handy weiter untereinander lesbar.
+- **Ausnahme:** das bewusste Auf-/Zuklappen des manuellen
+  Referenzformulars im Referenzblock ganz oben.
+- Abgesichert durch `tuning.mjs`: „layout stability“ bei 1280 × 800,
+  768 × 1024 (Deutsch) und 360 × 740 — Nadelschritt mit Warnung, „Schritt
+  zurück“, zweimal HD +, Übernehmen, kein Bedienelement verschiebt sich um
+  mehr als 1 px; „scroll-clamp spacer“ bei 360 × 740 und 1280 × 800 — am
+  Seitenende sechs Schritte im Wechsel (Nadel +, HD +, Nadel +, HD +,
+  Nadel −, HD −), ±-Buttons bleiben stehen, Platzhalter nie höher als der
+  bis dahin höchste Variantenbereich, 0 nach Hochscrollen, „Zurücksetzen“
+  und Tab-Wechsel.
+
+### Zustand: `tuningState`
+
+- Nur im Speicher, nie in localStorage (Felder: `initialTuningState()`).
+  `ref`/`current` enthalten nur die sieben Rechen-Eingaben und sind Kopien
+  — keine Live-Referenz auf einen Slot. `refSource` ist die Herkunft der
+  **geladenen** Referenz (Slot-id oder `'manual'`); ob das manuelle
+  Formular offen ist, steht getrennt in `manualOpen` — das Öffnen lädt
+  nichts und ändert `refSource` nicht (sonst verschwände z. B. „Referenz-
+  Slot überschreiben“).
+- **Folgt dem Vergasertyp des Rechners** und zeigt ihn nur an (plus
+  Beta-Banner). Der Tab schreibt nie `dellorto_carb_type`;
+  `handleCarbTypeChange()` setzt `tuningState` vollständig zurück.
+- Referenz: Chips für jeden Slot, der `validateTuningSetup()` besteht
+  (Name escaped, Setup-Farbe), oder „Manuelle Eingabe“ mit denselben
+  Feldern und Filtern wie die Setup-Tabelle. Ein Tipp auf den Chip der
+  bereits geladenen, unveränderten Referenz tut nichts („Zurücksetzen“ ist
+  der Weg zum Neustart). Jedes andere Laden (Slot-Chip oder „Als Referenz
+  übernehmen“) fragt vorher per `confirm()` nach
+  (`confirm.replaceTuningRef` mit `{name}` = Slot-Name bzw. „Manuelle
+  Eingabe“) — aber nur, wenn Schritte verloren gingen: `history` nicht
+  leer oder current ≠ ref. Abbrechen lässt die Sitzung unverändert.
+- Zahlenfelder des manuellen Formulars schreiben schon beim Tippen
+  (`input`) in den Zustand und schalten „Laden“ frei, ohne neu zu rendern.
+  Beim `change` (Blur, oft ausgelöst vom mousedown auf „Laden“) wird nur
+  neu gerendert, wenn das Begrenzen den angezeigten Wert geändert hat —
+  sonst ersetzte das Rendern den Button, bevor der Klick ankommt.
+- ±-Schritt: bester Vorschlag wird current, alter Stand auf `history`.
+  Eine andere Varianten-Karte ersetzt current **ohne** neuen
+  `history`-Eintrag (es bleibt ein Schritt). Düsenschritte laufen nur über
+  `stepJet()`, pushen `history` und leeren die Karten; ebenso blenden
+  „Schritt zurück“ und „Zurücksetzen“ sie aus.
+- Fokus bleibt nach ± auf dem Button (`withPreservedFocus()`). Wird er
+  dabei deaktiviert, geht der Fokus auf die Zeilenüberschrift
+  (`tabindex="-1"`), **nicht** auf den Partner-Button: ein gehaltenes
+  Enter würde dort unbemerkt in die Gegenrichtung schalten.
+
+### Übernehmen in einen Setup-Slot
+
+Nur aktiv, wenn current von der Referenz abweicht; deaktivierte Buttons
+nennen den Grund sichtbar.
+- „In freien Slot übernehmen“: erster Slot mit `isSlotEmpty()`, Name
+  `tuning.needleClip` (z. B. „K96 C5“, dieselbe Beschriftung wie in der
+  Statuszeile; gekürzt auf `MAX_NAME_LENGTH`).
+- „Referenz-Slot überschreiben“: nur bei einer Slot-Referenz; der Slot
+  behält seinen Namen. Vorher Snapshot von `setups` **und** `tuningState`
+  in `tuningApplyMessage` — nur im Speicher, nie localStorage. Danach startet
+  die Feinabstimmung mit dem geschriebenen Setup als Referenz neu;
+  „Rückgängig“ stellt beides wieder her.
+- Vor dem Schreiben `validateTuningSetup()` (gleiche Whitelist-Regeln wie
+  `decodeShare()`, aber gegen `allNeedles`); bei Fehlschlag wird nichts
+  geschrieben. Persistenz nur über `saveSetups()`.
+- **Meldungsfeld** `#tuning-apply-banner` im Aktionsbereich, direkt über
+  den Buttons (`role="status"`, `aria-live="polite"`, Optik wie
+  `.app-notice`, Fehler in Rot). Es zeigt Erfolg (Slot-Name, „Im Rechner
+  ansehen“, bei Überschreiben „Rückgängig“) **und** Validierungsfehler
+  (`tuning.apply.invalid` mit dem Feldnamen). Nicht über `showNotice()`:
+  `#app-notice` steht oben auf der Seite und wäre vom Aktionsbereich aus
+  außer Sicht — auch auf dem Handy, wo das Überschreiben die Karten
+  darüber entfernt. `showNotice()` bleibt für Meldungen, die nicht aus
+  einer Aktion im Tab kommen (z. B. `msg.tuningReset`).
+- Die Meldung verschwindet per ✕, beim Laden einer Referenz, mit der
+  nächsten Tuning-Aktion (`tuningSessionKey()` weicht ab — „Rückgängig“
+  würde sonst die danach gemachten Schritte kommentarlos verwerfen), bei
+  jedem Neustart des Tabs (`resetTuningState()`) und sobald
+  `stateKey({carbType, setups})` vom gemerkten Stand abweicht (geprüft
+  zentral in `updateUI()` wie bei `importUndo`, damit ein Sprachwechsel es
+  nicht schließt). Der Text wird bei jedem Rendern aus Codes erzeugt, ein
+  Sprachwechsel übersetzt ihn also.
+
+### Mobile-Regeln (verbindlich)
+
+- Keine Information nur im Tooltip: deaktivierte Buttons haben ihren Grund
+  als sichtbaren Text; der Tooltip sitzt zusätzlich auf dem Wrapper (der
+  Button selbst hat `pointer-events: none`).
+- Bereichstabelle ≤ 767 px als Grid aus festen Teilen (siehe
+  „Layout-Stabilität“); darüber die Tabelle. Kein horizontaler Überlauf
+  bis 320 px.
+- Statuszeile `position: sticky`, einzeilig mit fester Höhe und Ellipsis,
+  direkt unter der mobilen Tab-Leiste. Varianten-Karten stehen am Ende
+  des Tabs (siehe „Layout-Stabilität“). Kein automatisches Scrollen.
+- Alle ±-Buttons 44 × 44 px, `touch-action: manipulation`, ≥ 8 px
+  Abstand. Die ganze Varianten-Karte ist Trefferfläche ihres Buttons
+  (`::after`); Badges mit Tooltip liegen darüber.
+- Referenzformular ≤ 600 px einspaltig; die Controls sind `.cell-input`
+  und erben dessen 16-px-/44-px-Regel (kein iOS-Zoom).
+- Farben: `--tuning-lean` / `--tuning-rich`, inkl. Dark Mode.
+
+### i18n
+
+- Alle Texte über `t()` / `data-i18n*` (`view.tuning`, `tuning.*`,
+  `msg.tuningReset`); Feldnamen nutzen die vorhandenen `col.*`-Keys, das
+  „*“-Badge `catalog.clipsDefault.tooltip`.
+- Dynamische Keys (`tuning.range.*`, `tuning.rangeShort.*`,
+  `tuning.reason.*`, `tuning.reasonShort.*`) prüft `test/i18n.test.mjs`
+  gegen `TUNING_RANGES` und `TUNING_REASONS`.
+- Das deutsche `view.tuning` enthält ein weiches Trennzeichen
+  (`Fein­abstimmung`), damit die schmale Tab-Leiste „Fein-/abstimmung“
+  trennt; `hyphens: auto` hat nicht überall ein deutsches Wörterbuch.
+- Prozentwerte über `formatSignedPercent()`: Vorzeichen, Dezimalpunkt und
+  Leerzeichen vor „%“ in beiden Sprachen.
+
+### Service Worker
+
+`./js/tuning.js` steht in `PRECACHE_URLS` (`sw.js`) und in der
 gespiegelten Liste in `test/sw.test.mjs`.
 
 ---
@@ -638,16 +1039,19 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
 - **Unit-Tests:** `node --test` (bzw. `npm test`) führt alle
   `test/*.test.mjs` aus — Node-Testrunner, keine Abhängigkeiten. Abgedeckt
   sind unter anderem Berechnung (`calc`), Share-Links (`share`), Service
-  Worker (`sw`), Nadelkatalog (`needlecatalog`) und die
-  EN/DE-Vollständigkeit (`i18n`).
+  Worker (`sw`), Nadelkatalog (`needlecatalog`), Feinabstimmung
+  (`tuning`) und die EN/DE-Vollständigkeit (`i18n`).
 - **Browsertests:** `node --test test-browser/*.mjs` (Playwright,
-  Chromium; `npm install` nötig). Mit der Umgebungsvariable
-  `CHROMIUM_PATH` lässt sich ein vorinstalliertes Chromium verwenden.
-  Details und manuelle Checkliste: `TESTING.md`.
+  Chromium). Einrichtung: `npm install`, dann `npx playwright install
+  chromium` — nach jedem Playwright-Update erneut, denn jede Version
+  erwartet ihre eigene Chromium-Revision (sonst „Executable doesn't
+  exist“). Alternative ohne Download: `CHROMIUM_PATH` auf ein
+  vorinstalliertes Chromium/Chrome. Details und manuelle Checkliste:
+  `TESTING.md`.
 - **Konvention:** vor jedem Merge ist `node --test` grün (ohne
   Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
-  `custom-needles.mjs`, `carb-selector.mjs`) laufen ebenfalls vollständig
-  grün.
+  `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`, `header.mjs`)
+  laufen ebenfalls vollständig grün.
 
 ### Tooling
 

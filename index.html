@@ -40,6 +40,7 @@
 <nav id="view-tabs" class="view-tabs" role="tablist" data-i18n-aria-label="view.nav.label" aria-label="View">
   <button type="button" role="tab" id="tab-calc" aria-controls="view-calc" aria-selected="true" tabindex="0" data-i18n="view.calc">Calculator</button>
   <button type="button" role="tab" id="tab-catalog" aria-controls="view-needles" aria-selected="false" tabindex="-1" data-i18n="view.catalog">Needle catalog</button>
+  <button type="button" role="tab" id="tab-tuning" aria-controls="view-tuning" aria-selected="false" tabindex="-1" data-i18n="view.tuning">Fine tuning</button>
 </nav>
 
 <main>
@@ -329,6 +330,59 @@
       </div>
       <p id="catalog-empty" class="catalog-empty" data-i18n="catalog.empty" hidden>No needles match these filters.</p>
       <p class="catalog-footnote" data-i18n="catalog.footnote">Values in mm. * = series default clip count, not verified per needle. Coloured dots = used in a setup.</p>
+    </div>
+  </section>
+
+  <!-- ── Fine tuning ────────────────────────────────────────────────────── -->
+  <section id="view-tuning" class="card tuning-card" role="tabpanel" aria-labelledby="tab-tuning" hidden>
+    <div class="card-header">
+      <h2 data-i18n="tuning.heading">Fine tuning</h2>
+      <!-- Text set by app.js (renderTuning): the calculator's carb type -->
+      <span id="tuning-carb-type" class="tuning-carb-type"></span>
+    </div>
+    <!-- Text set by app.js (renderBetaBanner), as in the setups card -->
+    <div id="tuning-beta-banner" class="carb-beta-banner" hidden></div>
+    <div class="card-body tuning-body">
+      <!-- Reference picker (slot or manual entry) — always visible;
+           rendered by app.js (renderTuningReference) -->
+      <div id="tuning-ref" class="tuning-ref"></div>
+      <p id="tuning-empty" class="tuning-empty" data-i18n="tuning.empty">Pick a setup from the calculator as reference, or enter one manually, to start fine tuning.</p>
+      <!-- Blocks below are rendered by app.js (renderTuning) and only
+           shown once a reference is loaded. Order matters: from the status
+           line down to the action buttons nothing changes height through
+           interaction; the apply message and the suggestions, which do,
+           come last (see CLAUDE.md, "Layout-Stabilität"). The status line
+           is sticky. -->
+      <p id="tuning-status" class="tuning-status" data-tuning-block aria-live="polite" hidden></p>
+      <div id="tuning-ranges-scroll" class="tuning-ranges-scroll" data-tuning-block hidden>
+        <p class="tuning-legend">
+          <span data-i18n="tuning.legend">Δ against the reference: flow and Ø</span>
+          <span class="cutaway-info" role="button" tabindex="0"
+                data-i18n-tooltip="tuning.legend.tooltip"
+                data-i18n-aria-label="tuning.legend.tooltip" aria-label="flow = fuel flow through the open area (≈ jet size²). Ø = change of the equivalent jet size.">ℹ</span>
+        </p>
+        <table id="tuning-ranges" class="tuning-ranges"></table>
+      </div>
+      <div id="tuning-jets" class="tuning-jets" data-tuning-block hidden></div>
+      <div id="tuning-actions" class="tuning-actions" data-tuning-block hidden></div>
+      <!-- Message field of the action area, below its buttons: result or
+           validation error of "apply to slot"; text and button visibility
+           set by app.js (renderTuningApplyBanner), same pattern as
+           #import-banner -->
+      <div id="tuning-apply-banner" class="app-notice import-banner tuning-apply-banner" role="status" aria-live="polite" hidden>
+        <span id="tuning-apply-text"></span>
+        <button type="button" id="btn-tuning-view-calc" class="btn-ghost" data-i18n="tuning.apply.viewInCalc">View in calculator</button>
+        <button type="button" id="btn-tuning-apply-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
+        <button type="button" id="btn-tuning-apply-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
+      </div>
+      <!-- Suggestion cards of the last needle step, incl. the side-effect
+           warning (renderTuningSuggestions) -->
+      <div id="tuning-alternatives" class="tuning-alternatives" data-tuning-block hidden></div>
+      <p id="tuning-note" class="tuning-note" data-i18n="tuning.modelNote">Percentages come from the calculation model: flow ≈ jet size², no dynamics (vacuum, cutaway). Always verify on the engine.</p>
+      <!-- Height set by app.js (renderTuning): keeps the page long enough
+           that removed cards at the end never make the browser clamp the
+           scroll position -->
+      <div id="tuning-scroll-spacer" aria-hidden="true"></div>
     </div>
   </section>
 

@@ -21,12 +21,76 @@ Open `index.html` in any modern browser. No build step, no server required.
 - Use **Reset** to clear all setups back to empty.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
 - Toggle the UI language between **English and German** with the DE/EN button in the header; preference is persisted in localStorage.
+- Hints (ⓘ, ⚠ and the tooltips on buttons) open on hover, on tap, and from the keyboard: a button shows its hint while it has keyboard focus and Enter still runs it; ⓘ / ⚠ toggle with Enter or Space; Escape closes any hint.
 - Switch to the **Needle catalog** tab (or open `#needles`) for a sortable geometry overview of every needle for a carburetor type — filter by series, taper count or name, highlight the needles your setups use, and show a dimension key explaining ØA, ØB, C, ØD, E and F.
+- Switch to the **Fine tuning** tab (or open `#tuning`) to tune a setup range by range: say "richer" or "leaner" for a throttle range and get the needle/clip change that does it with the fewest side effects — see [Fine tuning](#fine-tuning) below.
 - Use the **Custom Needles** section to define additional needle profiles — with an interactive measurement schematic and field reference table — save them locally, and optionally submit them to the developer via email. Custom needles are stored separately and are never overwritten by app updates.
 - Use the **Share** button in the Setups card header to generate a link that encodes the carburetor type and every non-empty setup — all in the URL itself, nothing is uploaded anywhere. Click **Copy link** to copy it (Clipboard API with a manual-selection fallback). Sharing is blocked, with an explanation of which setup(s)/needle(s) are affected, if any setup to be shared uses a custom needle (custom needles only exist locally for the person who created them, so a link referencing one would be broken for anyone else) or if no setup has a needle selected yet.
   - Opening a share link applies it automatically on page load, before anything else is rendered, and immediately strips the share parameters back out of the URL (any other query params or a `#hash` in the link are left alone) so reloading the page never re-applies it. An invalid or newer-version link leaves your current data untouched and shows a notice instead.
   - If the link doesn't change anything you already had, nothing happens. Otherwise, an **"Undo"** banner appears once above the Setups table; if you had setups of your own, it snapshots them in memory (not persisted) so **Undo** can restore them instantly. The banner also disappears on its own — without needing Undo — as soon as you make any change that moves your data away from what the link imported (a language toggle does not count as a change and does not dismiss it), or you can dismiss it directly with ✕.
   - See the ["Share links"](CLAUDE.md#share-links) section in CLAUDE.md for the URL schema, validation rules, and why custom needles can't be shared.
+
+### Fine tuning
+
+The **Fine tuning** tab (`#tuning`) works like a direct tuning chart: you
+describe what the engine does per throttle range, the app proposes the
+change.
+
+- **Reference.** Pick one of your calculator setups (any complete one) or
+  enter a setup manually. The tab uses the calculator's carburetor type and
+  only displays it; changing the type in the calculator starts over.
+- **Range table.** Five throttle ranges — 0–1/8, 1/8–1/4, 1/4–1/2,
+  1/2–3/4, 3/4–1 — each with the equivalent jet of the reference and of
+  the current state, and the change against the reference as a bar:
+  **flow** (fuel flow through the open area, ≈ jet size², the figure the
+  suggestions are ranked by) and, smaller, **Ø** (the same change as an
+  equivalent jet size). The idle jet (ND) is the main lever for 0–1/8.
+- **− / +.** Makes that range leaner or richer with the best needle/clip
+  change of all needles of the carburetor type (all series, custom needles
+  included). "Best" means: at least 1 % flow in that range, as little
+  change as possible in the other ranges — measured against your current
+  state, so ranges you already tuned stay where they are. A clip-only
+  change gets a small bonus. The status line at the top shows reference →
+  current needle, clip and jets, with changes highlighted.
+- **Options for this step.** Up to three cards with the best candidates,
+  their effect on all five ranges and tags (clip only, series change =
+  different needle length, custom, `*` = clip count not verified). Needles
+  with identical geometry are shown as one card ("also: K33 · Clip 4").
+  Tapping another card uses it instead — it stays one step.
+- **When nothing helps.** If a range is **HD-limited** (from 35 % throttle
+  on, the main jet, not the needle, meters fuel at every point of the
+  range), + is disabled with
+  "HD-limited → adjust HD" and the HD row in the jet block is highlighted
+  with a "lever" badge. If no needle changes a range by at least 1 %, the
+  button says so. If the chosen step shifts other ranges a lot, a warning
+  appears in the options area, and a ⚠ marks every range the last step
+  moved noticeably besides the one you asked for.
+- **Nothing jumps.** Hints, warnings and the options appear either in
+  places of fixed size or below the last button, so the buttons you are
+  about to press never move — the options for a step and the result of
+  "Apply" therefore sit at the end of the tab, the sticky status line at
+  the top shows the effect right away.
+- **Jets.** ND and HD step by 1, the needle jet through the factory sizes
+  of the atomizer type; at a limit the button is disabled and says why.
+- **Clip only.** If the current needle has an identical twin (e.g. K27 and
+  K33), a card for the same curve is shown as a clip change of the needle
+  you have fitted, not as a needle swap.
+- **Step back / Reset to reference.** Undo one step or start over.
+- **Changing the reference.** Loading another setup (or a manual entry)
+  as reference asks first if tuning steps would be lost; tapping the
+  already loaded reference changes nothing.
+- **Apply result.** Save the current state to the first free setup slot
+  (named e.g. "K96 C5"), or overwrite the reference slot (it keeps its
+  name). The result — or why it could not be saved — appears right above
+  the buttons, with "View in calculator" and, after an overwrite, Undo;
+  it goes away with ✕, the next tuning step or a new reference. Nothing
+  of the tuning session itself is stored — it lives only in the open tab.
+
+**Model limits.** All percentages come from the calculation model: flow is
+taken as proportional to jet size², and the model has no dynamics — no
+vacuum/airflow effects, no slide cutaway, no engine behaviour. The
+suggestions are a starting point for the next test run, not a result.
+Always verify on the engine (plug reading, test ride).
 
 ## Files
 
@@ -41,6 +105,7 @@ js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching
 js/share.js         Share-link encode/decode (pure module, no DOM/localStorage)
 js/needlecatalog.js Needle catalog rows, filtering, sorting, formatting (pure module)
+js/tuning.js        Fine tuning: range deltas, candidate ranking, jet steps, validation (pure module)
 js/app.js           UI logic, event handling
 js/vendor/          Vendored third-party scripts (Chart.js — see js/vendor/README.md)
 sw.js               Service worker (offline support, update checking)
@@ -172,8 +237,7 @@ hand-maintained list — `isShareNavigation()` staying in sync with
 precached file — see "Service worker cache versioning" above.
 
 `test/needlecatalog.test.mjs` covers `js/needlecatalog.js` (the pure
-row/filter/sort/format logic behind the needle catalog, not yet wired into
-the UI): one row per `NEEDLE_DB` entry of each carburetor type (counts
+row/filter/sort/format logic behind the needle catalog): one row per `NEEDLE_DB` entry of each carburetor type (counts
 derived from the data, never hard-coded), taper count, needle length
 (including the X37 override), clip count and its source
 (verified / default / custom), custom needles overriding a base name,
@@ -183,24 +247,50 @@ format → `parseFloat` round-trip for every value in `NEEDLE_DB` (so data
 with more decimals than displayed fails immediately), and that no function
 mutates its deep-frozen inputs.
 
+`test/tuning.test.mjs` covers `js/tuning.js` (the pure logic behind the
+fine tuning tab): purity (no mutation of its inputs, no path to
+`storage.js`/`i18n.js`/the DOM, not even transitively), zero deltas for
+reference = candidate, regression values from the accepted prototype for
+VHSx (K27 C3: richer in 1/8–1/4 → K96 C5, U7 C3, K97 C3; then K97 C3 and the
+K27/K33 group; 3/4–1 richer → `hdLimited`; 1/2–3/4 leaner → K58 C2 with a
+side-effect warning) and PHBL (D36 C2: richer in 1/4–1/2 → D21 C4, D34 C2,
+D31 C2), candidate pool and grouping of identical curves, custom needles
+of the same vs. another carburetor type, `stepJet()` at its bounds and
+through the atomizer sizes, `formatSignedPercent()` and the whitelist
+check `validateTuningSetup()`.
+
+`test/clipcount.test.mjs` guards the single clip-count resolution
+(`resolveNeedleClips()` in `js/needledb.js`): for a base needle with its
+own clip count, one on its series default and custom needles with and
+without one, `resolveClipCount()`, `getClipGeometry()`, the catalog rows,
+the fine tuning candidates and validation, and the clip-position cleanup
+in `loadSetups()` all see the same number.
+
 `test/i18n.test.mjs` is a standing guard for EN/DE completeness of the
 whole app: `en` and `de` in `js/i18n.js` have identical key sets, no empty
 values and identical `{placeholder}` sets per key, and every key used in
 `index.html` (`data-i18n`, `-placeholder`, `-title`, `-aria-label`,
 `-tooltip`) or in a literal `t('…')` call in `js/*.js` exists. Keys built
-dynamically (template strings, variables) are not covered. It also checks
+dynamically (template strings, variables) are not covered by that scan;
+the dynamic catalog column and fine tuning range/reason keys are checked
+explicitly against `CATALOG_COLUMNS`, `TUNING_RANGES` and `TUNING_REASONS`. It also checks
 that every `title`, `aria-label` and `placeholder` in `index.html` has its
-`data-i18n-*` binding, that no German text uses a decimal comma and that
-no text glues a number to "mm" (`55mm`).
+`data-i18n-*` binding, that no German text uses a decimal comma, that no
+text glues a number to "mm" (`55mm`), and that German texts quote with
+„…“ only (every „ closed by “, no straight `"`).
 
 See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md) for the verification status of individual constants (needle geometry, clip-position counts, minimum exposed needle length, etc.) against sources beyond the original 2014 spreadsheet.
 
-See [TESTING.md](TESTING.md) for the PWA-specific test coverage: the
+See [TESTING.md](TESTING.md) for the browser-level test coverage: the
 Lighthouse installability audit, the Playwright browser test suite
-(`test-browser/`, offline reload, share-link network-first behavior, the
-update banner, the install button), and the manual checklist for what
-only a real device can exercise (Android/iOS install, standalone
-launch).
+(`test-browser/`: offline reload, share-link network-first behavior, the
+update banner, the install button, the needle catalog, the carburetor
+type selector, tooltips by touch and keyboard, custom needle migration,
+the header controls on narrow screens and the fine tuning tab), and the
+manual checklists for what only a real device can exercise
+(Android/iOS install, standalone launch, fine tuning on a phone). The
+browser tests need `npm install` and `npx playwright install chromium` —
+the latter again after every Playwright update.
 
 ## Verification
 

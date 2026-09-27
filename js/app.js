@@ -5,12 +5,15 @@ import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNee
 import { calcSetup } from './calc.js';
 import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
-import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount,
+import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, resolveClipCount,
          getCustomNeedleLength, migrateCustomNeedles } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys,
+         JET_MIN, ND_MAX, HD_MAX, JET_FIELD_BOUNDS, MAX_NAME_LENGTH } from './share.js';
+import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, WARN_SIDE_RATIO, evaluateCandidates, rankNextSteps,
+         rangeSummary, stepJet, formatSignedPercent, validateTuningSetup } from './tuning.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
-         sortCatalogRows, formatCatalogValue } from './needlecatalog.js';
+         sortCatalogRows, formatCatalogValue, CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 
 let setups   = loadSetups();
 let carbType = loadCarbType();
@@ -29,7 +32,47 @@ const catalogState = {
   legendOpen: false,
 };
 
-// Currently shown view: 'calc' | 'needles'
+// Fine tuning view state — in-memory only (never persisted), like
+// catalogState. refSource: where the loaded reference came from — slot id
+// (number) | 'manual' | null; manualOpen: whether the manual form is shown
+// (opening it loads nothing, so it never changes refSource). ref is a copy
+// taken when the reference is loaded, never a live link to the slot;
+// current is the tuning state being worked on (starts as ref).
+// suggestionsNeedles: customNeedlesVersion when the suggestions were
+// ranked — cards from before a custom needle change are dropped.
+// evalKey/evalCache memoise evaluateCandidates() per current state.
+function initialTuningState() {
+  return {
+    refSource: null, manualOpen: false, ref: null, current: null, history: [],
+    manual: { needleType: null, clipPos: null, carbSize: null, jetType: null, needleJet: null, nd: null, hd: null },
+    suggestions: null, suggestionsNeedles: null, lastStep: null, evalKey: null, evalCache: null,
+  };
+}
+const tuningState = initialTuningState();
+
+function resetTuningState() {
+  Object.assign(tuningState, initialTuningState());
+  hideTuningApplyBanner(); // its undo snapshot belongs to the old session
+}
+
+// Bumped whenever custom needles are saved, deleted or migrated — a cheap
+// cache key for "the needle set may have changed" instead of parsing and
+// stringifying localStorage on every render.
+let customNeedlesVersion = 0;
+
+// Message of the last "apply to slot" in the fine tuning view, shown in the
+// tab's own message field (#tuning-apply-banner) — in-memory only, never
+// persisted, like importUndo.
+// { kind: 'free' | 'overwrite' | 'error', slotName (free/overwrite),
+//   field (error: the invalid field), snapshot: { setups, tuning } | null
+//   (only for 'overwrite' — its Undo), appliedKey, sessionKey }.
+// It disappears via ✕, when a reference is loaded, when sessionKey
+// (tuningSessionKey() at the time) no longer matches — the next tuning
+// action, so Undo can never silently discard later steps — and, checked in
+// updateUI(), when appliedKey (stateKey at the time) no longer matches.
+let tuningApplyMessage = null;
+
+// Currently shown view: 'calc' | 'needles' | 'tuning'
 let currentView = 'calc';
 
 // ── Install App (PWA) ────────────────────────────────────────────────────────
@@ -122,16 +165,33 @@ function needleSort(a, b) {
   return parseInt(a.slice(1)) - parseInt(b.slice(1));
 }
 
-function getNeedlesForCarbType(ct) {
-  return Object.entries(getAllNeedles())
+// All needle data one render pass needs, read from localStorage exactly
+// once: allNeedles (NEEDLE_DB + custom needles, custom wins), the stored
+// custom needles and their types. updateUI() creates one per pass and hands
+// it down; every function taking it as optional last parameter reads a
+// fresh one when called without (event handlers). Valid for that pass only
+// — never cached beyond it, so saveCustomNeedles() or a change from another
+// tab needs no invalidation. Read-only: allNeedles shares NEEDLE_DB's entry
+// objects, nothing may mutate it (none of the builders does).
+function readNeedleSnapshot() {
+  const customNeedles = loadCustomNeedles();
+  return {
+    allNeedles: getAllNeedles(customNeedles),
+    customNeedles,
+    customTypes: customNeedles.map(n => n.type),
+  };
+}
+
+function getNeedlesForCarbType(ct, snap = readNeedleSnapshot()) {
+  return Object.entries(snap.allNeedles)
     .filter(([, needle]) => needle.carbType === ct)
     .map(([key]) => key)
     .sort(needleSort);
 }
 
-function buildNeedleOptions(selectedType) {
-  const keys = getNeedlesForCarbType(carbType);
-  const customTypes = loadCustomNeedles()
+function buildNeedleOptions(selectedType, snap = readNeedleSnapshot()) {
+  const keys = getNeedlesForCarbType(carbType, snap);
+  const customTypes = snap.customNeedles
     .filter(n => n.carbType === carbType)
     .map(n => n.type);
   return `<option value="">${t('setup.select')}</option>` +
@@ -158,22 +218,19 @@ function buildCarbSizeOptions(selectedSize) {
   return opts.join('');
 }
 
+function buildJetTypeOptions(selectedType) {
+  return `<option value="">—</option>` +
+    CARB_TYPES[carbType].atomizers
+      .map(a => `<option value="${a}"${selectedType === a ? ' selected' : ''}>${a}</option>`).join('');
+}
+
 function buildNeedleJetOptions(jetType, selectedValue) {
   const sizes = jetType ? (ATOMIZER_SIZES[jetType] ?? []) : [];
   return `<option value="">${t('setup.select')}</option>` +
     sizes.map(v => `<option value="${v}"${String(v) === String(selectedValue) ? ' selected' : ''}>${v}</option>`).join('');
 }
 
-// Single source of truth for clip-position count, shared by every caller
-// that needs it (table dropdown, needleType-change clamp) so the
-// custom-needle-vs-official fallback logic only lives in one place.
-// `allNeedles` (from getAllNeedles()) already merges each custom needle's
-// own `clips` field over NEEDLE_DB — see storage.js.
-function resolveClipCount(needleType, allNeedles) {
-  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
-}
-
-function buildClipPosOptions(needleType, selectedValue, allNeedles) {
+function buildClipPosOptions(needleType, selectedValue, allNeedles = getAllNeedles()) {
   const count = needleType ? resolveClipCount(needleType, allNeedles) : 0;
   const positions = Array.from({ length: count }, (_, i) => i + 1);
   return `<option value="">${t('setup.select')}</option>` +
@@ -191,12 +248,11 @@ function showNotice(msg) {
 
 // ── Table rendering ───────────────────────────────────────────────────────────
 
-function renderTable() {
+function renderTable(snap = readNeedleSnapshot()) {
   const tbody = document.getElementById('setup-tbody');
   if (!tbody) return;
 
-  const allNeedles     = getAllNeedles();
-  const validAtomizers = CARB_TYPES[carbType].atomizers;
+  const { allNeedles } = snap;
 
   tbody.innerHTML = setups.map(s => {
     const result = s.needleType ? calcSetup(s, allNeedles) : null;
@@ -223,7 +279,7 @@ function renderTable() {
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="needleType">
-          ${buildNeedleOptions(s.needleType)}
+          ${buildNeedleOptions(s.needleType, snap)}
         </select>
       </td>
       <td>
@@ -239,8 +295,7 @@ function renderTable() {
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="jetType"
                 title="${t('col.jetType.title')}">
-          <option value="">—</option>
-          ${validAtomizers.map(a => `<option value="${a}"${s.jetType === a ? ' selected' : ''}>${a}</option>`).join('')}
+          ${buildJetTypeOptions(s.jetType)}
         </select>
       </td>
       <td>
@@ -252,11 +307,11 @@ function renderTable() {
       <td class="cutaway-col-cell">${cutawayCell}</td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="nd"
-               value="${s.nd ?? ''}" min="0" max="200" placeholder="${t('col.nd')}">
+               value="${s.nd ?? ''}" min="${JET_MIN}" max="${ND_MAX}" placeholder="${t('col.nd')}">
       </td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
-               value="${s.hd ?? ''}" min="0" max="300" placeholder="${t('col.hd')}">
+               value="${s.hd ?? ''}" min="${JET_MIN}" max="${HD_MAX}" placeholder="${t('col.hd')}">
       </td>
       <td class="row-actions">
         <button type="button" class="btn-icon" data-action="duplicate-row"
@@ -272,11 +327,11 @@ function renderTable() {
   }).join('');
 }
 
-function renderCalcResults() {
+function renderCalcResults(snap = readNeedleSnapshot()) {
   const container = document.getElementById('calc-results-body');
   if (!container) return;
 
-  const allNeedles = getAllNeedles();
+  const { allNeedles } = snap;
   const activeSetups = setups.filter(s => s.needleType);
 
   if (activeSetups.length === 0) {
@@ -352,16 +407,20 @@ const BETA_BANNER_KEY = {
   PHBL: 'carbType.phblBetaBanner',
 };
 
+// Shows the beta warning for the calculator's carbType in `el` (setups card
+// and fine tuning tab), hides it for carb types without one.
+function renderBetaBanner(el) {
+  if (!el) return;
+  const key = BETA_BANNER_KEY[carbType];
+  el.hidden = !key;
+  if (key) el.textContent = t(key);
+}
+
 function updateUI() {
   document.querySelectorAll('input[name="carbType"]').forEach(r => {
     r.checked = r.value === carbType;
   });
-  const banner = document.getElementById('carb-beta-banner');
-  if (banner) {
-    const key = BETA_BANNER_KEY[carbType];
-    banner.hidden = !key;
-    if (key) banner.textContent = t(key);
-  }
+  renderBetaBanner(document.getElementById('carb-beta-banner'));
   const shareBtn = document.getElementById('btn-share');
   if (shareBtn) shareBtn.disabled = !setups.some(s => s.needleType);
   // Central check so the import banner survives a language toggle (which
@@ -370,26 +429,39 @@ function updateUI() {
   if (importUndo && stateKey({ carbType, setups }) !== importUndo.importedKey) {
     hideImportBanner();
   }
-  renderTable();
-  renderCharts(setups, getAllNeedles());
-  renderCalcResults();
-  renderCrossSection();
+  // Same central check for the fine tuning apply banner.
+  if (tuningApplyMessage && stateKey({ carbType, setups }) !== tuningApplyMessage.appliedKey) {
+    hideTuningApplyBanner();
+  }
+  // One read of the needle data for the whole pass (readNeedleSnapshot()).
+  const snap = readNeedleSnapshot();
+  renderTable(snap);
+  renderCharts(setups, snap.allNeedles);
+  renderCalcResults(snap);
+  renderCrossSection(snap);
+  validateTuningState(snap);
   // Covers setup edits, custom-needle save/delete and language changes.
-  if (currentView === 'needles') renderNeedleCatalog();
+  if (currentView === 'needles') renderNeedleCatalog(snap);
+  if (currentView === 'tuning') renderTuning(snap);
 }
 
-// ── Views (calculator / needle catalog) ─────────────────────────────────────
+// ── Views (calculator / needle catalog / fine tuning) ───────────────────────
 
-const VIEW_PANELS = { calc: 'view-calc', needles: 'view-needles' };
-const VIEW_TABS   = { calc: 'tab-calc',  needles: 'tab-catalog' };
-const CATALOG_HASH = '#needles';
+// Key order = tab order (handleViewTabKeydown walks Object.keys(VIEW_TABS)).
+const VIEW_PANELS = { calc: 'view-calc', needles: 'view-needles', tuning: 'view-tuning' };
+const VIEW_TABS   = { calc: 'tab-calc',  needles: 'tab-catalog',  tuning: 'tab-tuning' };
+// Location hash per view — the only place views and hashes are mapped. The
+// calculator has no hash, so plain and share-link URLs open it.
+const VIEW_HASHES = { calc: '', needles: '#needles', tuning: '#tuning' };
 
 function hashToView() {
-  return location.hash === CATALOG_HASH ? 'needles' : 'calc';
+  const match = Object.entries(VIEW_HASHES).find(([, hash]) => hash !== '' && hash === location.hash);
+  return match ? match[0] : 'calc';
 }
 
 function showView(view, { push = true } = {}) {
   if (!VIEW_PANELS[view]) view = 'calc';
+  releaseTuningSpacer(); // it only ever belongs to the tuning tab's last render
   // Initial call on page load (same view, no push) keeps the browser's
   // scroll restoration; every actual switch starts at the top.
   const changed = view !== currentView;
@@ -405,11 +477,12 @@ function showView(view, { push = true } = {}) {
   }
   if (push) {
     // Keep pathname + search (e.g. unrelated query params), only swap the hash.
-    const url = location.pathname + location.search + (view === 'needles' ? CATALOG_HASH : '');
+    const url = location.pathname + location.search + VIEW_HASHES[view];
     if (url !== location.pathname + location.search + location.hash) history.pushState(null, '', url);
   }
   if (changed || push) window.scrollTo(0, 0);
   if (view === 'needles') renderNeedleCatalog();
+  if (view === 'tuning') renderTuning();
 }
 
 function handleViewTabKeydown(e) {
@@ -468,19 +541,19 @@ function fillPlaceholder(template, placeholder, value) {
 }
 
 // All rows of the active catalog carbType, before any filter.
-function buildActiveCatalogRows() {
+function buildActiveCatalogRows(snap = readNeedleSnapshot()) {
   return buildCatalogRows({
-    allNeedles:  getAllNeedles(),
+    allNeedles:  snap.allNeedles,
     carbType:    catalogCarbType(),
-    customTypes: loadCustomNeedles().map(n => n.type),
+    customTypes: snap.customTypes,
     setups,
   });
 }
 
-function renderNeedleCatalog() {
+function renderNeedleCatalog(snap = readNeedleSnapshot()) {
   renderCatalogLegend();
-  renderCatalogControls();
-  renderCatalogTable();
+  renderCatalogControls(snap);
+  renderCatalogTable(snap);
 }
 
 // Dimension key (needle schematic) below the filter bar: visibility, plus
@@ -512,12 +585,12 @@ function withPreservedFocus(container, selectorAttrs, render) {
 
 const CATALOG_CONTROL_ATTRS = ['data-catalog-carb', 'data-catalog-series', 'data-catalog-tapers', 'data-catalog-used'];
 
-function renderCatalogControls() {
+function renderCatalogControls(snap = readNeedleSnapshot()) {
   const container = document.getElementById('catalog-controls');
   if (!container) return;
 
   const activeType = catalogCarbType();
-  const rows = buildActiveCatalogRows();
+  const rows = buildActiveCatalogRows(snap);
   const seriesList = getSeriesList(rows);
   // Taper counts reflect the series choice only (not taper/search filter).
   const counts = countByTaper(filterCatalogRows(rows, { series: catalogState.series }));
@@ -562,11 +635,11 @@ function catalogSortIndicator(key) {
   return catalogState.sortDir === 'asc' ? '▲' : '▼';
 }
 
-function renderCatalogTable() {
+function renderCatalogTable(snap = readNeedleSnapshot()) {
   const table = document.getElementById('catalog-table');
   if (!table) return;
 
-  const allRows = buildActiveCatalogRows();
+  const allRows = buildActiveCatalogRows(snap);
   const rows = sortCatalogRows(
     filterCatalogRows(allRows, catalogState),
     { key: catalogState.sortKey, dir: catalogState.sortDir },
@@ -651,6 +724,790 @@ function handleCatalogSortClick(e) {
   renderCatalogTable();
 }
 
+// ── Fine tuning ─────────────────────────────────────────────────────────────
+
+// The calcSetup() inputs a tuning reference / tuning state consists of.
+const TUNING_FIELDS = ['needleType', 'clipPos', 'carbSize', 'jetType', 'needleJet', 'nd', 'hd'];
+
+// Δ bar display limit (± percent flow); the text next to it stays exact.
+const TUNING_BAR_LIMIT = 20;
+
+// data-* attributes withPreservedFocus() restores focus by after a re-render.
+const TUNING_FOCUS_ATTRS = ['data-tuning-step', 'data-tuning-jet', 'data-tuning-suggestion',
+  'data-tuning-source', 'data-tuning-action', 'data-tuning-field'];
+
+// ± buttons come in pairs ("<row>:-1" / "<row>:1"); if the pressed one is
+// disabled after a re-render, focus moves to its row header — not to the
+// partner button, where a held-down Enter would silently step back.
+const TUNING_PAIR_ATTRS = ['data-tuning-step', 'data-tuning-jet'];
+
+// Label key per setup field, for messages naming a field.
+const FIELD_LABEL_KEYS = {
+  needleType: 'col.needle', clipPos: 'col.clip', carbSize: 'col.carbSize',
+  jetType: 'col.jetType', needleJet: 'col.needleJet', nd: 'col.nd', hd: 'col.hd',
+};
+
+// Jet rows of the jet block, in display order, with their label keys.
+const TUNING_JET_FIELDS = [
+  { field: 'nd',        labelKey: 'col.nd' },
+  { field: 'hd',        labelKey: 'col.hd' },
+  { field: 'needleJet', labelKey: 'col.needleJet' },
+];
+
+// A fresh object with only the tuning fields — a copy, never a live link
+// to a setup slot.
+function pickTuningFields(source) {
+  return Object.fromEntries(TUNING_FIELDS.map(f => [f, source[f] ?? null]));
+}
+
+function sameTuningFields(a, b) {
+  return TUNING_FIELDS.every(f => a[f] === b[f]);
+}
+
+// Same whitelist as before writing to a slot (validateTuningSetup): needle
+// of this carb type with the clip position it really has, listed bore and
+// jets, nd/hd in bounds — stricter than calcSetup() != null, which never
+// checks the clip position against a (re-saved) custom needle.
+function isTuningSetupUsable(s, allNeedles) {
+  return validateTuningSetup(s, { allNeedles, carbType }).ok;
+}
+
+// Changes whenever the tuning session moves (step, card, jet, undo,
+// reset, new reference); see tuningApplyMessage.sessionKey.
+function tuningSessionKey() {
+  const { ref, current, history } = tuningState;
+  return JSON.stringify([ref, current, history.length]);
+}
+
+function loadTuningReference(source, setup) {
+  hideTuningApplyBanner(); // a message about the previous reference is stale
+  tuningSpacerRelease = true;
+  tuningState.refSource = source;
+  tuningState.ref = pickTuningFields(setup);
+  tuningState.current = pickTuningFields(setup);
+  tuningState.history = [];
+  tuningState.suggestions = null;
+  tuningState.lastStep = null;
+}
+
+// Called from updateUI() on every change, whichever view is visible. A
+// deleted, re-typed or re-saved custom needle can invalidate the session:
+// - suggestion cards ranked with another needle set are dropped (picking a
+//   stale card could load a needle that no longer exists);
+// - if the reference, the current state or any history entry is no longer
+//   usable, the session starts over with a notice — silently skipping
+//   history entries would make "Step back" jump unexpectedly.
+function validateTuningState(snap = readNeedleSnapshot()) {
+  const { manual } = tuningState;
+  if (!tuningState.ref && manual.needleType == null) return;
+  const { allNeedles } = snap;
+  if (manual.needleType && allNeedles[manual.needleType]?.carbType !== carbType) {
+    manual.needleType = null;
+    manual.clipPos = null;
+  }
+  if (!tuningState.ref) return;
+
+  if (tuningState.suggestions && tuningState.suggestionsNeedles !== customNeedlesVersion) {
+    tuningState.suggestions = null;
+    tuningState.lastStep = null;
+  }
+  const { ref, current, history } = tuningState;
+  if ([ref, current, ...history].every(s => isTuningSetupUsable(s, allNeedles))) return;
+  resetTuningState();
+  showNotice(t('msg.tuningReset'));
+}
+
+// Everything the range table needs for the current state: the summary
+// against the reference and the rankings for all 5 ranges × 2 directions.
+// evaluateCandidates() is the expensive part, so the result is memoised by
+// reference + current + custom needle version (an edit changes the curves).
+function getTuningEvaluation(snap) {
+  const { ref, current } = tuningState;
+  const key = JSON.stringify([ref, current, customNeedlesVersion]);
+  if (tuningState.evalKey === key) return tuningState.evalCache;
+
+  // Read only on a cache miss (hence no default parameter).
+  const { allNeedles, customTypes } = snap ?? readNeedleSnapshot();
+  const summary = rangeSummary(calcSetup(ref, allNeedles), calcSetup(current, allNeedles), current);
+  const evaluated = evaluateCandidates({ allNeedles, ref, current });
+  const options = {
+    currentFlow: summary.map(r => r.flow),
+    currentHdLimited: summary.map(r => r.hdLimited),
+    current, customTypes,
+  };
+  const rankings = TUNING_RANGES.map((_, rangeIndex) => ({
+    [-1]: rankNextSteps(evaluated, { ...options, rangeIndex, dir: -1 }),
+    [1]:  rankNextSteps(evaluated, { ...options, rangeIndex, dir: 1 }),
+  }));
+
+  tuningState.evalKey = key;
+  tuningState.evalCache = { summary, rankings };
+  return tuningState.evalCache;
+}
+
+function tuningNeedleLabel(s) {
+  return fillPlaceholder(fillPlaceholder(t('tuning.needleClip'), '{needle}', s.needleType), '{clip}', s.clipPos);
+}
+
+// The suggestion of the last needle step that `current` is using, if any.
+function adoptedSuggestion() {
+  const { suggestions, current } = tuningState;
+  return suggestions?.suggestions.find(s =>
+    s.needleType === current.needleType && s.clipPos === current.clipPos) ?? null;
+}
+
+function formatEq(value) {
+  return value == null ? CATALOG_EMPTY_VALUE : value.toFixed(1);
+}
+
+// The tuning view follows the calculator's carbType and only displays it.
+function renderTuning(snap = readNeedleSnapshot()) {
+  const view = document.getElementById('view-tuning');
+  if (!view) return;
+  const active = view.contains(document.activeElement) ? document.activeElement : null;
+  const pairAttr = TUNING_PAIR_ATTRS.find(a => active?.hasAttribute(a));
+  const pairValue = pairAttr ? active.getAttribute(pairAttr) : null;
+  // The apply banner (and its Undo) only describes the session as it was
+  // right after applying; any further tuning action ends it.
+  if (tuningApplyMessage && tuningApplyMessage.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
+
+  // Scroll-clamp spacer, see tuningSpacerNeed(): start every render at 0
+  // and compensate afterwards only if the browser actually clamped.
+  const spacer = tuningSpacer();
+  const scrollYBefore = window.scrollY;
+  const release = tuningSpacerRelease;
+  tuningSpacerRelease = false;
+  releaseTuningSpacer();
+
+  withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
+    const carbLabel = document.getElementById('tuning-carb-type');
+    if (carbLabel) carbLabel.textContent = fillPlaceholder(t('tuning.carbType'), '{type}', carbType);
+    renderBetaBanner(document.getElementById('tuning-beta-banner'));
+    renderTuningReference(snap);
+    renderTuningApplyBanner();
+
+    const hasRef = tuningState.ref != null;
+    const empty = document.getElementById('tuning-empty');
+    if (empty) empty.hidden = hasRef;
+    view.querySelectorAll('[data-tuning-block]').forEach(block => { block.hidden = !hasRef; });
+
+    if (!hasRef) return;
+
+    // Order in the tab (index.html): status, ranges, jets, actions + apply
+    // message, suggestions, model note. Everything whose height changes
+    // through interaction sits below the last control or in a slot of fixed
+    // height, so no control moves under the pointer (see CLAUDE.md).
+    const evaluation = getTuningEvaluation(snap);
+    renderTuningStatus();
+    renderTuningRanges(evaluation);
+    renderTuningJets(evaluation);
+    renderTuningActions();
+    renderTuningSuggestions();
+  });
+
+  // The pressed ± button can become disabled (no further step that way):
+  // keep keyboard focus in the same row (its header) instead of <body>.
+  if (pairAttr && document.activeElement?.getAttribute(pairAttr) !== pairValue) {
+    view.querySelector(`[${pairAttr}="${CSS.escape(pairValue)}"]`)
+      ?.closest('tr')?.querySelector('th[scope="row"]')?.focus({ preventScroll: true });
+  }
+
+  // Content at the end of the tab (the cards) may have shrunk. If the page
+  // got shorter than the scroll position allows, the browser has clamped
+  // scrollY and every control moved under the pointer: pad the end of the
+  // tab by exactly the clamped amount and restore the position. Not after
+  // loading a reference or "Reset" — a new session may move.
+  const clamped = scrollYBefore - window.scrollY;
+  if (spacer && !release && !view.hidden && clamped > 0.5) {
+    spacer.style.height = `${clamped}px`;
+    window.scrollTo(0, scrollYBefore);
+  }
+}
+
+// #tuning-scroll-spacer (end of the tab, aria-hidden, empty). Its height is
+//   max(0, scrollY + innerHeight − document height without it)
+// — exactly what keeps the current scroll position reachable, so it is
+// non-zero only while the user is at the page end and content above the
+// end shrank. It never exceeds what the document shrank in that render
+// (the document never ends up shorter than scrollY + innerHeight, which is
+// at most its height before) and is never cumulative: every render starts
+// it at 0. Released to 0 on a tab switch, when a reference is loaded, on
+// "Reset", and bit by bit as the user scrolls up (onTuningScroll).
+let tuningSpacerRelease = false;
+
+function tuningSpacer() {
+  return document.getElementById('tuning-scroll-spacer');
+}
+
+function releaseTuningSpacer() {
+  const spacer = tuningSpacer();
+  if (spacer) spacer.style.height = '0px';
+}
+
+function tuningSpacerNeed() {
+  const spacer = tuningSpacer();
+  if (!spacer) return 0;
+  const docWithout = document.documentElement.scrollHeight - spacer.offsetHeight;
+  return Math.max(0, window.scrollY + window.innerHeight - docWithout);
+}
+
+// Scrolling up: shrink the spacer to what is still needed (never grow it).
+function onTuningScroll() {
+  const spacer = tuningSpacer();
+  if (!spacer || spacer.offsetHeight === 0) return;
+  const need = tuningSpacerNeed();
+  if (need < spacer.offsetHeight) spacer.style.height = `${need}px`;
+}
+
+// Reference picker: one chip per usable setup slot (name + setup colour,
+// as in the catalog; pressed = the loaded reference came from it) and a
+// chip that opens / closes the manual form (pressed = manual reference).
+function renderTuningReference(snap = readNeedleSnapshot()) {
+  const el = document.getElementById('tuning-ref');
+  if (!el) return;
+  const { allNeedles } = snap;
+  const colors = getColors();
+  const slots = setups.filter(s => isTuningSetupUsable(s, allNeedles));
+
+  const slotChips = slots.map(s => `
+    <button type="button" class="chip tuning-source" data-tuning-source="${s.id}" aria-pressed="${tuningState.refSource === s.id}">
+      <span class="catalog-dot" style="background:${escapeHtml(colors[s.id - 1] ?? 'var(--text-muted)')}"></span>
+      <span class="tuning-source-name">${escapeHtml(s.name)}</span>
+    </button>`).join('');
+  const manualChip = `
+    <button type="button" class="chip tuning-source" data-tuning-source="manual" aria-pressed="${tuningState.refSource === 'manual'}"
+            aria-expanded="${tuningState.manualOpen}" aria-controls="tuning-manual">${escapeHtml(t('tuning.ref.manual'))}</button>`;
+
+  el.innerHTML = `
+    <span id="tuning-ref-label" class="tuning-ref-label">${escapeHtml(t('tuning.ref.label'))}</span>
+    <div class="chip-group tuning-sources" role="group" aria-labelledby="tuning-ref-label">${slotChips}${manualChip}</div>
+    ${slots.length === 0 ? `<p class="tuning-hint">${escapeHtml(t('tuning.ref.noSlots'))}</p>` : ''}
+    ${tuningState.manualOpen ? buildTuningManualForm(snap) : ''}`;
+}
+
+// Manual reference: the setup table's option builders and bounds, so the
+// choices are filtered exactly like in the calculator.
+function buildTuningManualForm(snap = readNeedleSnapshot()) {
+  const { allNeedles } = snap;
+  const m = tuningState.manual;
+  const field = (labelKey, control) =>
+    `<label class="tuning-field"><span>${escapeHtml(t(labelKey))}</span>${control}</label>`;
+  const complete = isTuningSetupUsable(m, allNeedles);
+  return `
+    <div id="tuning-manual" class="tuning-manual">
+      ${field('col.needle', `<select class="cell-input" data-tuning-field="needleType">${buildNeedleOptions(m.needleType, snap)}</select>`)}
+      ${field('col.clip', `<select class="cell-input" data-tuning-field="clipPos">${buildClipPosOptions(m.needleType, m.clipPos, allNeedles)}</select>`)}
+      ${field('col.carbSize', `<select class="cell-input" data-tuning-field="carbSize">${buildCarbSizeOptions(m.carbSize)}</select>`)}
+      ${field('col.jetType', `<select class="cell-input" data-tuning-field="jetType">${buildJetTypeOptions(m.jetType)}</select>`)}
+      ${field('col.needleJet', `<select class="cell-input" data-tuning-field="needleJet">${buildNeedleJetOptions(m.jetType, m.needleJet)}</select>`)}
+      ${field('col.nd', `<input type="number" class="cell-input num" data-tuning-field="nd" value="${m.nd ?? ''}" min="${JET_MIN}" max="${ND_MAX}" inputmode="decimal">`)}
+      ${field('col.hd', `<input type="number" class="cell-input num" data-tuning-field="hd" value="${m.hd ?? ''}" min="${JET_MIN}" max="${HD_MAX}" inputmode="decimal">`)}
+    </div>
+    <button type="button" class="btn-primary tuning-load" data-tuning-action="loadManual"${complete ? '' : ' disabled'}>${escapeHtml(t('tuning.ref.load'))}</button>`;
+}
+
+// "K27 C3 → K96 C5 · ND 50 · HD 128 · DQ 264" — values that differ from
+// the reference are highlighted.
+function renderTuningStatus() {
+  const el = document.getElementById('tuning-status');
+  if (!el) return;
+  const { ref, current: cur } = tuningState;
+  const val = (text, changed) =>
+    `<span class="tuning-status-val${changed ? ' is-changed' : ''}">${escapeHtml(text)}</span>`;
+  el.innerHTML = [
+    `${val(tuningNeedleLabel(ref), false)} → ${val(tuningNeedleLabel(cur), ref.needleType !== cur.needleType || ref.clipPos !== cur.clipPos)}`,
+    val(`${t('col.nd')} ${cur.nd}`, cur.nd !== ref.nd),
+    val(`${t('col.hd')} ${cur.hd}`, cur.hd !== ref.hd),
+    val(`${cur.jetType} ${cur.needleJet}`, cur.jetType !== ref.jetType || cur.needleJet !== ref.needleJet),
+  ].join(' · ');
+  // One line of fixed height (ellipsis); the full text as tooltip.
+  el.title = el.textContent;
+}
+
+function tuningBar(flow) {
+  const width = flow == null ? 0 : Math.min(Math.abs(flow), TUNING_BAR_LIMIT) / TUNING_BAR_LIMIT * 50;
+  return `<div class="tuning-bar" aria-hidden="true">`
+    + `<span class="tuning-bar-fill ${flow > 0 ? 'is-rich' : 'is-lean'}" style="width:${width.toFixed(2)}%"></span></div>`;
+}
+
+// One ± button. Unavailable steps are disabled; the reason is shown as text
+// in the row (touch devices never see a tooltip on a disabled button) and
+// as a hover tooltip on the cell, which still gets pointer events.
+function tuningStepCell(rangeIndex, dir, ranking, rangeLabel) {
+  const label = fillPlaceholder(t(dir > 0 ? 'tuning.step.richer' : 'tuning.step.leaner'), '{range}', rangeLabel);
+  const best = ranking.suggestions[0];
+  const symbol = dir > 0 ? '+' : '−';
+  const cls = `tuning-step-cell ${dir > 0 ? 'is-rich' : 'is-lean'}`;
+  if (best) {
+    const title = `${label} → ${tuningNeedleLabel(best)}`;
+    return `<td class="${cls}"><button type="button" class="tuning-step-btn" data-tuning-step="${rangeIndex}:${dir}"`
+      + ` aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">${symbol}</button></td>`;
+  }
+  const reason = fillPlaceholder(t(`tuning.reason.${ranking.reason}`), '{min}', MIN_STEP);
+  return `<td class="${cls}" data-tooltip="${escapeHtml(reason)}"><button type="button" class="tuning-step-btn" data-tuning-step="${rangeIndex}:${dir}"`
+    + ` aria-label="${escapeHtml(`${label} — ${reason}`)}" disabled>${symbol}</button></td>`;
+}
+
+// The visible reason for disabled ± buttons: always exactly one line, so
+// the row height never changes (the element exists even when empty).
+// One direction: "Richer: HD-limited → adjust HD"; both with the same
+// reason: just the reason; different reasons: the tiny forms of both
+// ("Leaner: no needle · Richer: HD-limited") — sized to fit one line at
+// 320 px in German.
+function tuningReasonLine(rankings) {
+  const reasons = { [-1]: rankings[-1].reason, [1]: rankings[1].reason };
+  const dirLabel = dir => t(dir > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner');
+  const line = (dir, reason) =>
+    fillPlaceholder(fillPlaceholder(t('tuning.reasonLine'), '{dir}', dirLabel(dir)), '{reason}', reason);
+  let text = '';
+  if (reasons[-1] && reasons[1]) {
+    text = reasons[-1] === reasons[1]
+      ? t(`tuning.reasonShort.${reasons[1]}`)
+      : [-1, 1].map(dir => line(dir, t(`tuning.reasonTiny.${reasons[dir]}`))).join(' · ');
+  } else {
+    const dir = reasons[-1] ? -1 : reasons[1] ? 1 : null;
+    if (dir) text = line(dir, t(`tuning.reasonShort.${reasons[dir]}`));
+  }
+  return `<div class="tuning-reason">${escapeHtml(text)}</div>`;
+}
+
+function renderTuningRanges({ summary, rankings }) {
+  const table = document.getElementById('tuning-ranges');
+  if (!table) return;
+
+  // Flows before the last needle step: rows other than its target that
+  // moved by >= SIGNIFICANT get a ⚠ in a slot that is always reserved.
+  const before = tuningState.lastStep?.flowBefore;
+  const target = tuningState.lastStep?.rangeIndex;
+  const sideTip = t('tuning.warn.sideFlag');
+  const colgroup = `<colgroup><col class="tuning-col-range"><col class="tuning-col-eq"><col class="tuning-col-eq">`
+    + `<col class="tuning-col-delta"><col class="tuning-col-step"><col><col class="tuning-col-step"></colgroup>`;
+  const head = `<thead><tr>
+    <th scope="col">${escapeHtml(t('tuning.col.range'))}</th>
+    <th scope="col" class="num">${escapeHtml(t('tuning.col.ref'))}</th>
+    <th scope="col" class="num">${escapeHtml(t('tuning.col.current'))}</th>
+    <th scope="col" class="num">${escapeHtml(t('tuning.col.delta'))}</th>
+    <th scope="col" colspan="3" class="tuning-step-head">${escapeHtml(t('tuning.col.step'))}</th>
+  </tr></thead>`;
+
+  const rows = TUNING_RANGES.map((range, i) => {
+    const r = summary[i];
+    const rangeLabel = t(`tuning.range.${range.key}`);
+    const lever = range.lever === 'nd' ? escapeHtml(t('tuning.lever.nd')) : '';
+    const badgeTip = t('tuning.badge.hdLimited.tooltip');
+    const badge = r.hdLimited
+      ? `<span class="tuning-badge" data-tooltip="${escapeHtml(badgeTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.badge.hdLimited')} — ${badgeTip}`)}">${escapeHtml(t('tuning.badge.hdLimited'))}</span>`
+      : '';
+    const significant = r.flow != null && Math.abs(r.flow) >= SIGNIFICANT;
+    const sideEffect = before && i !== target && r.flow != null && before[i] != null
+      && Math.abs(r.flow - before[i]) >= SIGNIFICANT;
+    const flag = sideEffect
+      ? `<span class="tuning-side-flag" data-tooltip="${escapeHtml(sideTip)}" role="button" tabindex="0" aria-label="${escapeHtml(sideTip)}">⚠</span>`
+      : '';
+    const diameter = fillPlaceholder(t('tuning.diameter'), '{value}', formatSignedPercent(r.diameter));
+    const isLast = tuningState.lastStep?.rangeIndex === i;
+
+    return `<tr class="tuning-row${isLast ? ' is-last-step' : ''}" data-range="${range.key}">
+      <th scope="row" class="tuning-range" tabindex="-1">
+        <span class="tuning-range-label">${escapeHtml(rangeLabel)}</span>
+        <span class="tuning-range-meta">${lever}${badge}</span>
+      </th>
+      <td class="num tuning-eq is-ref" data-label="${escapeHtml(t('tuning.col.ref'))}">${formatEq(r.eqRef)}</td>
+      <td class="num tuning-eq is-cur" data-label="${escapeHtml(t('tuning.col.current'))}">${formatEq(r.eqCand)}</td>
+      <td class="num tuning-delta">
+        <span class="tuning-flow-line"><span class="tuning-side-slot">${flag}</span><span class="tuning-flow${significant ? ' is-significant' : ''}">${escapeHtml(formatSignedPercent(r.flow))}</span></span>
+        <span class="tuning-diameter">${escapeHtml(diameter)}</span>
+      </td>
+      ${tuningStepCell(i, -1, rankings[i][-1], rangeLabel)}
+      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLine(rankings[i])}</td>
+      ${tuningStepCell(i, 1, rankings[i][1], rangeLabel)}
+    </tr>`;
+  }).join('');
+
+  table.innerHTML = `${colgroup}${head}<tbody>${rows}</tbody>`;
+}
+
+function tuningClipLabel(needleType, clipPos) {
+  return fillPlaceholder(fillPlaceholder(t('tuning.needleClipLong'), '{needle}', needleType), '{clip}', clipPos);
+}
+
+function tuningTagBadge(text, tooltip, extraClass = '') {
+  if (!tooltip) return `<span class="tuning-tag${extraClass}">${escapeHtml(text)}</span>`;
+  return `<span class="tuning-tag has-tip${extraClass}" data-tooltip="${escapeHtml(tooltip)}" role="button" tabindex="0"`
+    + ` aria-label="${escapeHtml(`${text} — ${tooltip}`)}">${escapeHtml(text)}</span>`;
+}
+
+// Cards for the up to MAX_SUGGESTIONS results of the last needle step.
+// Picking another card swaps `current` without a new history entry — it is
+// still the same step. Hidden after jet steps, undo and reset (suggestions
+// null). The whole card is the pick button's hit area (stretched ::after);
+// badges with a tooltip sit above it.
+function renderTuningSuggestions() {
+  const el = document.getElementById('tuning-alternatives');
+  if (!el) return;
+  const ranking = tuningState.suggestions;
+  if (!ranking || ranking.suggestions.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  const adopted = adoptedSuggestion();
+  const target = tuningState.lastStep?.rangeIndex;
+  // Same rule as rankNextSteps()' warning, applied to whichever suggestion
+  // is in use (for the best one both agree).
+  const warn = adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc;
+  let anyUnverified = false;
+
+  const cards = ranking.suggestions.map((sugg, idx) => {
+    const title = tuningClipLabel(sugg.needleType, sugg.clipPos);
+    const also = sugg.alsoTypes.length
+      ? `<span class="tuning-sugg-also">${escapeHtml(fillPlaceholder(t('tuning.also'), '{list}',
+          sugg.alsoTypes.map(a => tuningClipLabel(a.needleType, a.clipPos)).join(', ')))}</span>`
+      : '';
+    const { tags } = sugg;
+    if (tags.clipsUnverified) anyUnverified = true;
+    const badges = [
+      tags.clipOnly && tuningTagBadge(t('tuning.tag.clipOnly')),
+      tags.seriesChange && tuningTagBadge(t('tuning.tag.seriesChange'), t('tuning.tag.seriesChange.tooltip')),
+      tags.custom && tuningTagBadge(t('tuning.tag.custom')),
+      tags.clipsUnverified && tuningTagBadge('*', t('catalog.clipsDefault.tooltip'), ' is-unverified'),
+    ].filter(Boolean).join('');
+    const mini = TUNING_RANGES.map((range, i) => {
+      const flow = sugg.flow[i];
+      const cls = ['tuning-mini-cell',
+        flow > 0 ? 'is-rich' : flow < 0 ? 'is-lean' : '',
+        flow != null && Math.abs(flow) >= SIGNIFICANT ? 'is-significant' : '',
+        i === target ? 'is-target' : ''].filter(Boolean).join(' ');
+      return `<span class="${cls}"><span class="tuning-mini-range">${escapeHtml(t(`tuning.rangeShort.${range.key}`))}</span>`
+        + `<span class="tuning-mini-val">${escapeHtml(formatSignedPercent(flow))}</span></span>`;
+    }).join('');
+    const pressed = sugg === adopted;
+    return `<div class="tuning-sugg${pressed ? ' is-adopted' : ''}">
+      <button type="button" class="tuning-sugg-pick" data-tuning-suggestion="${idx}" aria-pressed="${pressed}">${escapeHtml(title)}</button>
+      ${also}
+      ${badges ? `<span class="tuning-tags">${badges}</span>` : ''}
+      <span class="tuning-mini">${mini}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.suggestions.title'))}</h3>
+    ${warn ? `<p id="tuning-warning" class="tuning-warning" role="status">${escapeHtml(t('tuning.warn.sideEffects'))}</p>` : ''}
+    <p class="tuning-hint">${escapeHtml(t('tuning.suggestions.hint'))}</p>
+    <div class="tuning-cards">${cards}</div>
+    ${anyUnverified ? `<p class="tuning-hint">* ${escapeHtml(t('catalog.clipsDefault.tooltip'))}</p>` : ''}`;
+}
+
+// ND / HD / needle jet with reference value, current value and −/+; all
+// stepping goes through stepJet() (null → button disabled).
+function renderTuningJets({ summary }) {
+  const el = document.getElementById('tuning-jets');
+  if (!el) return;
+  const { ref, current } = tuningState;
+  const hdRanges = TUNING_RANGES
+    .filter((_, i) => summary[i].hdLimited)
+    .map(range => t(`tuning.rangeShort.${range.key}`));
+
+  const rows = TUNING_JET_FIELDS.map(({ field, labelKey }) => {
+    const label = t(labelKey);
+    const changed = current[field] !== ref[field];
+    const highlight = field === 'hd' && hdRanges.length > 0;
+    const hints = [];
+    // HD as the lever: a badge next to the label (its tooltip names the
+    // ranges, which also carry their HD-limited badge in the table) — the
+    // hint row below stays free for the limit message.
+    const leverTip = fillPlaceholder(t('tuning.jets.hdHint'), '{ranges}', hdRanges.join(', '));
+    const lever = highlight
+      ? ` <span class="tuning-badge" data-tooltip="${escapeHtml(leverTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.jets.leverBadge')} — ${leverTip}`)}">${escapeHtml(t('tuning.jets.leverBadge'))}</span>`
+      : '';
+    // A button at its limit is disabled; like the range rows, the reason is
+    // visible text (hint row) and a tooltip on the cell.
+    const button = dir => {
+      const next = stepJet(current, field, dir);
+      const aria = fillPlaceholder(t(dir > 0 ? 'tuning.jets.increase' : 'tuning.jets.decrease'), '{field}', label);
+      const symbol = dir > 0 ? '+' : '−';
+      if (next) {
+        const title = `${aria} → ${next[field]}`;
+        return `<td class="tuning-jet-step"><button type="button" class="tuning-step-btn" data-tuning-jet="${field}:${dir}"`
+          + ` aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">${symbol}</button></td>`;
+      }
+      const reason = fillPlaceholder(t(dir > 0 ? 'tuning.jets.limitMax' : 'tuning.jets.limitMin'), '{field}', label);
+      hints.push(reason);
+      return `<td class="tuning-jet-step" data-tooltip="${escapeHtml(reason)}"><button type="button" class="tuning-step-btn" data-tuning-jet="${field}:${dir}"`
+        + ` aria-label="${escapeHtml(`${aria} — ${reason}`)}" disabled>${symbol}</button></td>`;
+    };
+    const buttons = button(-1) + button(1);
+    // Own full-width row of fixed one-line height, present even when empty,
+    // so a limit message never moves the rows and buttons below.
+    const hintRow = `<tr class="tuning-jet-row is-hint${highlight ? ' is-lever' : ''}"><td colspan="5" class="tuning-jet-hint">`
+      + escapeHtml(hints.join(' · ')) + `</td></tr>`;
+    return `<tr class="tuning-jet-row has-hint${highlight ? ' is-lever' : ''}" data-jet="${field}">
+      <th scope="row" tabindex="-1">${escapeHtml(label)}${lever}</th>
+      <td class="num">${escapeHtml(ref[field])}</td>
+      <td class="num${changed ? ' is-changed' : ''}">${escapeHtml(current[field])}</td>
+      ${buttons}
+    </tr>${hintRow}`;
+  }).join('');
+
+  el.innerHTML = `
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.jets.title'))}</h3>
+    <table class="tuning-jets-table">
+      <colgroup><col class="tuning-jets-col-label"><col class="tuning-jets-col-val"><col class="tuning-jets-col-val"><col class="tuning-jets-col-step"><col class="tuning-jets-col-step"></colgroup>
+      <thead><tr>
+        <th scope="col"><span class="visually-hidden">${escapeHtml(t('tuning.jets.title'))}</span></th>
+        <th scope="col" class="num">${escapeHtml(t('tuning.jets.ref'))}</th>
+        <th scope="col" class="num">${escapeHtml(t('tuning.jets.current'))}</th>
+        <th scope="col" colspan="2" class="tuning-step-head">${escapeHtml(t('tuning.jets.step'))}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// A disabled apply button: the reason is a tooltip on the wrapper (the
+// button itself gets no pointer events) and visible text below the buttons.
+function tuningApplyButton(action, labelKey, reasonKey) {
+  const label = escapeHtml(t(labelKey));
+  if (!reasonKey) {
+    return `<span class="tuning-apply-item"><button type="button" class="btn-primary" data-tuning-action="${action}">${label}</button></span>`;
+  }
+  return `<span class="tuning-apply-item" data-tooltip="${escapeHtml(t(reasonKey))}">`
+    + `<button type="button" class="btn-primary" data-tuning-action="${action}" disabled>${label}</button></span>`;
+}
+
+function renderTuningActions() {
+  const el = document.getElementById('tuning-actions');
+  if (!el) return;
+  const { ref, current, history, refSource } = tuningState;
+  const changed = !sameTuningFields(ref, current);
+  const canReset = history.length > 0 || changed;
+
+  // Applying is only offered once current differs from the reference.
+  const freeReason = !changed ? 'tuning.apply.unchanged'
+    : !setups.some(isSlotEmpty) ? 'tuning.apply.noFreeSlot' : null;
+  const overwriteReason = !changed ? 'tuning.apply.unchanged'
+    : typeof refSource !== 'number' ? 'tuning.apply.manualRef' : null;
+  const reasons = [...new Set([freeReason, overwriteReason].filter(Boolean))];
+
+  el.innerHTML = `
+    <div class="tuning-action-row">
+      <button type="button" class="btn-ghost" data-tuning-action="undo"${history.length ? '' : ' disabled'}>${escapeHtml(t('tuning.action.undo'))}</button>
+      <button type="button" class="btn-ghost" data-tuning-action="reset"${canReset ? '' : ' disabled'}>${escapeHtml(t('tuning.action.reset'))}</button>
+    </div>
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.apply.title'))}</h3>
+    <div class="tuning-action-row">
+      ${tuningApplyButton('applyFree', 'tuning.apply.free', freeReason)}
+      ${tuningApplyButton('applyRef', 'tuning.apply.overwrite', overwriteReason)}
+    </div>
+    ${reasons.map(key => `<p class="tuning-hint">${escapeHtml(t(key))}</p>`).join('')}`;
+}
+
+// Result of the last apply, shown right above the action buttons (the
+// global #app-notice sits at the top of the page, out of view here).
+function renderTuningApplyBanner() {
+  const banner = document.getElementById('tuning-apply-banner');
+  if (!banner) return;
+  const msg = tuningApplyMessage;
+  banner.hidden = !msg;
+  if (!msg) return;
+  const isError = msg.kind === 'error';
+  banner.classList.toggle('is-error', isError);
+  // Rendered from codes each time, so a language switch translates it.
+  document.getElementById('tuning-apply-text').textContent = isError
+    ? fillPlaceholder(t('tuning.apply.invalid'), '{field}', t(FIELD_LABEL_KEYS[msg.field]))
+    : fillPlaceholder(t(msg.kind === 'overwrite' ? 'tuning.apply.doneOverwrite' : 'tuning.apply.doneFree'),
+      '{name}', msg.slotName);
+  document.getElementById('btn-tuning-view-calc').hidden = isError;
+  document.getElementById('btn-tuning-apply-undo').hidden = !msg.snapshot;
+}
+
+function hideTuningApplyBanner() {
+  tuningApplyMessage = null;
+  const banner = document.getElementById('tuning-apply-banner');
+  if (banner) banner.hidden = true;
+}
+
+// Writes `current` into the first empty slot ('free') or over the
+// reference slot ('overwrite'). Validated first (validateTuningSetup), then
+// persisted only through saveSetups() — never touches dellorto_carb_type.
+// Success and validation errors both go to the tab's message field, not
+// to showNotice(): #app-notice sits at the top of the page, out of view
+// from the action area.
+function applyTuningToSlot(kind) {
+  const values = pickTuningFields(tuningState.current);
+  const check = validateTuningSetup(values, { allNeedles: getAllNeedles(), carbType });
+  if (!check.ok) {
+    // In the tab's message field, next to the button that was pressed.
+    tuningApplyMessage = {
+      kind: 'error', field: check.field, snapshot: null,
+      appliedKey: stateKey({ carbType, setups }), sessionKey: tuningSessionKey(),
+    };
+    renderTuning();
+    return;
+  }
+
+  let slot;
+  let snapshot = null;
+  if (kind === 'free') {
+    slot = setups.find(isSlotEmpty);
+    if (!slot) return;
+    Object.assign(slot, values, { name: tuningNeedleLabel(values).slice(0, MAX_NAME_LENGTH) });
+  } else {
+    slot = setups.find(s => s.id === tuningState.refSource);
+    if (!slot) return;
+    // Undo restores the setups and the tuning session as they were.
+    snapshot = {
+      setups: structuredClone(setups),
+      tuning: structuredClone({ ...tuningState, evalKey: null, evalCache: null }),
+    };
+    Object.assign(slot, values); // the slot keeps its name
+    // Start over with the written setup as the new reference.
+    loadTuningReference(slot.id, slot);
+  }
+
+  saveSetups(setups);
+  tuningApplyMessage = {
+    kind, slotName: slot.name, snapshot,
+    appliedKey: stateKey({ carbType, setups }),
+    sessionKey: tuningSessionKey(),
+  };
+  updateUI();
+}
+
+function undoTuningApply() {
+  const snapshot = tuningApplyMessage?.snapshot;
+  if (!snapshot) return;
+  setups = snapshot.setups;
+  Object.assign(tuningState, snapshot.tuning);
+  saveSetups(setups);
+  hideTuningApplyBanner();
+  updateUI();
+}
+
+// ±: take the best suggestion for that range and direction.
+function applyTuningStep(rangeIndex, dir) {
+  const evaluation = getTuningEvaluation();
+  const ranking = evaluation.rankings[rangeIndex]?.[dir];
+  const best = ranking?.suggestions[0];
+  if (!best) return;
+  // Flows before this step, for the per-row side-effect ⚠ (still valid when
+  // another card of the same step is picked).
+  const flowBefore = evaluation.summary.map(r => r.flow);
+  tuningState.history.push(tuningState.current);
+  tuningState.current = pickTuningFields(best.setup);
+  tuningState.suggestions = ranking;
+  tuningState.suggestionsNeedles = customNeedlesVersion;
+  tuningState.lastStep = { rangeIndex, dir, flowBefore };
+}
+
+function handleTuningClick(e) {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  const { tuningSource, tuningStep, tuningJet, tuningSuggestion, tuningAction } = btn.dataset;
+
+  if (tuningSource === 'manual') {
+    // Only opens / closes the form; the loaded reference stays as it is.
+    tuningState.manualOpen = !tuningState.manualOpen;
+    const m = tuningState.manual;
+    // Start the form from the loaded reference instead of an empty one.
+    if (tuningState.ref && TUNING_FIELDS.every(f => m[f] == null)) {
+      Object.assign(m, pickTuningFields(tuningState.ref));
+    }
+    const atomizers = CARB_TYPES[carbType].atomizers;
+    if (m.jetType == null && atomizers.length === 1) m.jetType = atomizers[0];
+  } else if (tuningSource) {
+    const slot = setups.find(s => s.id === Number(tuningSource));
+    if (!slot || !isTuningSetupUsable(slot, getAllNeedles())) return;
+    // Tapping the chip of the reference that is already loaded (unchanged
+    // slot) changes nothing — "Reset to reference" is the way to start over.
+    if (tuningState.refSource === slot.id && sameTuningFields(slot, tuningState.ref)) return;
+    if (!confirmReplaceTuningReference(slot.name)) return;
+    tuningState.manualOpen = false;
+    loadTuningReference(slot.id, slot);
+  } else if (tuningStep) {
+    const [rangeIndex, dir] = tuningStep.split(':').map(Number);
+    applyTuningStep(rangeIndex, dir);
+  } else if (tuningSuggestion) {
+    // Another option for the same step: no extra history entry.
+    const sugg = tuningState.suggestions?.suggestions[Number(tuningSuggestion)];
+    if (!sugg || !isTuningSetupUsable(sugg.setup, getAllNeedles())) return;
+    tuningState.current = pickTuningFields(sugg.setup);
+  } else if (tuningJet) {
+    const [field, dir] = tuningJet.split(':');
+    const next = stepJet(tuningState.current, field, Number(dir));
+    if (!next) return;
+    tuningState.history.push(tuningState.current);
+    tuningState.current = pickTuningFields(next);
+    tuningState.suggestions = null;
+    tuningState.lastStep = null;
+  } else if (tuningAction === 'loadManual') {
+    if (!isTuningSetupUsable(tuningState.manual, getAllNeedles())) return;
+    if (!confirmReplaceTuningReference(t('tuning.ref.manual'))) return;
+    loadTuningReference('manual', tuningState.manual);
+  } else if (tuningAction === 'applyFree' || tuningAction === 'applyRef') {
+    applyTuningToSlot(tuningAction === 'applyFree' ? 'free' : 'overwrite');
+    // The pressed button is disabled now (current == ref after an
+    // overwrite): hand focus to the message field instead of <body>.
+    if (document.activeElement === document.body || document.activeElement?.disabled) {
+      const next = tuningApplyMessage?.snapshot ? 'btn-tuning-apply-undo'
+        : tuningApplyMessage?.kind === 'error' ? 'btn-tuning-apply-close' : 'btn-tuning-view-calc';
+      document.getElementById(next)?.focus();
+    }
+    return; // applyTuningToSlot() already re-rendered via updateUI()
+  } else if (tuningAction === 'undo') {
+    if (tuningState.history.length === 0) return;
+    tuningState.current = tuningState.history.pop();
+    tuningState.suggestions = null;
+    tuningState.lastStep = null;
+  } else if (tuningAction === 'reset') {
+    tuningSpacerRelease = true;
+    tuningState.current = pickTuningFields(tuningState.ref);
+    tuningState.history = [];
+    tuningState.suggestions = null;
+    tuningState.lastStep = null;
+  } else {
+    return;
+  }
+  renderTuning();
+}
+
+// Loading another reference discards the steps taken so far: ask first,
+// but only if there are any (history not empty or current ≠ ref).
+// `name`: the slot name, or the manual-entry label.
+function confirmReplaceTuningReference(name) {
+  const { ref, current, history } = tuningState;
+  const hasSteps = ref && (history.length > 0 || !sameTuningFields(ref, current));
+  return !hasSteps || confirm(fillPlaceholder(t('confirm.replaceTuningRef'), '{name}', name));
+}
+
+function updateManualLoadButton() {
+  const btn = document.querySelector('[data-tuning-action="loadManual"]');
+  if (btn) btn.disabled = !isTuningSetupUsable(tuningState.manual, getAllNeedles());
+}
+
+// Number fields of the manual form update the state while typing, so the
+// Load button is enabled before the field loses focus.
+function handleTuningFieldInput(e) {
+  const el = e.target.closest('input[data-tuning-field]');
+  if (!el) return;
+  applyFieldValue(tuningState.manual, el.dataset.tuningField, el.value);
+  updateManualLoadButton();
+}
+
+function handleTuningFieldChange(e) {
+  const el = e.target.closest('[data-tuning-field]');
+  if (!el) return;
+  const field = el.dataset.tuningField;
+  applyFieldValue(tuningState.manual, field, el.value);
+  // A number field's 'change' fires on blur — typically from the mousedown
+  // on "Load". Re-rendering then would replace that button before the
+  // click lands, so only re-render when clamping changed the shown value.
+  // Selects re-render: their neighbours' options depend on them.
+  if (el.tagName === 'INPUT' && String(tuningState.manual[field] ?? '') === el.value) {
+    updateManualLoadButton();
+    return;
+  }
+  renderTuning();
+}
+
 // ── Carb type change ──────────────────────────────────────────────────────────
 
 function handleCarbTypeChange(newCarbType) {
@@ -659,6 +1516,8 @@ function handleCarbTypeChange(newCarbType) {
   // The catalog follows the calculator again after an explicit change here.
   catalogState.carbType = null;
   catalogState.series = 'all';
+  // A tuning reference of another carb type is meaningless — start over.
+  resetTuningState();
 
   const allNeedles     = getAllNeedles();
   const validAtomizers = CARB_TYPES[carbType].atomizers;
@@ -698,37 +1557,44 @@ function handleCarbTypeChange(newCarbType) {
 // clipPos/carbSize/needleJet, which are <select> dropdowns and so are
 // already constrained to valid options) — browsers don't clamp typed values
 // to min/max on their own, so out-of-range values must be clamped here.
-// Bounds match the HTML attributes in index.html and share.js's ND_MAX/HD_MAX.
-const NUM_FIELD_BOUNDS = { nd: [0, 200], hd: [0, 300] };
+// Bounds come from share.js (JET_MIN/ND_MAX/HD_MAX, single source of truth),
+// as do the min/max attributes of the inputs in renderTable().
+const NUM_FIELD_BOUNDS = JET_FIELD_BOUNDS;
 
-function handleFieldChange(id, field, value) {
-  const idx = setups.findIndex(s => s.id === id);
-  if (idx === -1) return;
-
+// Writes one form value into `target` (a setup slot or the tuning view's
+// manual reference): parses/clamps numbers and clears a needle jet or clip
+// position the new jet type / needle no longer allows. Shared by the setup
+// table and the fine tuning reference form.
+function applyFieldValue(target, field, value) {
   const numFields = ['clipPos', 'carbSize', 'needleJet', 'nd', 'hd'];
   if (numFields.includes(field)) {
     let num = value === '' ? null : parseFloat(value);
     const bounds = NUM_FIELD_BOUNDS[field];
     if (num != null && bounds) num = Math.min(bounds[1], Math.max(bounds[0], num));
-    setups[idx][field] = num;
+    target[field] = num;
   } else {
-    setups[idx][field] = value === '' ? null : value;
+    target[field] = value === '' ? null : value;
   }
 
   if (field === 'jetType') {
     const validSizes = value ? (ATOMIZER_SIZES[value] ?? []) : [];
-    if (setups[idx].needleJet != null && !validSizes.includes(setups[idx].needleJet)) {
-      setups[idx].needleJet = null;
+    if (target.needleJet != null && !validSizes.includes(target.needleJet)) {
+      target.needleJet = null;
     }
   }
 
   if (field === 'needleType') {
     const maxClips = value ? resolveClipCount(value, getAllNeedles()) : 0;
-    if (setups[idx].clipPos != null && setups[idx].clipPos > maxClips) {
-      setups[idx].clipPos = null;
+    if (target.clipPos != null && target.clipPos > maxClips) {
+      target.clipPos = null;
     }
   }
+}
 
+function handleFieldChange(id, field, value) {
+  const slot = setups.find(s => s.id === id);
+  if (!slot) return;
+  applyFieldValue(slot, field, value);
   saveSetups(setups);
   updateUI();
 }
@@ -1024,6 +1890,7 @@ function migrateStoredCustomNeedles() {
   const { needles, changes } = migrateCustomNeedles(loadCustomNeedles());
   if (changes.length === 0) return;
   saveCustomNeedles(needles);
+  customNeedlesVersion++;
   const list = changes
     .map(c => `${c.type} (${c.carbType}): ${c.from != null ? Number(c.from).toFixed(1) : '–'} → ${c.to.toFixed(1)} mm`)
     .join(', ');
@@ -1181,7 +2048,7 @@ function csGapPaths(diam, { CX, SX, YC, BORE_HALF, HBAND }) {
   };
 }
 
-function renderCrossSection() {
+function renderCrossSection(snap = readNeedleSnapshot()) {
   const sel = document.getElementById('cs-setup-select');
   const diag = document.getElementById('cross-section-diagram');
   if (!sel || !diag) return;
@@ -1199,11 +2066,11 @@ function renderCrossSection() {
     : setups.find(s => s.needleType) ?? setups[0];
   sel.value = defaultSetup.id;
 
-  updateCrossSectionDiagram();
+  updateCrossSectionDiagram(snap);
 }
 
-function buildCrossSectionSVG(setup, result, idx) {
-  const needle = getAllNeedles()[setup.needleType];
+function buildCrossSectionSVG(setup, result, idx, snap = readNeedleSnapshot()) {
+  const needle = snap.allNeedles[setup.needleType];
   if (!needle || !result) return '';
 
   const pt = result.curve[Math.min(idx, result.curve.length - 1)];
@@ -1268,7 +2135,7 @@ function buildCrossSectionSVG(setup, result, idx) {
 }
 
 // Full diagram rebuild -- called on setup change and initial render
-function updateCrossSectionDiagram() {
+function updateCrossSectionDiagram(snap = readNeedleSnapshot()) {
   const sel    = document.getElementById('cs-setup-select');
   const slider = document.getElementById('cs-throttle-slider');
   const tpDisp = document.getElementById('cs-throttle-value');
@@ -1285,7 +2152,7 @@ function updateCrossSectionDiagram() {
     return;
   }
 
-  const result = calcSetup(setup, getAllNeedles());
+  const result = calcSetup(setup, snap.allNeedles);
   if (!result) {
     diag.innerHTML = `<p class="cs-empty">${t('crosssection.empty')}</p>`;
     return;
@@ -1294,7 +2161,7 @@ function updateCrossSectionDiagram() {
   const idx     = throttlePct / 5;
   const pt      = result.curve[Math.min(idx, result.curve.length - 1)];
   const annulus = calcAnnulusArea(setup.needleJet, pt.diam);
-  const svgHTML = buildCrossSectionSVG(setup, result, idx);
+  const svgHTML = buildCrossSectionSVG(setup, result, idx, snap);
 
   const needleClear = pt.pos < 0;
   diag.innerHTML = `
@@ -1334,8 +2201,9 @@ function updateCrossSectionLive() {
   const setup = setups.find(s => s.id === parseInt(sel.value));
   if (!setup?.needleType) return;
 
-  const needle = getAllNeedles()[setup.needleType];
-  const result = calcSetup(setup, getAllNeedles());
+  const { allNeedles } = readNeedleSnapshot();
+  const needle = allNeedles[setup.needleType];
+  const result = calcSetup(setup, allNeedles);
   if (!needle || !result) return;
 
   const idx     = throttlePct / 5;
@@ -1414,6 +2282,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // applied, so a direct '#needles' load renders dots in the right colors).
   document.getElementById('tab-calc')?.addEventListener('click', () => showView('calc'));
   document.getElementById('tab-catalog')?.addEventListener('click', () => showView('needles'));
+  document.getElementById('tab-tuning')?.addEventListener('click', () => showView('tuning'));
+  document.getElementById('view-tuning')?.addEventListener('click', handleTuningClick);
+  document.getElementById('view-tuning')?.addEventListener('change', handleTuningFieldChange);
+  document.getElementById('view-tuning')?.addEventListener('input', handleTuningFieldInput);
+  window.addEventListener('scroll', onTuningScroll, { passive: true });
+  document.getElementById('btn-tuning-apply-undo')?.addEventListener('click', undoTuningApply);
+  document.getElementById('btn-tuning-apply-close')?.addEventListener('click', hideTuningApplyBanner);
+  document.getElementById('btn-tuning-view-calc')?.addEventListener('click', () => showView('calc'));
   document.getElementById('view-tabs')?.addEventListener('keydown', handleViewTabKeydown);
   const syncViewFromHash = () => {
     if (hashToView() !== currentView) showView(hashToView(), { push: false });
@@ -1464,7 +2340,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Cross-section setup selector and throttle slider
-  document.getElementById('cs-setup-select')?.addEventListener('change', updateCrossSectionDiagram);
+  // Wrapped: the Event must not arrive as the optional snapshot parameter.
+  document.getElementById('cs-setup-select')?.addEventListener('change', () => updateCrossSectionDiagram());
   document.getElementById('cs-throttle-slider')?.addEventListener('input', updateCrossSectionLive);
 
   // Load demo data (demo uses K98/DP → VHSx)
@@ -1503,6 +2380,7 @@ document.addEventListener('DOMContentLoaded', () => {
       custom.push(needle);
     }
     saveCustomNeedles(custom);
+    customNeedlesVersion++;
     renderCustomNeedleList();
     updateUI();
     document.getElementById('custom-needle-form').reset();
@@ -1524,6 +2402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm(t('confirm.deleteNeedle').replace('${type}', type))) return;
     const custom = loadCustomNeedles().filter(n => n.type !== type);
     saveCustomNeedles(custom);
+    customNeedlesVersion++;
     renderCustomNeedleList();
     updateUI();
   });
@@ -1539,6 +2418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDarkBtn();
     // Setup dots in the catalog use getColors(), which depends on the theme.
     if (currentView === 'needles') renderCatalogTable();
+    if (currentView === 'tuning') renderTuning();
   });
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
   updateDarkBtn();
@@ -1648,12 +2528,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tipTarget = null;
   }
 
-  // A tap fires compatibility mouse events: mouseover, then click. Hover
-  // therefore listens to pointerover and ignores touch — otherwise the
-  // mouseover opened the tooltip and the click right after closed it again.
-  let lastPointerType = 'mouse';
-  document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType; }, true);
+  function toggleTooltip(anchor) {
+    if (tipTarget === anchor) hideTooltip();
+    else showTooltip(anchor);
+  }
 
+  // Hover. A tap fires compatibility mouse events (mouseover, then click),
+  // so hover listens to pointerover and ignores touch — otherwise the
+  // mouseover opened the tooltip and the click right after closed it again.
   document.addEventListener('pointerover', e => {
     if (e.pointerType === 'touch') return;
     const anchor = e.target.closest('[data-tooltip]');
@@ -1661,16 +2543,37 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (tipTarget && !tipTarget.contains(e.target)) hideTooltip();
   });
 
+  // Keyboard focus: a real <button>'s tooltip also shows while it has
+  // visible focus. Tooltip-only elements (role="button": ⚠, ⓘ, badges) are
+  // toggled with Enter / Space instead — showing on focus as well would make
+  // that Enter close it again.
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (el.matches?.('button[data-tooltip]') && el.matches(':focus-visible')) showTooltip(el);
+  });
+  document.addEventListener('focusout', e => {
+    if (tipTarget && tipTarget === e.target) hideTooltip();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const anchor = e.target.closest?.('[data-tooltip][role="button"]');
+    if (!anchor || anchor.matches('button')) return;
+    e.preventDefault(); // Space would scroll the page
+    toggleTooltip(anchor);
+  });
+
   document.addEventListener('click', e => {
     const anchor = e.target.closest('[data-tooltip]');
-    // Tapping a real button runs its action; its tooltip is only a hover hint.
-    if (anchor?.matches('button') && lastPointerType === 'touch') {
+    // A real button always gets its click — mouse, touch or keyboard (a
+    // keyboard click has no pointerdown before it). Its tooltip is only a
+    // hint, so just close it.
+    if (anchor?.matches('button')) {
       if (tipTarget) hideTooltip();
       return;
     }
+    // Tooltip-only elements toggle their tooltip on click / tap.
     if (anchor) {
-      if (tipTarget === anchor) { hideTooltip(); return; }
-      showTooltip(anchor);
+      toggleTooltip(anchor);
       e.stopPropagation();
       return;
     }

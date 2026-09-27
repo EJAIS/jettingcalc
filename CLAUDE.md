@@ -57,8 +57,16 @@ Rules for all future UI implementations:
   by `test/i18n.test.mjs`
 - German texts quote with „…“ (U+201E opening, U+201C closing) — never a
   straight `"`, neither as the closing mark after „ nor as a `"…"` pair.
-  Enforced by `test/i18n.test.mjs`. English texts keep their quotes; the
-  documentation files are not affected.
+  Enforced by `test/i18n.test.mjs`, which rejects any straight `"` in a
+  `de` string. Why a blanket ban instead of only checking pairs: mixed
+  „…" had crept into several texts unnoticed, and a single rule without
+  exceptions is easy to test and to follow. This deliberately rules out
+  HTML attributes inside translations — translations carry no markup at
+  all. Where a text needs markup, build it in JS and insert it through a
+  placeholder (as the forum link in `footer.gsfNote` via `{link}` in
+  `applyTranslations()`); attributes are set through the `data-i18n-*`
+  bindings. English texts keep their quotes; the documentation files are
+  not affected.
 - After any dynamic DOM update that adds translatable text, call
   `applyTranslations()` from i18n.js
 - Chart axis labels and legends must also go through `t('key')` —

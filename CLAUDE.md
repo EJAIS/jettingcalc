@@ -642,11 +642,25 @@ gespiegelten Liste in `test/sw.test.mjs`.
   `history`; bei `warning` erscheint `#tuning-warning` über der Tabelle.
   Der Fokus bleibt auf dem Button (`withPreservedFocus()`; wird er
   deaktiviert, auf dem anderen Button derselben Zeile).
+- **Varianten-Karten** (`renderTuningSuggestions()`): die bis zu drei
+  Vorschläge des letzten Nadel-Schritts (`tuningState.suggestions`). Eine
+  andere Karte ersetzt `current` **ohne** neuen `history`-Eintrag (es
+  bleibt ein Schritt). Die übernommene Karte ist `aria-pressed`; der
+  Seiteneffekt-Hinweis folgt ihr (gleiche Regel wie `warning` in
+  `rankNextSteps()`). Nach Düsen-Schritt, Schritt zurück und Zurücksetzen
+  ist `suggestions` `null` und die Karten verschwinden. Die ganze Karte ist
+  die Trefferfläche des Buttons (`::after`); Badges mit Tooltip liegen
+  darüber (`isolation` begrenzt das auf die Karte). „*“ nutzt
+  `catalog.clipsDefault.tooltip`, zusätzlich als sichtbare Fußnote.
+- **Düsenblock** (`renderTuningJets()`): ND, HD, Düse ausschließlich über
+  `stepJet()`; `null` → Button deaktiviert. Jeder Schritt pusht `history`
+  und leert `suggestions`. Ist ein Bereich HD-begrenzt, wird die HD-Zeile
+  hervorgehoben, der Hinweis steht in einer eigenen Tabellenzeile.
 - **Robustheit:** `validateTuningState()` läuft in jedem `updateUI()`. Fehlt
   die Nadel von `ref` oder `current` (Custom Needle gelöscht/umgetypt),
   wird zurückgesetzt und `msg.tuningReset` gemeldet.
-- Dynamische Keys (`tuning.range.*`, `tuning.reason.*`,
-  `tuning.reasonShort.*`) prüft `test/i18n.test.mjs` gegen `TUNING_RANGES`
+- Dynamische Keys (`tuning.range.*`, `tuning.rangeShort.*`,
+  `tuning.reason.*`, `tuning.reasonShort.*`) prüft `test/i18n.test.mjs` gegen `TUNING_RANGES`
   und `TUNING_REASONS`.
 
 **Mobile-Regeln (verbindlich, auch für spätere Schritte):**

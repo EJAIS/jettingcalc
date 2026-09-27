@@ -10,8 +10,8 @@ import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZE
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
 import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys,
          JET_MIN, ND_MAX, HD_MAX } from './share.js';
-import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, evaluateCandidates, rankNextSteps, rangeSummary,
-         formatSignedPercent } from './tuning.js';
+import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, WARN_SIDE_RATIO, evaluateCandidates, rankNextSteps,
+         rangeSummary, stepJet, formatSignedPercent } from './tuning.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
          sortCatalogRows, formatCatalogValue, CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 
@@ -696,7 +696,19 @@ const TUNING_FIELDS = ['needleType', 'clipPos', 'carbSize', 'jetType', 'needleJe
 const TUNING_BAR_LIMIT = 20;
 
 // data-* attributes withPreservedFocus() restores focus by after a re-render.
-const TUNING_FOCUS_ATTRS = ['data-tuning-step', 'data-tuning-source', 'data-tuning-action', 'data-tuning-field'];
+const TUNING_FOCUS_ATTRS = ['data-tuning-step', 'data-tuning-jet', 'data-tuning-suggestion',
+  'data-tuning-source', 'data-tuning-action', 'data-tuning-field'];
+
+// ± buttons come in pairs ("<row>:-1" / "<row>:1"); if the pressed one is
+// disabled after a re-render, focus moves to its partner in the same row.
+const TUNING_PAIR_ATTRS = ['data-tuning-step', 'data-tuning-jet'];
+
+// Jet rows of the jet block, in display order, with their label keys.
+const TUNING_JET_FIELDS = [
+  { field: 'nd',        labelKey: 'col.nd' },
+  { field: 'hd',        labelKey: 'col.hd' },
+  { field: 'needleJet', labelKey: 'col.needleJet' },
+];
 
 // A fresh object with only the tuning fields — a copy, never a live link
 // to a setup slot.
@@ -773,6 +785,13 @@ function tuningNeedleLabel(s) {
   return fillPlaceholder(fillPlaceholder(t('tuning.needleClip'), '{needle}', s.needleType), '{clip}', s.clipPos);
 }
 
+// The suggestion of the last needle step that `current` is using, if any.
+function adoptedSuggestion() {
+  const { suggestions, current } = tuningState;
+  return suggestions?.suggestions.find(s =>
+    s.needleType === current.needleType && s.clipPos === current.clipPos) ?? null;
+}
+
 function formatEq(value) {
   return value == null ? CATALOG_EMPTY_VALUE : value.toFixed(1);
 }
@@ -781,8 +800,9 @@ function formatEq(value) {
 function renderTuning() {
   const view = document.getElementById('view-tuning');
   if (!view) return;
-  const focusedStep = view.contains(document.activeElement)
-    ? document.activeElement.getAttribute('data-tuning-step') : null;
+  const active = view.contains(document.activeElement) ? document.activeElement : null;
+  const pairAttr = TUNING_PAIR_ATTRS.find(a => active?.hasAttribute(a));
+  const pairValue = pairAttr ? active.getAttribute(pairAttr) : null;
 
   withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
     const carbLabel = document.getElementById('tuning-carb-type');
@@ -795,9 +815,12 @@ function renderTuning() {
     if (empty) empty.hidden = hasRef;
     view.querySelectorAll('[data-tuning-block]').forEach(block => { block.hidden = !hasRef; });
 
+    // Same rule as rankNextSteps()' warning, applied to whichever
+    // suggestion is in use (for the best one both agree).
+    const adopted = hasRef ? adoptedSuggestion() : null;
     const warning = document.getElementById('tuning-warning');
     if (warning) {
-      warning.hidden = !(hasRef && tuningState.suggestions?.warning);
+      warning.hidden = !(adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc);
       warning.textContent = t('tuning.warn.sideEffects');
     }
     if (!hasRef) return;
@@ -805,14 +828,16 @@ function renderTuning() {
     const evaluation = getTuningEvaluation();
     renderTuningStatus();
     renderTuningRanges(evaluation);
+    renderTuningSuggestions();
+    renderTuningJets(evaluation);
     renderTuningActions();
   });
 
   // The pressed ± button can become disabled (no further step that way):
   // keep keyboard focus in the same row instead of losing it to <body>.
-  if (focusedStep && document.activeElement?.getAttribute('data-tuning-step') !== focusedStep) {
-    const rangeIndex = focusedStep.split(':')[0];
-    view.querySelector(`[data-tuning-step^="${CSS.escape(rangeIndex)}:"]:not(:disabled)`)?.focus();
+  if (pairAttr && document.activeElement?.getAttribute(pairAttr) !== pairValue) {
+    const row = pairValue.split(':')[0];
+    view.querySelector(`[${pairAttr}^="${CSS.escape(row)}:"]:not(:disabled)`)?.focus();
   }
 }
 
@@ -957,6 +982,118 @@ function renderTuningRanges({ summary, rankings }) {
   table.innerHTML = `${head}<tbody>${rows}</tbody>`;
 }
 
+function tuningClipLabel(needleType, clipPos) {
+  return fillPlaceholder(fillPlaceholder(t('tuning.needleClipLong'), '{needle}', needleType), '{clip}', clipPos);
+}
+
+function tuningTagBadge(text, tooltip, extraClass = '') {
+  if (!tooltip) return `<span class="tuning-tag${extraClass}">${escapeHtml(text)}</span>`;
+  return `<span class="tuning-tag has-tip${extraClass}" data-tooltip="${escapeHtml(tooltip)}" role="button" tabindex="0"`
+    + ` aria-label="${escapeHtml(`${text} — ${tooltip}`)}">${escapeHtml(text)}</span>`;
+}
+
+// Cards for the up to MAX_SUGGESTIONS results of the last needle step.
+// Picking another card swaps `current` without a new history entry — it is
+// still the same step. Hidden after jet steps, undo and reset (suggestions
+// null). The whole card is the pick button's hit area (stretched ::after);
+// badges with a tooltip sit above it.
+function renderTuningSuggestions() {
+  const el = document.getElementById('tuning-alternatives');
+  if (!el) return;
+  const ranking = tuningState.suggestions;
+  if (!ranking || ranking.suggestions.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  const adopted = adoptedSuggestion();
+  const target = tuningState.lastStep?.rangeIndex;
+  let anyUnverified = false;
+
+  const cards = ranking.suggestions.map((sugg, idx) => {
+    const title = tuningClipLabel(sugg.needleType, sugg.clipPos);
+    const also = sugg.alsoTypes.length
+      ? `<span class="tuning-sugg-also">${escapeHtml(fillPlaceholder(t('tuning.also'), '{list}',
+          sugg.alsoTypes.map(a => tuningClipLabel(a.needleType, a.clipPos)).join(', ')))}</span>`
+      : '';
+    const { tags } = sugg;
+    if (tags.clipsUnverified) anyUnverified = true;
+    const badges = [
+      tags.clipOnly && tuningTagBadge(t('tuning.tag.clipOnly')),
+      tags.seriesChange && tuningTagBadge(t('tuning.tag.seriesChange'), t('tuning.tag.seriesChange.tooltip')),
+      tags.custom && tuningTagBadge(t('tuning.tag.custom')),
+      tags.clipsUnverified && tuningTagBadge('*', t('catalog.clipsDefault.tooltip'), ' is-unverified'),
+    ].filter(Boolean).join('');
+    const mini = TUNING_RANGES.map((range, i) => {
+      const flow = sugg.flow[i];
+      const cls = ['tuning-mini-cell',
+        flow > 0 ? 'is-rich' : flow < 0 ? 'is-lean' : '',
+        flow != null && Math.abs(flow) >= SIGNIFICANT ? 'is-significant' : '',
+        i === target ? 'is-target' : ''].filter(Boolean).join(' ');
+      return `<span class="${cls}"><span class="tuning-mini-range">${escapeHtml(t(`tuning.rangeShort.${range.key}`))}</span>`
+        + `<span class="tuning-mini-val">${escapeHtml(formatSignedPercent(flow))}</span></span>`;
+    }).join('');
+    const pressed = sugg === adopted;
+    return `<div class="tuning-sugg${pressed ? ' is-adopted' : ''}">
+      <button type="button" class="tuning-sugg-pick" data-tuning-suggestion="${idx}" aria-pressed="${pressed}">${escapeHtml(title)}</button>
+      ${also}
+      ${badges ? `<span class="tuning-tags">${badges}</span>` : ''}
+      <span class="tuning-mini">${mini}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.suggestions.title'))}</h3>
+    <p class="tuning-hint">${escapeHtml(t('tuning.suggestions.hint'))}</p>
+    <div class="tuning-cards">${cards}</div>
+    ${anyUnverified ? `<p class="tuning-hint">* ${escapeHtml(t('catalog.clipsDefault.tooltip'))}</p>` : ''}`;
+}
+
+// ND / HD / needle jet with reference value, current value and −/+; all
+// stepping goes through stepJet() (null → button disabled).
+function renderTuningJets({ summary }) {
+  const el = document.getElementById('tuning-jets');
+  if (!el) return;
+  const { ref, current } = tuningState;
+  const hdRanges = TUNING_RANGES
+    .filter((_, i) => summary[i].hdLimited)
+    .map(range => t(`tuning.rangeShort.${range.key}`));
+
+  const rows = TUNING_JET_FIELDS.map(({ field, labelKey }) => {
+    const label = t(labelKey);
+    const changed = current[field] !== ref[field];
+    const highlight = field === 'hd' && hdRanges.length > 0;
+    const button = dir => {
+      const next = stepJet(current, field, dir);
+      const aria = fillPlaceholder(t(dir > 0 ? 'tuning.jets.increase' : 'tuning.jets.decrease'), '{field}', label);
+      const title = next ? `${aria} → ${next[field]}` : aria;
+      return `<td class="tuning-jet-step"><button type="button" class="tuning-step-btn" data-tuning-jet="${field}:${dir}"`
+        + ` aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"${next ? '' : ' disabled'}>${dir > 0 ? '+' : '−'}</button></td>`;
+    };
+    // Own full-width row, so the hint never squeezes the label column.
+    const hintRow = highlight
+      ? `<tr class="tuning-jet-row is-lever is-hint"><td colspan="5" class="tuning-jet-hint">${escapeHtml(fillPlaceholder(t('tuning.jets.hdHint'), '{ranges}', hdRanges.join(', ')))}</td></tr>`
+      : '';
+    return `<tr class="tuning-jet-row${highlight ? ' is-lever' : ''}" data-jet="${field}">
+      <th scope="row">${escapeHtml(label)}</th>
+      <td class="num">${escapeHtml(ref[field])}</td>
+      <td class="num${changed ? ' is-changed' : ''}">${escapeHtml(current[field])}</td>
+      ${button(-1)}${button(1)}
+    </tr>${hintRow}`;
+  }).join('');
+
+  el.innerHTML = `
+    <h3 class="tuning-subhead">${escapeHtml(t('tuning.jets.title'))}</h3>
+    <table class="tuning-jets-table">
+      <thead><tr>
+        <th scope="col"><span class="visually-hidden">${escapeHtml(t('tuning.jets.title'))}</span></th>
+        <th scope="col" class="num">${escapeHtml(t('tuning.jets.ref'))}</th>
+        <th scope="col" class="num">${escapeHtml(t('tuning.jets.current'))}</th>
+        <th scope="col" colspan="2" class="tuning-step-head">${escapeHtml(t('tuning.jets.step'))}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 function renderTuningActions() {
   const el = document.getElementById('tuning-actions');
   if (!el) return;
@@ -981,7 +1118,7 @@ function applyTuningStep(rangeIndex, dir) {
 function handleTuningClick(e) {
   const btn = e.target.closest('button');
   if (!btn || btn.disabled) return;
-  const { tuningSource, tuningStep, tuningAction } = btn.dataset;
+  const { tuningSource, tuningStep, tuningJet, tuningSuggestion, tuningAction } = btn.dataset;
 
   if (tuningSource === 'manual') {
     tuningState.refSource = 'manual';
@@ -999,6 +1136,19 @@ function handleTuningClick(e) {
   } else if (tuningStep) {
     const [rangeIndex, dir] = tuningStep.split(':').map(Number);
     applyTuningStep(rangeIndex, dir);
+  } else if (tuningSuggestion) {
+    // Another option for the same step: no extra history entry.
+    const sugg = tuningState.suggestions?.suggestions[Number(tuningSuggestion)];
+    if (!sugg) return;
+    tuningState.current = pickTuningFields(sugg.setup);
+  } else if (tuningJet) {
+    const [field, dir] = tuningJet.split(':');
+    const next = stepJet(tuningState.current, field, Number(dir));
+    if (!next) return;
+    tuningState.history.push(tuningState.current);
+    tuningState.current = pickTuningFields(next);
+    tuningState.suggestions = null;
+    tuningState.lastStep = null;
   } else if (tuningAction === 'loadManual') {
     if (calcSetup(tuningState.manual, getAllNeedles()) == null) return;
     loadTuningReference('manual', tuningState.manual);

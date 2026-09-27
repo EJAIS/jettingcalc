@@ -106,7 +106,7 @@ test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', (
 // the rankNextSteps() reason codes, which the literal t('…') check can't see.
 test('every tuning range and reason code has its tuning.* translations in en and de', () => {
   const keys = [
-    ...TUNING_RANGES.map(({ key }) => `tuning.range.${key}`),
+    ...TUNING_RANGES.flatMap(({ key }) => [`tuning.range.${key}`, `tuning.rangeShort.${key}`]),
     ...TUNING_REASONS.flatMap(code => [`tuning.reason.${code}`, `tuning.reasonShort.${code}`]),
   ];
   const missing = [];

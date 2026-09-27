@@ -353,6 +353,12 @@
       <!-- Shown by app.js when the last step had strong side effects -->
       <p id="tuning-warning" class="tuning-warning" role="status" hidden></p>
       <div id="tuning-ranges-scroll" class="tuning-ranges-scroll" data-tuning-block hidden>
+        <p class="tuning-legend">
+          <span data-i18n="tuning.legend">Δ against the reference: flow and Ø</span>
+          <span class="cutaway-info" role="button" tabindex="0"
+                data-i18n-tooltip="tuning.legend.tooltip"
+                data-i18n-aria-label="tuning.legend.tooltip" aria-label="flow = fuel flow through the open area (≈ jet size²). Ø = change of the equivalent jet size.">ℹ</span>
+        </p>
         <table id="tuning-ranges" class="tuning-ranges"></table>
       </div>
       <div id="tuning-alternatives" class="tuning-alternatives" data-tuning-block hidden></div>

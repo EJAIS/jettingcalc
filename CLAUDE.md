@@ -787,9 +787,11 @@ Prozentpunkten flow:
   (Name escaped, Setup-Farbe), oder „Manuelle Eingabe“ mit denselben
   Feldern und Filtern wie die Setup-Tabelle. Ein Tipp auf den Chip der
   bereits geladenen, unveränderten Referenz tut nichts („Zurücksetzen“ ist
-  der Weg zum Neustart). Jedes andere Laden fragt nach (`confirm`,
-  `tuning.confirm.replaceRef`), sobald es Schritte gibt, die verloren
-  gingen.
+  der Weg zum Neustart). Jedes andere Laden (Slot-Chip oder „Als Referenz
+  übernehmen“) fragt vorher per `confirm()` nach
+  (`confirm.replaceTuningRef` mit `{name}` = Slot-Name bzw. „Manuelle
+  Eingabe“) — aber nur, wenn Schritte verloren gingen: `history` nicht
+  leer oder current ≠ ref. Abbrechen lässt die Sitzung unverändert.
 - Zahlenfelder des manuellen Formulars schreiben schon beim Tippen
   (`input`) in den Zustand und schalten „Laden“ frei, ohne neu zu rendern.
   Beim `change` (Blur, oft ausgelöst vom mousedown auf „Laden“) wird nur

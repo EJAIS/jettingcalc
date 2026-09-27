@@ -160,6 +160,7 @@ export const TRANSLATIONS = {
     'confirm.resetRow':        'Reset "{name}"?',
     'confirm.overwriteNeedle': '"${type}" already exists as a custom needle. Overwrite?',
     'confirm.deleteNeedle':    'Delete custom needle "${type}"?',
+    'confirm.replaceTuningRef': 'Load "{name}" as the new reference? The tuning steps taken so far are discarded.',
 
     // Share links
     'share.title':     'Share setups',
@@ -243,7 +244,6 @@ export const TRANSLATIONS = {
     'tuning.jets.hdHint':   'The HD is the lever for these ranges: {ranges}',
     'tuning.jets.limitMin': '{field}: smallest value reached',
     'tuning.jets.limitMax': '{field}: largest value reached',
-    'tuning.confirm.replaceRef': 'Load a new reference? The tuning steps taken so far are discarded.',
     'tuning.badge.hdLimited':         'HD-limited',
     'tuning.badge.hdLimited.tooltip': 'In the current state the main jet (HD), not the needle, meters the fuel in this range (at every point from 35 % throttle).',
     'tuning.diameter':    'Ø {value}',
@@ -460,6 +460,7 @@ export const TRANSLATIONS = {
     'confirm.resetRow':        '„{name}" zurücksetzen?',
     'confirm.overwriteNeedle': '"${type}" existiert bereits als eigene Nadel. Überschreiben?',
     'confirm.deleteNeedle':    'Eigene Nadel "${type}" löschen?',
+    'confirm.replaceTuningRef': '„{name}“ als neue Referenz laden? Die bisherigen Abstimmungsschritte gehen verloren.',
 
     // Share links
     'share.title':     'Setups teilen',
@@ -545,7 +546,6 @@ export const TRANSLATIONS = {
     'tuning.jets.hdHint':   'Für diese Bereiche ist die HD der Hebel: {ranges}',
     'tuning.jets.limitMin': '{field}: kleinster Wert erreicht',
     'tuning.jets.limitMax': '{field}: größter Wert erreicht',
-    'tuning.confirm.replaceRef': 'Neue Referenz laden? Die bisherigen Abstimmungsschritte gehen verloren.',
     'tuning.badge.hdLimited':         'HD-begrenzt',
     'tuning.badge.hdLimited.tooltip': 'Im aktuellen Stand dosiert in diesem Bereich die Hauptdüse (HD), nicht die Nadel (an allen Punkten ab 35 % Gas).',
     'tuning.diameter':    'Ø {value}',

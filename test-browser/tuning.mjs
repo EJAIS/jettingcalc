@@ -91,19 +91,22 @@ async function openApp(page, hash = '') {
   await page.waitForSelector('#setup-tbody tr', { state: 'attached' });
 }
 
-// Enters the reference setup into calculator row 1 the way a user would.
-async function createK27Setup(page) {
-  const row = field => `tr[data-row-id="1"] [data-field="${field}"]`;
-  await page.selectOption(row('needleType'), 'K27');
-  await page.selectOption(row('clipPos'), '3');
-  await page.selectOption(row('carbSize'), '34');
-  await page.selectOption(row('jetType'), 'DQ');
-  await page.selectOption(row('needleJet'), '264');
-  for (const [field, value] of [['nd', '50'], ['hd', '128']]) {
-    await page.fill(row(field), value);
+// Enters a setup into a calculator row the way a user would.
+async function createSetup(page, rowId, { needleType, clipPos, carbSize = 34, jetType = 'DQ', needleJet = 264, nd = 50, hd = 128 }) {
+  const row = field => `tr[data-row-id="${rowId}"] [data-field="${field}"]`;
+  await page.selectOption(row('needleType'), needleType);
+  await page.selectOption(row('clipPos'), String(clipPos));
+  await page.selectOption(row('carbSize'), String(carbSize));
+  await page.selectOption(row('jetType'), jetType);
+  await page.selectOption(row('needleJet'), String(needleJet));
+  for (const [field, value] of [['nd', nd], ['hd', hd]]) {
+    await page.fill(row(field), String(value));
     await page.press(row(field), 'Tab'); // number inputs commit on change
   }
 }
+
+// The reference setup K27 C3 / 34 / DQ 264 / ND 50 / HD 128 in row 1.
+const createK27Setup = page => createSetup(page, 1, { needleType: 'K27', clipPos: 3 });
 
 // Calculator with the K27 setup → fine tuning tab → K27 loaded as reference.
 async function openTuningWithK27(page, { tap = false } = {}) {
@@ -254,6 +257,45 @@ test('reference picker: opening the manual form keeps the slot reference; tappin
     assert.equal(await page.isDisabled('[data-tuning-action="applyRef"]'), false,
       'overwrite still offered — the reference is still slot 1');
     assert.match(await status(page), /K27 C3 → K96 C5/);
+  });
+});
+
+test('loading another reference asks first only when steps would be lost; cancel keeps, confirm loads', async () => {
+  await withPage(async page => {
+    await openApp(page);
+    await createK27Setup(page);
+    await createSetup(page, 2, { needleType: 'K96', clipPos: 5 });
+    await page.click('#tab-tuning');
+
+    // Handled here instead of withPage's auto-accept.
+    page.removeAllListeners('dialog');
+    const dialogs = [];
+    let answer = true;
+    page.on('dialog', d => { dialogs.push(d.message()); answer ? d.accept() : d.dismiss(); });
+
+    // No steps yet: switching the reference needs no confirmation.
+    await page.click('[data-tuning-source="1"]');
+    await page.click('[data-tuning-source="2"]');
+    await page.click('[data-tuning-source="1"]');
+    assert.deepEqual(dialogs, []);
+    assert.match(await status(page), /^K27 C3 → K27 C3/);
+
+    await page.click('[data-tuning-step="1:1"]');
+    const before = await status(page);
+
+    answer = false;
+    await page.click('[data-tuning-source="2"]');
+    assert.deepEqual(dialogs, ['Load "#2" as the new reference? The tuning steps taken so far are discarded.']);
+    assert.equal(await status(page), before, 'cancel keeps the session');
+    assert.equal(await page.getAttribute('[data-tuning-source="1"]', 'aria-pressed'), 'true');
+    assert.equal(await page.isDisabled('[data-tuning-action="undo"]'), false);
+
+    answer = true;
+    await page.click('[data-tuning-source="2"]');
+    assert.equal(dialogs.length, 2);
+    assert.match(await status(page), /^K96 C5 → K96 C5/, 'confirm loads the new reference');
+    assert.equal(await page.getAttribute('[data-tuning-source="2"]', 'aria-pressed'), 'true');
+    assert.equal(await page.isDisabled('[data-tuning-action="undo"]'), true);
   });
 });
 

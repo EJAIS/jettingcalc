@@ -225,6 +225,10 @@ match the regression values in `test/tuning.test.mjs`:
   reference (chip pressed, overwrite still offered).
 - **Manual reference** — with HD typed last and still focused, Load is
   already enabled and one click loads it.
+- **Replacing the reference** — without steps, switching between slot
+  chips asks nothing; after a step, the slot chip of another setup asks
+  (`confirm.replaceTuningRef` with the slot name): cancel keeps the
+  session and its undo history, confirm loads the new reference.
 - **Custom needle deleted** — custom needle A1 (ranked first for "richer in
   1/8–1/4") is on the cards: after adopting another card and deleting A1
   the stale cards are gone and the session stays; if A1 was current, the

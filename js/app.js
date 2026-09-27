@@ -1291,7 +1291,7 @@ function handleTuningClick(e) {
     // Tapping the chip of the reference that is already loaded (unchanged
     // slot) changes nothing — "Reset to reference" is the way to start over.
     if (tuningState.refSource === slot.id && sameTuningFields(slot, tuningState.ref)) return;
-    if (!confirmReplaceTuningReference()) return;
+    if (!confirmReplaceTuningReference(slot.name)) return;
     tuningState.manualOpen = false;
     loadTuningReference(slot.id, slot);
   } else if (tuningStep) {
@@ -1312,7 +1312,7 @@ function handleTuningClick(e) {
     tuningState.lastStep = null;
   } else if (tuningAction === 'loadManual') {
     if (!isTuningSetupUsable(tuningState.manual, getAllNeedles())) return;
-    if (!confirmReplaceTuningReference()) return;
+    if (!confirmReplaceTuningReference(t('tuning.ref.manual'))) return;
     loadTuningReference('manual', tuningState.manual);
   } else if (tuningAction === 'applyFree' || tuningAction === 'applyRef') {
     applyTuningToSlot(tuningAction === 'applyFree' ? 'free' : 'overwrite');
@@ -1340,11 +1340,12 @@ function handleTuningClick(e) {
 }
 
 // Loading another reference discards the steps taken so far: ask first,
-// but only if there are any.
-function confirmReplaceTuningReference() {
+// but only if there are any (history not empty or current ≠ ref).
+// `name`: the slot name, or the manual-entry label.
+function confirmReplaceTuningReference(name) {
   const { ref, current, history } = tuningState;
   const hasSteps = ref && (history.length > 0 || !sameTuningFields(ref, current));
-  return !hasSteps || confirm(t('tuning.confirm.replaceRef'));
+  return !hasSteps || confirm(fillPlaceholder(t('confirm.replaceTuningRef'), '{name}', name));
 }
 
 function updateManualLoadButton() {

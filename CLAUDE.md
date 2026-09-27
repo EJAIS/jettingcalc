@@ -85,6 +85,7 @@ js/charts.js                Chart.js-Diagramme (Needle Profile, Carb Profile, Vo
 js/cutaway.js               Schieber-Ausschnitt-Empfehlung für 2-Takt-Rundschieber
 js/share.js                 Share-Links kodieren/dekodieren (rein, ohne DOM/localStorage)
 js/needlecatalog.js         Nadelkatalog: Zeilen, Filter, Sortierung, Formatierung (rein)
+js/tuning.js                Feinabstimmung: Bereichs-Deltas und Schritt-Ranking (rein, noch ohne UI)
 js/i18n.js                  EN/DE-Übersetzungen, t(), applyTranslations()
 js/vendor/                  Vendored Chart.js (Version und Herkunft: js/vendor/README.md)
 icons/                      PWA-Icons
@@ -582,6 +583,30 @@ der Fußnote).
 
 `./js/needlecatalog.js` steht in `PRECACHE_URLS` (`sw.js`) und in der
 gespiegelten Liste in `test/sw.test.mjs`.
+
+---
+
+## Feinabstimmung – tuning.js
+
+Reines ES-Modul wie `share.js`/`needlecatalog.js` (Imports nur `calc.js`,
+`needledb.js`, `needlecatalog.js`, `share.js`; Custom Needles kommen als
+Parameter `allNeedles`/`customTypes`). Noch nicht an die UI angebunden und
+noch nicht in `PRECACHE_URLS` — beides kommt mit der UI.
+
+- Alle Deltas gegen die **Referenz**, berechnet aus `curve[].overall` von
+  `calcSetup()`; `calc.js` bleibt unverändert. Fünf Bereiche
+  (`TUNING_RANGES`) auf dem 5-%-Raster, nie über 100 %.
+- Primäre Kennzahl ist `flow` (Mittel von overall²-Verhältnis − 1, in %),
+  `diameter` nur zur Anzeige.
+- Ranking (`rankNextSteps()`): Nebenwirkung bewusst gegen **current**, nicht
+  gegen die Referenz, damit bereits abgestimmte Bereiche erhalten bleiben.
+  Konstanten und Kostenfunktion: siehe Datei.
+- Die 35-%-Grenze der BLEND-Überblendung ist in `tuning.js` gespiegelt
+  (`BLEND_END_PERCENT`), weil `calc.js` `BLEND` nicht exportiert.
+- nd/hd-Grenzen: einzige Quelle `JET_MIN`/`ND_MAX`/`HD_MAX` in `share.js`
+  (auch für `NUM_FIELD_BOUNDS` und die min/max-Attribute in `app.js`).
+- Regressionswerte in `test/tuning.test.mjs` stammen aus dem abgenommenen
+  Prototyp — bei Abweichung erst die Ursache klären, nicht die Werte anpassen.
 
 ---
 

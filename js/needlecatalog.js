@@ -58,7 +58,10 @@ export function compareNeedleTypes(a, b) {
   return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
-function resolveClipsSource(type, isCustom) {
+// Where a needle's clip count comes from: 'custom' (custom needle),
+// 'verified' (per-needle NEEDLE_DB value or a verified series default) or
+// 'default' (unverified series placeholder). Shared with tuning.js.
+export function getClipsSource(type, isCustom) {
   if (isCustom) return 'custom';
   if (NEEDLE_DB[type]?.clips != null) return 'verified';
   if (VERIFIED_DEFAULT_CLIP_PREFIXES.includes(getNeedleSeries(type))) return 'verified';
@@ -85,7 +88,7 @@ export function buildCatalogRows({ allNeedles, carbType, customTypes = [], setup
       for (const field of GEOMETRY_FIELDS) row[field] = needle[field] ?? null;
       // Same resolution as resolveClipCount() in app.js.
       row.clips = needle.clips ?? getClipCount(type);
-      row.clipsSource = resolveClipsSource(type, isCustom);
+      row.clipsSource = getClipsSource(type, isCustom);
       row.length = getNeedleLength(needle, type);
       row.isCustom = isCustom;
       row.usedBy = setups

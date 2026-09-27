@@ -8,7 +8,8 @@ import { renderCharts, openChartModal, closeChartModal, getColors } from './char
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, getClipCount,
          getCustomNeedleLength, migrateCustomNeedles } from './needledb.js';
 import { t, getLang, setLang, applyTranslations } from './i18n.js';
-import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys } from './share.js';
+import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys,
+         JET_MIN, ND_MAX, HD_MAX } from './share.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
          sortCatalogRows, formatCatalogValue } from './needlecatalog.js';
 
@@ -252,11 +253,11 @@ function renderTable() {
       <td class="cutaway-col-cell">${cutawayCell}</td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="nd"
-               value="${s.nd ?? ''}" min="0" max="200" placeholder="${t('col.nd')}">
+               value="${s.nd ?? ''}" min="${JET_MIN}" max="${ND_MAX}" placeholder="${t('col.nd')}">
       </td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
-               value="${s.hd ?? ''}" min="0" max="300" placeholder="${t('col.hd')}">
+               value="${s.hd ?? ''}" min="${JET_MIN}" max="${HD_MAX}" placeholder="${t('col.hd')}">
       </td>
       <td class="row-actions">
         <button type="button" class="btn-icon" data-action="duplicate-row"
@@ -698,8 +699,9 @@ function handleCarbTypeChange(newCarbType) {
 // clipPos/carbSize/needleJet, which are <select> dropdowns and so are
 // already constrained to valid options) — browsers don't clamp typed values
 // to min/max on their own, so out-of-range values must be clamped here.
-// Bounds match the HTML attributes in index.html and share.js's ND_MAX/HD_MAX.
-const NUM_FIELD_BOUNDS = { nd: [0, 200], hd: [0, 300] };
+// Bounds come from share.js (JET_MIN/ND_MAX/HD_MAX, single source of truth),
+// as do the min/max attributes of the inputs in renderTable().
+const NUM_FIELD_BOUNDS = { nd: [JET_MIN, ND_MAX], hd: [JET_MIN, HD_MAX] };
 
 function handleFieldChange(id, field, value) {
   const idx = setups.findIndex(s => s.id === id);

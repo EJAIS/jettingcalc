@@ -14,8 +14,13 @@ const SLOT_FIELDS = ['needleType', 'clipPos', 'carbSize', 'needleJet', 'jetType'
 
 const SLOT_COUNT = 5;
 const MAX_NAME_LENGTH = 30;
-const ND_MAX = 200;
-const HD_MAX = 300;
+
+// Bounds of the idle jet (nd) and main jet (hd) inputs — the single source
+// of truth for share-link validation (decodeShare), input clamping and the
+// input min/max attributes in app.js, and jet stepping in tuning.js.
+export const JET_MIN = 0;
+export const ND_MAX = 200;
+export const HD_MAX = 300;
 
 export function isSlotEmpty(slot) {
   return slot.name === `#${slot.id}` && SLOT_FIELDS.every(field => slot[field] == null);
@@ -178,7 +183,7 @@ export function decodeShare(search) {
 
         if (rawNd !== '') {
           const n = Number(rawNd);
-          if (Number.isFinite(n) && n >= 0 && n <= ND_MAX) {
+          if (Number.isFinite(n) && n >= JET_MIN && n <= ND_MAX) {
             nd = n;
           } else {
             warnings.push({ code: 'invalidField', slot: id, field: 'nd' });
@@ -187,7 +192,7 @@ export function decodeShare(search) {
 
         if (rawHd !== '') {
           const n = Number(rawHd);
-          if (Number.isFinite(n) && n >= 0 && n <= HD_MAX) {
+          if (Number.isFinite(n) && n >= JET_MIN && n <= HD_MAX) {
             hd = n;
           } else {
             warnings.push({ code: 'invalidField', slot: id, field: 'hd' });

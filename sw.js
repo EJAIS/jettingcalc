@@ -21,7 +21,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = '2eb57f3dd46d';
+export const JETTINGCALC_CACHE_VERSION = '81492e0ecf9a';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so

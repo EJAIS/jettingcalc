@@ -236,6 +236,18 @@ body.dark .btn-secondary:hover { background: #50565f; }
 
 .carb-type-beta .cutaway-info { margin-left: 0; }
 
+/* Between the portrait layout (≤ 600 px) and 1024 px the single row is
+   tight: with wider system fonts than Segoe UI (Noto Sans on Linux, Roboto
+   on Android) it needed ~3 px more than a 915 px landscape phone offers and
+   the beta group wrapped. Slightly less padding and gap there buy 16 px;
+   from 1024 px on the measurements are unchanged. */
+@media (min-width: 601px) and (max-width: 1023px) {
+  .carb-type-selector {
+    padding: 14px 14px;
+    gap: 12px;
+  }
+}
+
 /* Larger hit area for the info icons (≈ 37 × 37 px) without changing the
    layout. The options are raised above it, so where the hit area overlaps
    an option the option still wins; isolation keeps these z-indexes local. */
@@ -1558,14 +1570,15 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   text-align: center;
 }
 .tuning-jet-row.is-lever { background: color-mix(in srgb, var(--warning) 10%, var(--surface)); }
-.tuning-jet-row.is-lever:not(.is-hint) th,
-.tuning-jet-row.is-lever:not(.is-hint) td { border-bottom: 0; }
+.tuning-jet-row.has-hint th,
+.tuning-jet-row.has-hint td { border-bottom: 0; }
 .tuning-jets-table td.tuning-jet-hint {
   padding-top: 0;
   font-size: 11px;
   font-weight: 500;
   color: var(--warning);
 }
+.tuning-jet-hint span { display: block; }
 
 .tuning-actions {
   display: flex;

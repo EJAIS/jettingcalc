@@ -380,6 +380,14 @@ export function getClipCount(needleType) {
   return DEFAULT_CLIPS_BY_PREFIX[prefix] ?? 4;
 }
 
+// Clip positions of a needle when custom needles are in play: the needle's
+// own `clips` from `allNeedles` (getAllNeedles() merges custom needles over
+// NEEDLE_DB), else getClipCount(). The single resolution used by the
+// setup table, storage cleanup, catalog and fine tuning.
+export function resolveClipCount(needleType, allNeedles = NEEDLE_DB) {
+  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
+}
+
 // Needle-jet offset by jet type
 export const JET_OFFSETS = {
   "DP": 0,   // VHSA/VHSB — short type (reference)

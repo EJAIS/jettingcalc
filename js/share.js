@@ -23,6 +23,11 @@ export const MAX_NAME_LENGTH = 30;
 export const JET_MIN = 0;
 export const ND_MAX = 200;
 export const HD_MAX = 300;
+// The same bounds per field, for callers that look them up by field name.
+export const JET_FIELD_BOUNDS = Object.freeze({
+  nd: Object.freeze([JET_MIN, ND_MAX]),
+  hd: Object.freeze([JET_MIN, HD_MAX]),
+});
 
 export function isSlotEmpty(slot) {
   return slot.name === `#${slot.id}` && SLOT_FIELDS.every(field => slot[field] == null);

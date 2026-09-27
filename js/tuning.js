@@ -8,10 +8,10 @@
 // Copyright (C) 2014 GUE — GPL v2.0
 
 import { calcSetup } from './calc.js';
-import { ATOMIZER_SIZES, CARB_BORE_SIZES, CARB_TYPES, getClipCount } from './needledb.js';
+import { ATOMIZER_SIZES, CARB_BORE_SIZES, CARB_TYPES, resolveClipCount } from './needledb.js';
 import { compareNeedleTypes, getNeedleSeries, getClipsSource,
          CATALOG_EMPTY_VALUE } from './needlecatalog.js';
-import { JET_MIN, ND_MAX, HD_MAX } from './share.js';
+import { JET_FIELD_BOUNDS } from './share.js';
 
 // Five throttle ranges on calcSetup()'s existing 5 % grid, points as
 // integer percent. 1/8 throttle = 12.5 % is not on the grid, so the r0/r1
@@ -64,9 +64,6 @@ const CURVE_KEY_PRECISION = 1e6;
 
 const COST_EPSILON = 1e-9;
 
-// Bounds per steppable numeric jet field; limits shared with share.js.
-const JET_BOUNDS = { nd: [JET_MIN, ND_MAX], hd: [JET_MIN, HD_MAX] };
-
 // Curve points of `result` for the given range, matched by integer percent
 // (Math.round(tp * 100)) rather than float comparison.
 function rangePoints(result, rangeIndex) {
@@ -78,13 +75,16 @@ function mean(values) {
   return values.length === 0 ? null : values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-// true when every point of the range is past the idle-jet blend and the
-// needle opens more than the main jet: the main jet alone meters fuel, so
-// no needle change can make this range richer.
+// true when the range has points past the idle-jet blend (≥ 35 %) and at
+// every one of them the needle opens more than the main jet: there the main
+// jet alone meters fuel, so no needle change makes them richer. Blended
+// points (≤ 30 %) are left out rather than disqualifying the range — else
+// 1/4–1/2, which starts at 30 %, could never count as limited. Ranges with
+// blended points only (0–1/8, 1/8–1/4) are never limited.
 export function hdLimited(result, setup, rangeIndex) {
-  const points = rangePoints(result, rangeIndex);
-  return points.length > 0 && points.every(p =>
-    Math.round(p.tp * 100) >= BLEND_END_PERCENT && p.hdEquiv >= setup.hd);
+  const unblended = rangePoints(result, rangeIndex)
+    .filter(p => Math.round(p.tp * 100) >= BLEND_END_PERCENT);
+  return unblended.length > 0 && unblended.every(p => p.hdEquiv >= setup.hd);
 }
 
 // Per-range comparison of a candidate curve against the reference curve.
@@ -129,12 +129,6 @@ function curveKey(result) {
     .join('|');
 }
 
-// Clip positions of a needle: its own `clips` (custom needles included),
-// else the series default — same resolution as resolveClipCount() in app.js.
-function clipCountOf(allNeedles, needleType) {
-  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
-}
-
 function compareTypeClip(a, b) {
   return compareNeedleTypes(a.needleType, b.needleType) || a.clipPos - b.clipPos;
 }
@@ -148,7 +142,7 @@ function compareTypeClip(a, b) {
 // state and reused for every range and direction.
 // Returns [{ needleType, clipPos, alsoTypes, setup, flow[5], diameter[5],
 // eq[5] }] with flow/diameter/eq per TUNING_RANGES entry, against `ref`.
-export function evaluateCandidates({ allNeedles, ref, current, customTypes = [] }) {
+export function evaluateCandidates({ allNeedles, ref, current }) {
   const refResult = calcSetup(ref, allNeedles);
   const carbType = allNeedles[ref.needleType]?.carbType;
   if (!refResult || !carbType) return [];
@@ -159,7 +153,7 @@ export function evaluateCandidates({ allNeedles, ref, current, customTypes = [] 
   for (const needleType of Object.keys(allNeedles)) {
     const needle = allNeedles[needleType];
     if (needle?.carbType !== carbType) continue;
-    const clips = clipCountOf(allNeedles, needleType);
+    const clips = resolveClipCount(needleType, allNeedles);
     for (let clipPos = 1; clipPos <= clips; clipPos++) {
       if (needleType === current.needleType && clipPos === current.clipPos) continue;
       const setup = { needleType, clipPos, carbSize, jetType, needleJet, nd, hd };
@@ -187,6 +181,23 @@ export function evaluateCandidates({ allNeedles, ref, current, customTypes = [] 
   });
 }
 
+// A group of identical curves that contains the current needle (at another
+// clip) is presented as that needle: the same curve is then a clip-only
+// change instead of a needle swap. The former representative moves into
+// alsoTypes. Other groups are returned unchanged.
+function asSeenFrom(cand, current) {
+  const own = cand.alsoTypes.find(a => a.needleType === current.needleType);
+  if (!own) return cand;
+  return {
+    ...cand,
+    needleType: own.needleType,
+    clipPos: own.clipPos,
+    setup: { ...cand.setup, needleType: own.needleType, clipPos: own.clipPos },
+    alsoTypes: [{ needleType: cand.needleType, clipPos: cand.clipPos }, ...cand.alsoTypes.filter(a => a !== own)]
+      .sort(compareTypeClip),
+  };
+}
+
 function sideWeight(r, rangeIndex) {
   return Math.abs(r - rangeIndex) === 1 ? SIDE_WEIGHT_ADJACENT : SIDE_WEIGHT_FAR;
 }
@@ -211,7 +222,8 @@ export function rankNextSteps(evaluated, {
   const ranked = [];
 
   if (target != null) {
-    for (const cand of evaluated) {
+    for (const group of evaluated) {
+      const cand = asSeenFrom(group, current);
       const candTarget = cand.flow[rangeIndex];
       if (candTarget == null) continue;
       const inc = dir * (candTarget - target);
@@ -264,14 +276,14 @@ export function validateTuningSetup(setup, { allNeedles, carbType }) {
   const { needleType, clipPos, carbSize, jetType, needleJet } = setup;
 
   if (allNeedles[needleType]?.carbType !== carbType) return fail('needleType');
-  if (!Number.isInteger(clipPos) || clipPos < 1 || clipPos > clipCountOf(allNeedles, needleType)) {
+  if (!Number.isInteger(clipPos) || clipPos < 1 || clipPos > resolveClipCount(needleType, allNeedles)) {
     return fail('clipPos');
   }
   if (!CARB_BORE_SIZES[carbType]?.includes(carbSize)) return fail('carbSize');
   if (!CARB_TYPES[carbType]?.atomizers.includes(jetType)) return fail('jetType');
   if (!ATOMIZER_SIZES[jetType]?.includes(needleJet)) return fail('needleJet');
   for (const field of ['nd', 'hd']) {
-    const [min, max] = JET_BOUNDS[field];
+    const [min, max] = JET_FIELD_BOUNDS[field];
     const value = setup[field];
     if (!Number.isFinite(value) || value < min || value > max) return fail(field);
   }
@@ -300,7 +312,7 @@ export function stepJet(current, field, dir) {
   if (value == null) return null;
 
   if (field === 'nd' || field === 'hd') {
-    const [min, max] = JET_BOUNDS[field];
+    const [min, max] = JET_FIELD_BOUNDS[field];
     const next = value + dir;
     if (next < min || next > max) return null;
     return { ...current, [field]: next };

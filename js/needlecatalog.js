@@ -7,7 +7,7 @@
 // filter labels etc. are resolved in the UI via t() and catalog.* keys.
 // Copyright (C) 2014 GUE — GPL v2.0
 
-import { NEEDLE_DB, VERIFIED_DEFAULT_CLIP_PREFIXES, getClipCount,
+import { NEEDLE_DB, VERIFIED_DEFAULT_CLIP_PREFIXES, resolveClipCount,
          getNeedleLength, getTaperCount } from './needledb.js';
 
 // Catalog columns in display order. `key` doubles as the i18n suffix
@@ -86,8 +86,7 @@ export function buildCatalogRows({ allNeedles, carbType, customTypes = [], setup
         tapers: getTaperCount(needle),
       };
       for (const field of GEOMETRY_FIELDS) row[field] = needle[field] ?? null;
-      // Same resolution as resolveClipCount() in app.js.
-      row.clips = needle.clips ?? getClipCount(type);
+      row.clips = resolveClipCount(type, allNeedles);
       row.clipsSource = getClipsSource(type, isCustom);
       row.length = getNeedleLength(needle, type);
       row.isCustom = isCustom;

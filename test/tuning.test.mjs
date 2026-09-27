@@ -30,7 +30,7 @@ const CUSTOM_PHBL = { carbType: 'PHBL', A: 2.5, B: 1.2, C: 22, clips: 4, length:
 // Same flow as the UI: evaluate once per current state, then rank one
 // range/direction.
 function rank({ ref, current = ref, rangeIndex, dir, allNeedles = NEEDLE_DB, customTypes = [] }) {
-  const evaluated = evaluateCandidates({ allNeedles, ref, current, customTypes });
+  const evaluated = evaluateCandidates({ allNeedles, ref, current });
   const summary = rangeSummary(calcSetup(ref, allNeedles), calcSetup(current, allNeedles), current);
   return rankNextSteps(evaluated, {
     currentFlow: summary.map(r => r.flow),
@@ -99,7 +99,7 @@ test('no mutation of ref, current or allNeedles', () => {
   const current = { ...REF_VHSX, needleType: 'K96', clipPos: 5 };
   const snapshot = structuredClone({ allNeedles, ref, current });
 
-  const evaluated = evaluateCandidates({ allNeedles, ref, current, customTypes: ['Z1'] });
+  const evaluated = evaluateCandidates({ allNeedles, ref, current });
   const summary = rangeSummary(calcSetup(ref, allNeedles), calcSetup(current, allNeedles), current);
   for (let rangeIndex = 0; rangeIndex < TUNING_RANGES.length; rangeIndex++) {
     for (const dir of [1, -1]) {
@@ -131,16 +131,21 @@ test('rangeSummary(ref, ref): flow and diameter are 0 everywhere', () => {
   }
 });
 
-test('hdLimited: main-jet-limited top range, never inside the idle-jet blend', () => {
+test('hdLimited: judged on the points past the idle-jet blend (≥ 35 %) only', () => {
   const result = calcSetup(REF_VHSX, NEEDLE_DB);
   assert.equal(hdLimited(result, REF_VHSX, 4), true);
-  assert.equal(hdLimited(result, REF_VHSX, 0), false);
-  assert.equal(hdLimited(result, REF_VHSX, 1), false);
-  // r2 starts at 30 % (still blended), so it can never count as limited,
-  // even with a tiny main jet.
+  assert.equal(hdLimited(result, REF_VHSX, 2), false);
+  // 0–1/8 and 1/8–1/4 lie entirely inside the blend: never limited, even
+  // with a tiny main jet.
   const tinyHd = { ...REF_VHSX, hd: 1 };
-  assert.equal(hdLimited(calcSetup(tinyHd, NEEDLE_DB), tinyHd, 2), false);
-  assert.equal(hdLimited(calcSetup(tinyHd, NEEDLE_DB), tinyHd, 3), true);
+  const tiny = calcSetup(tinyHd, NEEDLE_DB);
+  assert.equal(hdLimited(tiny, tinyHd, 0), false);
+  assert.equal(hdLimited(tiny, tinyHd, 1), false);
+  // 1/4–1/2 starts at the blended 30 % point, which is left out — its
+  // 35–50 % points decide.
+  assert.equal(hdLimited(tiny, tinyHd, 2), true);
+  const smallHd = { ...REF_VHSX, hd: 95 };
+  assert.equal(hdLimited(calcSetup(smallHd, NEEDLE_DB), smallHd, 2), true);
 });
 
 test('diameter is smaller than flow for positive changes', () => {
@@ -209,6 +214,22 @@ test('VHSx after K96 C5: r1 richer → K97 C3, then group K27 C4 / K33 C4', () =
   assert.deepEqual(second.alsoTypes, [{ needleType: 'K33', clipPos: 4 }]);
 });
 
+test('identical-curve group containing the current needle is shown as a clip-only change of it', () => {
+  // K27 and K33 share their geometry, so K27 C2 and K33 C2 form one group.
+  const fromK27 = rank({ ref: REF_VHSX, rangeIndex: 2, dir: -1 }).suggestions[2];
+  assertSuggestion(fromK27, 'K27', 2);
+  assert.deepEqual(fromK27.alsoTypes, [{ needleType: 'K33', clipPos: 2 }]);
+  assert.equal(fromK27.tags.clipOnly, true);
+
+  const refK33 = { ...REF_VHSX, needleType: 'K33' };
+  const fromK33 = rank({ ref: refK33, rangeIndex: 2, dir: -1 }).suggestions[2];
+  assertSuggestion(fromK33, 'K33', 2);
+  assert.equal(fromK33.setup.needleType, 'K33');
+  assert.deepEqual(fromK33.alsoTypes, [{ needleType: 'K27', clipPos: 2 }]);
+  assert.equal(fromK33.tags.clipOnly, true);
+  assert.equal(fromK33.cost, fromK27.cost, 'same clip bonus either way');
+});
+
 test('VHSx K27 C3: r4 richer → no suggestions, reason hdLimited', () => {
   const res = rank({ ref: REF_VHSX, rangeIndex: 4, dir: 1 });
   assert.deepEqual(res.suggestions, []);
@@ -265,7 +286,7 @@ test('PHBL D36 C2: r2 richer → D21 C4, D34 C2, D31 C2 with no side effects', (
 test('custom needle of the same carb type is a candidate tagged custom; other carb types never', () => {
   const allNeedles = { ...NEEDLE_DB, Z1: CUSTOM_VHSX, Z2: CUSTOM_PHBL };
   const customTypes = ['Z1', 'Z2'];
-  const evaluated = evaluateCandidates({ allNeedles, ref: REF_VHSX, current: REF_VHSX, customTypes });
+  const evaluated = evaluateCandidates({ allNeedles, ref: REF_VHSX, current: REF_VHSX });
   const members = evaluated.flatMap(c => [c, ...c.alsoTypes]);
 
   assert.deepEqual(members.filter(c => c.needleType === 'Z1').map(c => c.clipPos), [1, 2, 3, 4]);

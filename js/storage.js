@@ -72,8 +72,9 @@ export function saveCarbType(ct) {
   localStorage.setItem(CARB_TYPE_KEY, ct);
 }
 
-export function getAllNeedles() {
-  const custom = loadCustomNeedles();
+// `custom` lets a caller that already read the custom needles (app.js's
+// readNeedleSnapshot()) pass them in instead of reading localStorage again.
+export function getAllNeedles(custom = loadCustomNeedles()) {
   const customMap = Object.fromEntries(
     custom.map(n => {
       const entry = { carbType: n.carbType, A: n.A, B: n.B, C: n.C };

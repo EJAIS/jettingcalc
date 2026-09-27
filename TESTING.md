@@ -242,6 +242,10 @@ match the regression values in `test/tuning.test.mjs`:
   tab resets with a notice. No page errors either way.
 - **Jet at its limit** — stepping the DQ needle jet to 274 disables + and
   shows "largest value reached" as text plus a cell tooltip.
+- **Reads per render pass** — with `Storage.prototype.getItem` wrapped,
+  one `updateUI()` (an ND edit) reads `dellorto_custom_needles` at most
+  once, with the calculator, the catalog and the fine tuning tab visible
+  (before `readNeedleSnapshot()`: 15, 19 and 17 reads).
 - **Keyboard** — Enter steps and keeps focus; at a limit focus moves to
   the row label, so further Enters never step the other way.
 - **Carb type** — switching the calculator to PHBH resets the tab (empty

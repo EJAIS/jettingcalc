@@ -165,16 +165,33 @@ function needleSort(a, b) {
   return parseInt(a.slice(1)) - parseInt(b.slice(1));
 }
 
-function getNeedlesForCarbType(ct) {
-  return Object.entries(getAllNeedles())
+// All needle data one render pass needs, read from localStorage exactly
+// once: allNeedles (NEEDLE_DB + custom needles, custom wins), the stored
+// custom needles and their types. updateUI() creates one per pass and hands
+// it down; every function taking it as optional last parameter reads a
+// fresh one when called without (event handlers). Valid for that pass only
+// — never cached beyond it, so saveCustomNeedles() or a change from another
+// tab needs no invalidation. Read-only: allNeedles shares NEEDLE_DB's entry
+// objects, nothing may mutate it (none of the builders does).
+function readNeedleSnapshot() {
+  const customNeedles = loadCustomNeedles();
+  return {
+    allNeedles: getAllNeedles(customNeedles),
+    customNeedles,
+    customTypes: customNeedles.map(n => n.type),
+  };
+}
+
+function getNeedlesForCarbType(ct, snap = readNeedleSnapshot()) {
+  return Object.entries(snap.allNeedles)
     .filter(([, needle]) => needle.carbType === ct)
     .map(([key]) => key)
     .sort(needleSort);
 }
 
-function buildNeedleOptions(selectedType) {
-  const keys = getNeedlesForCarbType(carbType);
-  const customTypes = loadCustomNeedles()
+function buildNeedleOptions(selectedType, snap = readNeedleSnapshot()) {
+  const keys = getNeedlesForCarbType(carbType, snap);
+  const customTypes = snap.customNeedles
     .filter(n => n.carbType === carbType)
     .map(n => n.type);
   return `<option value="">${t('setup.select')}</option>` +
@@ -213,7 +230,7 @@ function buildNeedleJetOptions(jetType, selectedValue) {
     sizes.map(v => `<option value="${v}"${String(v) === String(selectedValue) ? ' selected' : ''}>${v}</option>`).join('');
 }
 
-function buildClipPosOptions(needleType, selectedValue, allNeedles) {
+function buildClipPosOptions(needleType, selectedValue, allNeedles = getAllNeedles()) {
   const count = needleType ? resolveClipCount(needleType, allNeedles) : 0;
   const positions = Array.from({ length: count }, (_, i) => i + 1);
   return `<option value="">${t('setup.select')}</option>` +
@@ -231,11 +248,11 @@ function showNotice(msg) {
 
 // ── Table rendering ───────────────────────────────────────────────────────────
 
-function renderTable() {
+function renderTable(snap = readNeedleSnapshot()) {
   const tbody = document.getElementById('setup-tbody');
   if (!tbody) return;
 
-  const allNeedles = getAllNeedles();
+  const { allNeedles } = snap;
 
   tbody.innerHTML = setups.map(s => {
     const result = s.needleType ? calcSetup(s, allNeedles) : null;
@@ -262,7 +279,7 @@ function renderTable() {
       </td>
       <td>
         <select class="cell-input" data-id="${s.id}" data-field="needleType">
-          ${buildNeedleOptions(s.needleType)}
+          ${buildNeedleOptions(s.needleType, snap)}
         </select>
       </td>
       <td>
@@ -310,11 +327,11 @@ function renderTable() {
   }).join('');
 }
 
-function renderCalcResults() {
+function renderCalcResults(snap = readNeedleSnapshot()) {
   const container = document.getElementById('calc-results-body');
   if (!container) return;
 
-  const allNeedles = getAllNeedles();
+  const { allNeedles } = snap;
   const activeSetups = setups.filter(s => s.needleType);
 
   if (activeSetups.length === 0) {
@@ -416,14 +433,16 @@ function updateUI() {
   if (tuningApplyMessage && stateKey({ carbType, setups }) !== tuningApplyMessage.appliedKey) {
     hideTuningApplyBanner();
   }
-  renderTable();
-  renderCharts(setups, getAllNeedles());
-  renderCalcResults();
-  renderCrossSection();
-  validateTuningState();
+  // One read of the needle data for the whole pass (readNeedleSnapshot()).
+  const snap = readNeedleSnapshot();
+  renderTable(snap);
+  renderCharts(setups, snap.allNeedles);
+  renderCalcResults(snap);
+  renderCrossSection(snap);
+  validateTuningState(snap);
   // Covers setup edits, custom-needle save/delete and language changes.
-  if (currentView === 'needles') renderNeedleCatalog();
-  if (currentView === 'tuning') renderTuning();
+  if (currentView === 'needles') renderNeedleCatalog(snap);
+  if (currentView === 'tuning') renderTuning(snap);
 }
 
 // ── Views (calculator / needle catalog / fine tuning) ───────────────────────
@@ -521,19 +540,19 @@ function fillPlaceholder(template, placeholder, value) {
 }
 
 // All rows of the active catalog carbType, before any filter.
-function buildActiveCatalogRows() {
+function buildActiveCatalogRows(snap = readNeedleSnapshot()) {
   return buildCatalogRows({
-    allNeedles:  getAllNeedles(),
+    allNeedles:  snap.allNeedles,
     carbType:    catalogCarbType(),
-    customTypes: loadCustomNeedles().map(n => n.type),
+    customTypes: snap.customTypes,
     setups,
   });
 }
 
-function renderNeedleCatalog() {
+function renderNeedleCatalog(snap = readNeedleSnapshot()) {
   renderCatalogLegend();
-  renderCatalogControls();
-  renderCatalogTable();
+  renderCatalogControls(snap);
+  renderCatalogTable(snap);
 }
 
 // Dimension key (needle schematic) below the filter bar: visibility, plus
@@ -565,12 +584,12 @@ function withPreservedFocus(container, selectorAttrs, render) {
 
 const CATALOG_CONTROL_ATTRS = ['data-catalog-carb', 'data-catalog-series', 'data-catalog-tapers', 'data-catalog-used'];
 
-function renderCatalogControls() {
+function renderCatalogControls(snap = readNeedleSnapshot()) {
   const container = document.getElementById('catalog-controls');
   if (!container) return;
 
   const activeType = catalogCarbType();
-  const rows = buildActiveCatalogRows();
+  const rows = buildActiveCatalogRows(snap);
   const seriesList = getSeriesList(rows);
   // Taper counts reflect the series choice only (not taper/search filter).
   const counts = countByTaper(filterCatalogRows(rows, { series: catalogState.series }));
@@ -615,11 +634,11 @@ function catalogSortIndicator(key) {
   return catalogState.sortDir === 'asc' ? '▲' : '▼';
 }
 
-function renderCatalogTable() {
+function renderCatalogTable(snap = readNeedleSnapshot()) {
   const table = document.getElementById('catalog-table');
   if (!table) return;
 
-  const allRows = buildActiveCatalogRows();
+  const allRows = buildActiveCatalogRows(snap);
   const rows = sortCatalogRows(
     filterCatalogRows(allRows, catalogState),
     { key: catalogState.sortKey, dir: catalogState.sortDir },
@@ -776,10 +795,10 @@ function loadTuningReference(source, setup) {
 // - if the reference, the current state or any history entry is no longer
 //   usable, the session starts over with a notice — silently skipping
 //   history entries would make "Step back" jump unexpectedly.
-function validateTuningState() {
+function validateTuningState(snap = readNeedleSnapshot()) {
   const { manual } = tuningState;
   if (!tuningState.ref && manual.needleType == null) return;
-  const allNeedles = getAllNeedles();
+  const { allNeedles } = snap;
   if (manual.needleType && allNeedles[manual.needleType]?.carbType !== carbType) {
     manual.needleType = null;
     manual.clipPos = null;
@@ -800,13 +819,13 @@ function validateTuningState() {
 // against the reference and the rankings for all 5 ranges × 2 directions.
 // evaluateCandidates() is the expensive part, so the result is memoised by
 // reference + current + custom needle version (an edit changes the curves).
-function getTuningEvaluation() {
+function getTuningEvaluation(snap) {
   const { ref, current } = tuningState;
   const key = JSON.stringify([ref, current, customNeedlesVersion]);
   if (tuningState.evalKey === key) return tuningState.evalCache;
 
-  const allNeedles = getAllNeedles();
-  const customTypes = loadCustomNeedles().map(n => n.type);
+  // Read only on a cache miss (hence no default parameter).
+  const { allNeedles, customTypes } = snap ?? readNeedleSnapshot();
   const summary = rangeSummary(calcSetup(ref, allNeedles), calcSetup(current, allNeedles), current);
   const evaluated = evaluateCandidates({ allNeedles, ref, current });
   const options = {
@@ -840,7 +859,7 @@ function formatEq(value) {
 }
 
 // The tuning view follows the calculator's carbType and only displays it.
-function renderTuning() {
+function renderTuning(snap = readNeedleSnapshot()) {
   const view = document.getElementById('view-tuning');
   if (!view) return;
   const active = view.contains(document.activeElement) ? document.activeElement : null;
@@ -849,13 +868,11 @@ function renderTuning() {
   // The apply banner (and its Undo) only describes the session as it was
   // right after applying; any further tuning action ends it.
   if (tuningApplyMessage && tuningApplyMessage.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
-  const allNeedles = getAllNeedles();
-
   withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
     const carbLabel = document.getElementById('tuning-carb-type');
     if (carbLabel) carbLabel.textContent = fillPlaceholder(t('tuning.carbType'), '{type}', carbType);
     renderBetaBanner(document.getElementById('tuning-beta-banner'));
-    renderTuningReference(allNeedles);
+    renderTuningReference(snap);
     renderTuningApplyBanner();
 
     const hasRef = tuningState.ref != null;
@@ -873,7 +890,7 @@ function renderTuning() {
     }
     if (!hasRef) return;
 
-    const evaluation = getTuningEvaluation();
+    const evaluation = getTuningEvaluation(snap);
     renderTuningStatus();
     renderTuningRanges(evaluation);
     renderTuningSuggestions();
@@ -892,9 +909,10 @@ function renderTuning() {
 // Reference picker: one chip per usable setup slot (name + setup colour,
 // as in the catalog; pressed = the loaded reference came from it) and a
 // chip that opens / closes the manual form (pressed = manual reference).
-function renderTuningReference(allNeedles) {
+function renderTuningReference(snap = readNeedleSnapshot()) {
   const el = document.getElementById('tuning-ref');
   if (!el) return;
+  const { allNeedles } = snap;
   const colors = getColors();
   const slots = setups.filter(s => isTuningSetupUsable(s, allNeedles));
 
@@ -911,19 +929,20 @@ function renderTuningReference(allNeedles) {
     <span id="tuning-ref-label" class="tuning-ref-label">${escapeHtml(t('tuning.ref.label'))}</span>
     <div class="chip-group tuning-sources" role="group" aria-labelledby="tuning-ref-label">${slotChips}${manualChip}</div>
     ${slots.length === 0 ? `<p class="tuning-hint">${escapeHtml(t('tuning.ref.noSlots'))}</p>` : ''}
-    ${tuningState.manualOpen ? buildTuningManualForm(allNeedles) : ''}`;
+    ${tuningState.manualOpen ? buildTuningManualForm(snap) : ''}`;
 }
 
 // Manual reference: the setup table's option builders and bounds, so the
 // choices are filtered exactly like in the calculator.
-function buildTuningManualForm(allNeedles) {
+function buildTuningManualForm(snap = readNeedleSnapshot()) {
+  const { allNeedles } = snap;
   const m = tuningState.manual;
   const field = (labelKey, control) =>
     `<label class="tuning-field"><span>${escapeHtml(t(labelKey))}</span>${control}</label>`;
   const complete = isTuningSetupUsable(m, allNeedles);
   return `
     <div id="tuning-manual" class="tuning-manual">
-      ${field('col.needle', `<select class="cell-input" data-tuning-field="needleType">${buildNeedleOptions(m.needleType)}</select>`)}
+      ${field('col.needle', `<select class="cell-input" data-tuning-field="needleType">${buildNeedleOptions(m.needleType, snap)}</select>`)}
       ${field('col.clip', `<select class="cell-input" data-tuning-field="clipPos">${buildClipPosOptions(m.needleType, m.clipPos, allNeedles)}</select>`)}
       ${field('col.carbSize', `<select class="cell-input" data-tuning-field="carbSize">${buildCarbSizeOptions(m.carbSize)}</select>`)}
       ${field('col.jetType', `<select class="cell-input" data-tuning-field="jetType">${buildJetTypeOptions(m.jetType)}</select>`)}
@@ -1937,7 +1956,7 @@ function csGapPaths(diam, { CX, SX, YC, BORE_HALF, HBAND }) {
   };
 }
 
-function renderCrossSection() {
+function renderCrossSection(snap = readNeedleSnapshot()) {
   const sel = document.getElementById('cs-setup-select');
   const diag = document.getElementById('cross-section-diagram');
   if (!sel || !diag) return;
@@ -1955,11 +1974,11 @@ function renderCrossSection() {
     : setups.find(s => s.needleType) ?? setups[0];
   sel.value = defaultSetup.id;
 
-  updateCrossSectionDiagram();
+  updateCrossSectionDiagram(snap);
 }
 
-function buildCrossSectionSVG(setup, result, idx) {
-  const needle = getAllNeedles()[setup.needleType];
+function buildCrossSectionSVG(setup, result, idx, snap = readNeedleSnapshot()) {
+  const needle = snap.allNeedles[setup.needleType];
   if (!needle || !result) return '';
 
   const pt = result.curve[Math.min(idx, result.curve.length - 1)];
@@ -2024,7 +2043,7 @@ function buildCrossSectionSVG(setup, result, idx) {
 }
 
 // Full diagram rebuild -- called on setup change and initial render
-function updateCrossSectionDiagram() {
+function updateCrossSectionDiagram(snap = readNeedleSnapshot()) {
   const sel    = document.getElementById('cs-setup-select');
   const slider = document.getElementById('cs-throttle-slider');
   const tpDisp = document.getElementById('cs-throttle-value');
@@ -2041,7 +2060,7 @@ function updateCrossSectionDiagram() {
     return;
   }
 
-  const result = calcSetup(setup, getAllNeedles());
+  const result = calcSetup(setup, snap.allNeedles);
   if (!result) {
     diag.innerHTML = `<p class="cs-empty">${t('crosssection.empty')}</p>`;
     return;
@@ -2050,7 +2069,7 @@ function updateCrossSectionDiagram() {
   const idx     = throttlePct / 5;
   const pt      = result.curve[Math.min(idx, result.curve.length - 1)];
   const annulus = calcAnnulusArea(setup.needleJet, pt.diam);
-  const svgHTML = buildCrossSectionSVG(setup, result, idx);
+  const svgHTML = buildCrossSectionSVG(setup, result, idx, snap);
 
   const needleClear = pt.pos < 0;
   diag.innerHTML = `
@@ -2090,8 +2109,9 @@ function updateCrossSectionLive() {
   const setup = setups.find(s => s.id === parseInt(sel.value));
   if (!setup?.needleType) return;
 
-  const needle = getAllNeedles()[setup.needleType];
-  const result = calcSetup(setup, getAllNeedles());
+  const { allNeedles } = readNeedleSnapshot();
+  const needle = allNeedles[setup.needleType];
+  const result = calcSetup(setup, allNeedles);
   if (!needle || !result) return;
 
   const idx     = throttlePct / 5;
@@ -2227,7 +2247,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Cross-section setup selector and throttle slider
-  document.getElementById('cs-setup-select')?.addEventListener('change', updateCrossSectionDiagram);
+  // Wrapped: the Event must not arrive as the optional snapshot parameter.
+  document.getElementById('cs-setup-select')?.addEventListener('change', () => updateCrossSectionDiagram());
   document.getElementById('cs-throttle-slider')?.addEventListener('input', updateCrossSectionLive);
 
   // Load demo data (demo uses K98/DP → VHSx)

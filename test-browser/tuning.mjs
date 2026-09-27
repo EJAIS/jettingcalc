@@ -466,6 +466,44 @@ test('a validation error when applying shows in the message field, not via showN
   });
 });
 
+// updateUI() reads the needle data once per pass (readNeedleSnapshot() in
+// app.js) and hands it to every renderer; before, one pass read the custom
+// needles 15 (calculator), 19 (catalog) or 17 (fine tuning) times.
+const MAX_CUSTOM_NEEDLE_READS_PER_UPDATE = 1;
+
+test(`one updateUI() reads the custom needles at most ${MAX_CUSTOM_NEEDLE_READS_PER_UPDATE}× — calculator, catalog and fine tuning`, async () => {
+  const custom = JSON.stringify([{ type: 'Z1', carbType: 'VHSx', A: 2.5, B: 1.75, C: 43, clips: 4, length: 73.5 }]);
+  for (const view of ['calc', 'needles', 'tuning']) {
+    await withPage(async page => {
+      await page.addInitScript(() => {
+        window.__reads = {};
+        const getItem = Storage.prototype.getItem;
+        Storage.prototype.getItem = function (key) {
+          window.__reads[key] = (window.__reads[key] ?? 0) + 1;
+          return getItem.call(this, key);
+        };
+      });
+      await page.addInitScript(c => localStorage.setItem('dellorto_custom_needles', c), custom);
+      await openTuningWithK27(page); // K27 in row 1, reference loaded
+      await page.click('[data-tuning-step="1:1"]');
+      if (view === 'calc') await page.click('#tab-calc');
+      if (view === 'needles') await page.click('#tab-catalog');
+
+      // Exactly one updateUI(): an ND edit (its handler reads no needles).
+      await page.evaluate(() => { window.__reads = {}; });
+      await page.evaluate(() => {
+        const nd = document.querySelector('#setup-tbody tr[data-row-id="1"] [data-field="nd"]');
+        nd.value = '51';
+        nd.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      const reads = await page.evaluate(() => window.__reads);
+      assert.ok((reads.dellorto_custom_needles ?? 0) <= MAX_CUSTOM_NEEDLE_READS_PER_UPDATE,
+        `${view}: ${JSON.stringify(reads)}`);
+      assert.equal((await storedSetups(page))[0].nd, 51, `${view}: the edit went through`);
+    });
+  }
+});
+
 // ── i18n, carb type, mobile ──────────────────────────────────────────────────
 
 test('language switch keeps the tuning state, cards and apply banner', async () => {

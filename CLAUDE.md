@@ -152,6 +152,18 @@ mit Quelle in `KONSTANTEN_VERIFIKATION.md` festgehalten.
   unpassende `needleType` (inkl. `clipPos`), `jetType` und `carbSize` zurück
   und wählt bei nur einem möglichen Mischrohr dieses automatisch aus.
 
+**Lesen pro Render-Durchlauf:** `updateUI()` liest die Nadeldaten genau
+einmal (`readNeedleSnapshot()` in `app.js`: `allNeedles`, `customNeedles`,
+`customTypes`) und reicht den Snapshot an alle Render-Funktionen und
+Builder weiter; die nehmen ihn als optionalen letzten Parameter und lesen
+ohne ihn selbst (Event-Handler). Der Snapshot gilt nur für diesen
+Durchlauf — kein Cache darüber hinaus, also keine Invalidierung bei
+`saveCustomNeedles()` oder Änderungen aus einem anderen Tab — und wird nie
+verändert (`allNeedles` teilt die Einträge von `NEEDLE_DB`).
+`getAllNeedles(custom)` (`storage.js`) nimmt die bereits gelesene Liste
+optional an. Ein `updateUI()` liest `dellorto_custom_needles` einmal
+(vorher 15–19-mal); `test-browser/tuning.mjs` schreibt die Obergrenze fest.
+
 **UI-Zustand, der bewusst NICHT persistiert wird:** `catalogState`
 (Nadelkatalog), `tuningState` (Feinabstimmung), der Undo-Snapshot eines
 Share-Imports (`importUndo`) und der einer Übernahme aus der

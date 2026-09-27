@@ -54,9 +54,16 @@ for anyone who hasn't installed Playwright. Run them explicitly:
 ```
 npm install                       # pulls in the playwright devDependency only —
                                    # the app itself still has zero runtime dependencies
-npx playwright install chromium   # first time only
+npx playwright install chromium   # first time and after every Playwright update
 node --test test-browser/*.mjs
 ```
+
+After an update of the `playwright` package (e.g. a fresh `npm install`
+that pulls a newer version), run `npx playwright install chromium` again:
+each Playwright version expects its own Chromium build, and without it the
+tests fail at launch with "Executable doesn't exist at …/ms-playwright/…".
+`CHROMIUM_PATH` (see the end of this section) remains the alternative for
+environments that can't download the browser.
 
 Each test spins up its own throwaway static file server (serving the repo
 root, equivalent to `python3 -m http.server`) and its own isolated

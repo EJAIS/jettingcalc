@@ -4,11 +4,12 @@ This project's calculation-engine and share-link unit tests are covered in
 [README.md](README.md#testing) — start there for `test/*.test.mjs` (Node's
 built-in test runner, zero dependencies, run with `node --test`).
 
-This file covers everything added for the PWA work (service worker,
-share-link freshness checking, the update banner, the install button):
-the Lighthouse installability audit, the Playwright browser test suite,
-and the manual checklist for scenarios no headless browser can exercise
-(a real install prompt, an actual home-screen launch).
+This file covers everything that needs a real browser: the Lighthouse
+installability audit, the Playwright browser test suite (PWA behavior,
+needle catalog, carburetor type selector, custom needle migration, fine
+tuning), and the manual checklists for scenarios no headless browser can
+exercise (a real install prompt, an actual home-screen launch, fine tuning
+on a real phone).
 
 ## Lighthouse PWA audit
 
@@ -150,6 +151,9 @@ in EN and once in DE:
   one row.
 - **Landscape 915×412 and desktop 1280×800** — VHSx, beta label, PHBH and
   PHBL in one row, in the order VHSx, PHBH, ⓘ, PHBL, ⓘ (layout as before).
+  Between 601 and 1023 px the selector uses slightly less padding and gap,
+  so the row also fits with fonts wider than Segoe UI (Noto Sans on Linux,
+  Roboto on Android); the 915 px case failed there before by ~3 px.
 - **Tap area** — the point 15 px right of the PHBH ⓘ's centre hit-tests to
   the icon (`elementFromPoint`; a tap alone isn't proof, since Chromium's
   touch adjustment snaps taps to nearby targets), and a touch tap there
@@ -166,6 +170,55 @@ in EN and once in DE:
   `data-tooltip` of the selector and the custom needle list; the PHBH ⓘ
   and the delete button carry the expected translated labels.
 
+`test-browser/tuning.mjs` covers the fine tuning tab (service workers
+blocked as above). The setup K27 C3 / 34 / DQ 264 / ND 50 / HD 128 is
+entered through the calculator table like a user would; expected needles
+match the regression values in `test/tuning.test.mjs`:
+
+- **Tabs and history** — a direct load with `#tuning` opens the tab (empty
+  state); tab clicks set `#tuning` / `#needles`, and `history.back()`
+  (popstate) walks back through the tuning tab to the calculator.
+- **Steps and cards** — loading K27 as reference, + in 1/8–1/4 gives
+  K96 C5 in the status line and three cards (K96 · Clip 5, U7 · Clip 3
+  with the "series change" tag, K97 · Clip 3), the first one pressed;
+  + in 3/4–1 is disabled with its "HD-limited" reason visible in the row.
+- **Undo semantics** — picking another card (tap anywhere on the card)
+  adds no history entry: one "Step back" returns to the reference and
+  hides the cards. A second step shows the K27 · Clip 4 card with "also:
+  K33 · Clip 4"; "Reset to reference" disables both actions again.
+- **Jets** — HD + turns the 3/4–1 delta from 0.0 % into +1.6 %, shows
+  HD 129 in the status and hides the cards; the HD row is highlighted
+  while ranges are HD-limited.
+- **Apply** — "Save to free slot" writes slot 2 as "K96 C5" and leaves the
+  reference slot alone; "Overwrite reference slot" writes slot 1 (name
+  kept) and restarts tuning from it; Undo restores slot 1 and the tuning
+  session; `dellorto_carb_type` is never written; "View in calculator"
+  switches the view.
+- **Language switch** — EN → DE → EN keeps status line, cards, the apply
+  banner (translated) and the undo history.
+- **Undo lifecycle** — after "Overwrite reference slot", the next tuning
+  step closes the banner and keeps that step (Undo can't discard it).
+- **Reference picker** — tapping the chip of the loaded, unchanged
+  reference changes nothing; opening the manual form keeps the slot
+  reference (chip pressed, overwrite still offered).
+- **Manual reference** — with HD typed last and still focused, Load is
+  already enabled and one click loads it.
+- **Custom needle deleted** — custom needle A1 (ranked first for "richer in
+  1/8–1/4") is on the cards: after adopting another card and deleting A1
+  the stale cards are gone and the session stays; if A1 was current, the
+  tab resets with a notice. No page errors either way.
+- **Jet at its limit** — stepping the DQ needle jet to 274 disables + and
+  shows "largest value reached" as text plus a cell tooltip.
+- **Keyboard** — Enter steps and keeps focus; at a limit focus moves to
+  the row label, so further Enters never step the other way.
+- **Carb type** — switching the calculator to PHBH resets the tab (empty
+  state, no reference chip pressed, "PHBH" shown).
+- **Mobile 320×740 and 360×740** (`hasTouch`, `isMobile`, `tap()`) —
+  tapping + steps; the reason next to the disabled + in 3/4–1 is visible;
+  ± targets are ≥ 44 × 44 px; after scrolling to the bottom the sticky
+  status line is still in the viewport, right below the tab bar; neither
+  the page nor the tab bar overflows horizontally.
+
 Set `CHROMIUM_PATH` to run these against a preinstalled Chromium when the
 Playwright package and its downloaded browser versions don't match — an
 installed Google Chrome works too (e.g. on Windows
@@ -173,7 +226,7 @@ installed Google Chrome works too (e.g. on Windows
 
 ## Manual test checklist
 
-Nothing below is automatable — a headless browser can't hold a real
+The PWA items below are not automatable — a headless browser can't hold a real
 install prompt, launch a real home screen icon, or exercise iOS's actual
 "Add to Home Screen" sheet. Check these by hand before a release that
 touches `sw.js`, `manifest.json`, `icons/`, or the install-button logic
@@ -227,3 +280,31 @@ in `js/app.js`.
       `npm run sync-sw-version` to refresh `JETTINGCALC_CACHE_VERSION`,
       redeploy, reopen the installed window): the update banner appears;
       "Update now" reloads into the new version.
+
+### Fine tuning (real phone + desktop)
+
+The browser tests cover the logic and the layout in Chromium; these need a
+real device and a human eye.
+
+- [ ] Phone (portrait, Android and iOS): the three tabs fit, "Fein-/
+      abstimmung" breaks at the hyphen in DE, no label is cut off.
+- [ ] Load a setup as reference, tap + a few times quickly: every tap
+      steps once (no double-tap zoom, no missed taps), the status line
+      stays visible at the top while scrolling, nothing scrolls on its own.
+- [ ] A disabled + (e.g. 3/4–1 with a HD-limited setup) shows its reason as
+      text; tapping next to it opens the tooltip.
+- [ ] Manual reference on iOS: focusing a field does not zoom the page;
+      the form is one column.
+- [ ] Tap a badge on a suggestion card: its tooltip opens, the card is not
+      picked. Tap elsewhere on the card: it is picked, "Step back" still
+      needs only one tap to return.
+- [ ] Apply to a free slot, then "View in calculator": the slot is there
+      with the tuned values. Overwrite the reference slot, switch
+      language, then Undo: the banner survived the language switch and
+      Undo restores the slot.
+- [ ] Dark mode: bars, badges, the highlighted HD row and the cards are
+      readable.
+- [ ] Desktop: keyboard only — Tab to a ± button, Enter steps and focus
+      stays on the button; when it becomes disabled focus moves to the
+      row's label, so further Enters do nothing (never the other
+      direction).

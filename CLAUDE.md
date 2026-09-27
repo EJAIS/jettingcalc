@@ -93,7 +93,7 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 .gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
-test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs)
+test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
@@ -921,8 +921,8 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   Details und manuelle Checkliste: `TESTING.md`.
 - **Konvention:** vor jedem Merge ist `node --test` grün (ohne
   Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
-  `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`) laufen ebenfalls
-  vollständig grün.
+  `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`, `header.mjs`)
+  laufen ebenfalls vollständig grün.
 
 ### Tooling
 

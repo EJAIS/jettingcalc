@@ -1895,7 +1895,9 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   header h1 { font-size: 1.05rem; }
   header .subtitle { font-size: 0.75rem; }
 
-  .header-controls { width: 100%; justify-content: flex-end; }
+  /* Wrap onto a second right-aligned row instead of running off the left
+     edge (body's overflow-x: hidden would hide that); gap spaces the rows */
+  .header-controls { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   .header-controls button { padding: 6px 10px; font-size: 12px; }
 
   /* Main: tighter padding */

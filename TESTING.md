@@ -182,6 +182,14 @@ in EN and once in DE:
   `data-tooltip` of the selector and the custom needle list; the PHBH ⓘ
   and the delete button carry the expected translated labels.
 
+`test-browser/header.mjs` covers the header controls (language, Load
+Demo, Reset, Dark Mode, Install App): at 320 and 360 px, in EN and DE,
+with and without the Install button shown, every control lies fully
+inside the viewport — on narrow screens they wrap onto a second
+right-aligned row instead of running off the left edge (which
+`body { overflow-x: hidden }` used to hide). At 1280 px they stay in one
+row.
+
 `test-browser/tuning.mjs` covers the fine tuning tab (service workers
 blocked as above). The setup K27 C3 / 34 / DQ 264 / ND 50 / HD 128 is
 entered through the calculator table like a user would; expected needles

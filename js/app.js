@@ -2394,12 +2394,14 @@ document.addEventListener('DOMContentLoaded', () => {
     tipTarget = null;
   }
 
-  // A tap fires compatibility mouse events: mouseover, then click. Hover
-  // therefore listens to pointerover and ignores touch — otherwise the
-  // mouseover opened the tooltip and the click right after closed it again.
-  let lastPointerType = 'mouse';
-  document.addEventListener('pointerdown', e => { lastPointerType = e.pointerType; }, true);
+  function toggleTooltip(anchor) {
+    if (tipTarget === anchor) hideTooltip();
+    else showTooltip(anchor);
+  }
 
+  // Hover. A tap fires compatibility mouse events (mouseover, then click),
+  // so hover listens to pointerover and ignores touch — otherwise the
+  // mouseover opened the tooltip and the click right after closed it again.
   document.addEventListener('pointerover', e => {
     if (e.pointerType === 'touch') return;
     const anchor = e.target.closest('[data-tooltip]');
@@ -2407,16 +2409,37 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (tipTarget && !tipTarget.contains(e.target)) hideTooltip();
   });
 
+  // Keyboard focus: a real <button>'s tooltip also shows while it has
+  // visible focus. Tooltip-only elements (role="button": ⚠, ⓘ, badges) are
+  // toggled with Enter / Space instead — showing on focus as well would make
+  // that Enter close it again.
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if (el.matches?.('button[data-tooltip]') && el.matches(':focus-visible')) showTooltip(el);
+  });
+  document.addEventListener('focusout', e => {
+    if (tipTarget && tipTarget === e.target) hideTooltip();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const anchor = e.target.closest?.('[data-tooltip][role="button"]');
+    if (!anchor || anchor.matches('button')) return;
+    e.preventDefault(); // Space would scroll the page
+    toggleTooltip(anchor);
+  });
+
   document.addEventListener('click', e => {
     const anchor = e.target.closest('[data-tooltip]');
-    // Tapping a real button runs its action; its tooltip is only a hover hint.
-    if (anchor?.matches('button') && lastPointerType === 'touch') {
+    // A real button always gets its click — mouse, touch or keyboard (a
+    // keyboard click has no pointerdown before it). Its tooltip is only a
+    // hint, so just close it.
+    if (anchor?.matches('button')) {
       if (tipTarget) hideTooltip();
       return;
     }
+    // Tooltip-only elements toggle their tooltip on click / tap.
     if (anchor) {
-      if (tipTarget === anchor) { hideTooltip(); return; }
-      showTooltip(anchor);
+      toggleTooltip(anchor);
       e.stopPropagation();
       return;
     }

@@ -172,6 +172,11 @@ in EN and once in DE:
   button.
 - **Touch on row actions** — tapping a row action button (a `<button>`
   with a tooltip) runs its click, and no tooltip stays open.
+- **Keyboard on row actions** — reaching ⧉ by Tab shows its tooltip;
+  Enter duplicates the row and closes it; Enter on ↺ opens the reset
+  confirmation and, accepted, empties the row.
+- **Keyboard on ⓘ** — focus alone doesn't open it; Enter opens the
+  tooltip, Escape closes it, Space toggles it without scrolling.
 - **No raw i18n keys** — no `view.`/`catalog.`/`svg.`/`carbType.`/`col.`/
   `btn.` key in the text, `title`, `aria-label`, `placeholder` or
   `data-tooltip` of the selector and the custom needle list; the PHBH ⓘ

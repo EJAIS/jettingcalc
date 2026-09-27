@@ -1,7 +1,8 @@
 // test-browser/carb-selector.mjs — Browser-driven layout tests for the
 // carburetor type selector (#carb-type-selector): stacked layout in portrait
 // (≤ 600px), unchanged single row on wider screens, enlarged tap area of the
-// beta info icons, and translated attribute texts.
+// beta info icons, and translated attribute texts — plus the app-wide
+// tooltip behaviour for touch and keyboard (row action buttons, ⓘ).
 // Copyright (C) 2014 GUE — GPL v2.0
 //
 // Needs a real Chromium and the `playwright` package, so — like pwa.mjs,
@@ -291,5 +292,64 @@ test('touch: tapping a row action button runs it instead of opening its tooltip'
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     assert.equal(await page.evaluate(() => window.__actionClicked === true), true, 'button click reached the button');
     assert.equal(await page.evaluate(() => document.querySelector('.tooltip-box').hidden), true, 'no tooltip left open');
+  });
+});
+
+// A keyboard click has no pointerdown before it; buttons with a tooltip
+// must still run their action instead of only opening the tooltip.
+test('keyboard: Enter on ⧉ duplicates the row, Enter on ↺ asks to reset it; focus shows the button tooltip', async () => {
+  await withPage('en', { viewport: { width: 1280, height: 800 } }, async page => {
+    const dialogs = [];
+    page.on('dialog', d => dialogs.push(d.message())); // withPage's handler accepts
+    await page.click('#btn-load-demo');
+    dialogs.length = 0;
+    const filled = () => page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups')).filter(s => s.needleType).length);
+    const tooltip = () => page.evaluate(() => {
+      const box = document.querySelector('.tooltip-box');
+      return box.hidden ? null : box.textContent;
+    });
+    assert.equal(await filled(), 3);
+
+    // Reach ⧉ by keyboard (Tab / Shift+Tab), so its focus is :focus-visible.
+    const dup = '#setup-tbody tr[data-row-id="1"] [data-action="duplicate-row"]';
+    await page.focus(dup);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(sel => document.activeElement === document.querySelector(sel), dup), true);
+    assert.equal(await tooltip(), 'Duplicate this row', 'tooltip shown on keyboard focus');
+
+    await page.keyboard.press('Enter');
+    assert.equal(await filled(), 4, 'Enter on ⧉ duplicated the row');
+    assert.equal(await tooltip(), null);
+
+    const name = await page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups'))[0].name);
+    await page.focus('#setup-tbody tr[data-row-id="1"] [data-action="reset-row"]');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(dialogs, [`Reset "${name}"?`], 'Enter on ↺ asked for confirmation');
+    assert.equal(await filled(), 3, 'confirmed reset emptied the row');
+  });
+});
+
+test('keyboard: Enter / Space toggle an ⓘ tooltip, Escape closes it', async () => {
+  await withPage('en', { viewport: { width: 1280, height: 800 } }, async page => {
+    const tooltip = () => page.evaluate(() => {
+      const box = document.querySelector('.tooltip-box');
+      return box.hidden ? null : box.textContent;
+    });
+    const expected = await page.getAttribute(PHBH_INFO, 'data-tooltip');
+    await page.focus(PHBH_INFO);
+    assert.equal(await tooltip(), null, 'focus alone does not open an ⓘ');
+
+    await page.keyboard.press('Enter');
+    assert.equal(await tooltip(), expected);
+    await page.keyboard.press('Escape');
+    assert.equal(await tooltip(), null);
+
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press(' ');
+    assert.equal(await tooltip(), expected);
+    assert.equal(await page.evaluate(() => window.scrollY), scrollY, 'Space did not scroll the page');
+    await page.keyboard.press(' ');
+    assert.equal(await tooltip(), null);
   });
 });

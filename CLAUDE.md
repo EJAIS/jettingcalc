@@ -298,11 +298,20 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
   abfängt; im Hochformat ist der Spaltenabstand deshalb 12 px, so endet
   die Fläche in der Lücke. Andere `.cutaway-info` (z. B. Max HD) sind
   davon nicht betroffen.
-- **Tooltips auf Touch-Geräten** (`app.js`): Ein Tap löst erst
-  `mouseover`, dann `click` aus; früher öffnete das Hover den Tooltip und
-  der Klick schloss ihn sofort wieder. Hover hört deshalb auf
-  `pointerover` und ignoriert Touch. Ein Tap auf einen echten `<button>`
-  mit Tooltip (Zeilenaktionen) führt weiter direkt die Aktion aus.
+- **Tooltips** (`data-tooltip`, Block im `DOMContentLoaded` von `app.js`):
+  - Hover hört auf `pointerover` und ignoriert Touch: Ein Tap löst erst
+    `mouseover`, dann `click` aus; früher öffnete das Hover den Tooltip und
+    der Klick schloss ihn sofort wieder.
+  - Echte `<button>` mit Tooltip (Zeilenaktionen ⧉/↺ u. a.) werden vom
+    Klick-Handler **nie** abgefangen — egal ob Maus, Touch oder Tastatur;
+    ein offener Tooltip wird nur geschlossen. Früher ließ der Handler
+    Buttons nur bei Touch durch; ein Tastatur-Klick (ohne `pointerdown`)
+    öffnete deshalb nur den Tooltip. Bei Tastaturfokus (`:focus-visible`)
+    zeigt ein Button seinen Tooltip, bei `focusout` verschwindet er.
+  - Reine Tooltip-Elemente (`role="button"`: ⚠ Cutaway, ⓘ, Badges)
+    schalten ihren Tooltip per Klick/Tap sowie Enter/Space um; beim Fokus
+    allein öffnen sie ihn nicht (sonst schlösse das Enter ihn gleich
+    wieder). Escape schließt jeden offenen Tooltip.
 - Abgesichert durch `test-browser/carb-selector.mjs`.
 
 ---

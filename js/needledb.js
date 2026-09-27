@@ -357,7 +357,7 @@ const CLIP_GEOMETRY_DEFAULT = CLIP_GEOMETRY_BY_COUNT[4];
 // built-in needles whose count is outside 3–5.
 export function getClipGeometry(needle, needleType) {
   const isBuiltIn = Object.prototype.hasOwnProperty.call(NEEDLE_DB, needleType);
-  const count = needle?.clips ?? getClipCount(needleType);
+  const count = resolveNeedleClips(needleType, needle);
   const base = isBuiltIn
     ? (CLIP_GEOMETRY_BY_COUNT[count] ?? CLIP_GEOMETRY_DEFAULT)
     : CLIP_GEOMETRY_DEFAULT;
@@ -369,9 +369,8 @@ export function getClipGeometry(needle, needleType) {
 
 // Custom needles (user-added, stored in localStorage) live in storage.js,
 // not here — needledb.js has no import of storage.js to avoid a circular
-// dependency. Callers resolving clip count for a possibly-custom needle
-// type must check that needle's own `clips` field first and only fall
-// back to getClipCount() when it is absent.
+// dependency. Callers resolving the clip count of a possibly-custom needle
+// use resolveNeedleClips() / resolveClipCount() below, never this directly.
 export function getClipCount(needleType) {
   if (!needleType) return null;
   const entry = NEEDLE_DB[needleType];
@@ -380,12 +379,18 @@ export function getClipCount(needleType) {
   return DEFAULT_CLIPS_BY_PREFIX[prefix] ?? 4;
 }
 
-// Clip positions of a needle when custom needles are in play: the needle's
-// own `clips` from `allNeedles` (getAllNeedles() merges custom needles over
-// NEEDLE_DB), else getClipCount(). The single resolution used by the
-// setup table, storage cleanup, catalog and fine tuning.
+// Single source of truth for a needle's clip count: its own `clips` (per
+// NEEDLE_DB entry or custom needle), else getClipCount()'s series default.
+// Every other clip-count lookup goes through here.
+export function resolveNeedleClips(needleType, needle) {
+  return needle?.clips ?? getClipCount(needleType);
+}
+
+// The same by type, looked up in `allNeedles` (getAllNeedles() merges
+// custom needles over NEEDLE_DB) — used by the setup table, storage
+// cleanup, catalog and fine tuning.
 export function resolveClipCount(needleType, allNeedles = NEEDLE_DB) {
-  return allNeedles[needleType]?.clips ?? getClipCount(needleType);
+  return resolveNeedleClips(needleType, allNeedles[needleType]);
 }
 
 // Needle-jet offset by jet type

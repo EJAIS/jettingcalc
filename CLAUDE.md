@@ -175,11 +175,13 @@ localStorage (siehe „Custom Needles“).
 **Clip-Anzahl:** `getClipCount()` nimmt den `clips`-Wert der Nadel, sonst
 `DEFAULT_CLIPS_BY_PREFIX` nach Präfix. Welche Präfix-Defaults physisch
 verifiziert sind, steht in `VERIFIED_DEFAULT_CLIP_PREFIXES` (derzeit nur D);
-die übrigen Defaults sind Platzhalter. Aufrufer, die auch Custom Needles
-kennen, nutzen `resolveClipCount(type, allNeedles)` (`needledb.js`): eigenes
-`clips` der Nadel, sonst `getClipCount()`. Das ist die einzige Stelle dieser
-Auflösung — Setup-Tabelle, `loadSetups()`, Katalog und Feinabstimmung
-rufen sie auf, statt sie nachzubauen.
+die übrigen Defaults sind Platzhalter. **Einzige Stelle** der Auflösung
+„eigenes `clips` der Nadel, sonst `getClipCount()`“ ist
+`resolveNeedleClips(type, needle)` (`needledb.js`); `resolveClipCount(type,
+allNeedles)` schlägt die Nadel nur nach und ruft sie auf. Setup-Tabelle,
+`loadSetups()`, Katalog, Feinabstimmung und `getClipGeometry()` nutzen
+diese beiden Funktionen, statt `needle.clips ?? …` nachzubauen —
+`test/clipcount.test.mjs` prüft, dass alle dieselbe Anzahl sehen.
 
 **Weitere Stammdaten in `needledb.js`:** `CLIP_GEOMETRY_BY_COUNT` /
 `getClipGeometry()` (Nutabstand und Oberkanten-Offset je Nut-Anzahl),
@@ -652,7 +654,8 @@ verstellt. Das Ergebnis kann in einen Setup-Slot übernommen werden.
 - Gemeinsam mit dem Rechner genutzt statt dupliziert: die Options-Builder
   der Setup-Tabelle, `applyFieldValue()` (Zahlen begrenzen, abhängige
   Felder leeren), `renderBetaBanner()`, `withPreservedFocus()`,
-  `getClipsSource()` (Katalog), `resolveClipCount()` (`needledb.js`), die
+  `getClipsSource()` (Katalog), `resolveClipCount()`/`resolveNeedleClips()`
+  (`needledb.js`), die
   nd/hd-Grenzen `JET_FIELD_BOUNDS` bzw. `JET_MIN`/`ND_MAX`/
   `HD_MAX` und `MAX_NAME_LENGTH` (beide `share.js`).
 

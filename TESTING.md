@@ -220,6 +220,13 @@ match the regression values in `test/tuning.test.mjs`:
   banner (translated) and the undo history.
 - **Undo lifecycle** — after "Overwrite reference slot", the next tuning
   step closes the banner and keeps that step (Undo can't discard it).
+- **Message field** — at 360 px (touch), the message after "Save to free
+  slot" and after "Overwrite reference slot" is in the viewport and not
+  covered by the sticky bars (hit-tested at its centre); nothing goes
+  through `#app-notice`. Loading another reference clears it. A validation
+  error (the current custom needle deleted by another tab) shows "Not
+  saved: invalid value for Needle." there, without "View in calculator"
+  or Undo, writes nothing and closes with ✕.
 - **Reference picker** — tapping the chip of the loaded, unchanged
   reference changes nothing; opening the manual form keeps the slot
   reference (chip pressed, overwrite still offered).

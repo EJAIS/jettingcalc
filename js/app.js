@@ -60,14 +60,17 @@ function resetTuningState() {
 // stringifying localStorage on every render.
 let customNeedlesVersion = 0;
 
-// Last "apply to slot" from the fine tuning view — in-memory only, never
-// persisted, like importUndo. { kind: 'free' | 'overwrite', slotName,
-// snapshot: { setups, tuning } | null (only for 'overwrite'), appliedKey,
-// sessionKey }. Drives the result banner in the tab. appliedKey (stateKey
-// after writing) lets updateUI() drop it once setups or carbType change;
-// sessionKey (tuningSessionKey() after writing) drops it on the next tuning
-// action, so Undo can never silently discard steps taken after the apply.
-let tuningApplyUndo = null;
+// Message of the last "apply to slot" in the fine tuning view, shown in the
+// tab's own message field (#tuning-apply-banner) — in-memory only, never
+// persisted, like importUndo.
+// { kind: 'free' | 'overwrite' | 'error', slotName (free/overwrite),
+//   field (error: the invalid field), snapshot: { setups, tuning } | null
+//   (only for 'overwrite' — its Undo), appliedKey, sessionKey }.
+// It disappears via ✕, when a reference is loaded, when sessionKey
+// (tuningSessionKey() at the time) no longer matches — the next tuning
+// action, so Undo can never silently discard later steps — and, checked in
+// updateUI(), when appliedKey (stateKey at the time) no longer matches.
+let tuningApplyMessage = null;
 
 // Currently shown view: 'calc' | 'needles' | 'tuning'
 let currentView = 'calc';
@@ -410,7 +413,7 @@ function updateUI() {
     hideImportBanner();
   }
   // Same central check for the fine tuning apply banner.
-  if (tuningApplyUndo && stateKey({ carbType, setups }) !== tuningApplyUndo.appliedKey) {
+  if (tuningApplyMessage && stateKey({ carbType, setups }) !== tuningApplyMessage.appliedKey) {
     hideTuningApplyBanner();
   }
   renderTable();
@@ -750,13 +753,14 @@ function isTuningSetupUsable(s, allNeedles) {
 }
 
 // Changes whenever the tuning session moves (step, card, jet, undo,
-// reset, new reference); see tuningApplyUndo.sessionKey.
+// reset, new reference); see tuningApplyMessage.sessionKey.
 function tuningSessionKey() {
   const { ref, current, history } = tuningState;
   return JSON.stringify([ref, current, history.length]);
 }
 
 function loadTuningReference(source, setup) {
+  hideTuningApplyBanner(); // a message about the previous reference is stale
   tuningState.refSource = source;
   tuningState.ref = pickTuningFields(setup);
   tuningState.current = pickTuningFields(setup);
@@ -844,7 +848,7 @@ function renderTuning() {
   const pairValue = pairAttr ? active.getAttribute(pairAttr) : null;
   // The apply banner (and its Undo) only describes the session as it was
   // right after applying; any further tuning action ends it.
-  if (tuningApplyUndo && tuningApplyUndo.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
+  if (tuningApplyMessage && tuningApplyMessage.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
   const allNeedles = getAllNeedles();
 
   withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
@@ -1195,16 +1199,22 @@ function renderTuningActions() {
 function renderTuningApplyBanner() {
   const banner = document.getElementById('tuning-apply-banner');
   if (!banner) return;
-  banner.hidden = !tuningApplyUndo;
-  if (!tuningApplyUndo) return;
-  const key = tuningApplyUndo.kind === 'overwrite' ? 'tuning.apply.doneOverwrite' : 'tuning.apply.doneFree';
-  document.getElementById('tuning-apply-text').textContent =
-    fillPlaceholder(t(key), '{name}', tuningApplyUndo.slotName);
-  document.getElementById('btn-tuning-apply-undo').hidden = !tuningApplyUndo.snapshot;
+  const msg = tuningApplyMessage;
+  banner.hidden = !msg;
+  if (!msg) return;
+  const isError = msg.kind === 'error';
+  banner.classList.toggle('is-error', isError);
+  // Rendered from codes each time, so a language switch translates it.
+  document.getElementById('tuning-apply-text').textContent = isError
+    ? fillPlaceholder(t('tuning.apply.invalid'), '{field}', t(FIELD_LABEL_KEYS[msg.field]))
+    : fillPlaceholder(t(msg.kind === 'overwrite' ? 'tuning.apply.doneOverwrite' : 'tuning.apply.doneFree'),
+      '{name}', msg.slotName);
+  document.getElementById('btn-tuning-view-calc').hidden = isError;
+  document.getElementById('btn-tuning-apply-undo').hidden = !msg.snapshot;
 }
 
 function hideTuningApplyBanner() {
-  tuningApplyUndo = null;
+  tuningApplyMessage = null;
   const banner = document.getElementById('tuning-apply-banner');
   if (banner) banner.hidden = true;
 }
@@ -1212,11 +1222,19 @@ function hideTuningApplyBanner() {
 // Writes `current` into the first empty slot ('free') or over the
 // reference slot ('overwrite'). Validated first (validateTuningSetup), then
 // persisted only through saveSetups() — never touches dellorto_carb_type.
+// Success and validation errors both go to the tab's message field, not
+// to showNotice(): #app-notice sits at the top of the page, out of view
+// from the action area.
 function applyTuningToSlot(kind) {
   const values = pickTuningFields(tuningState.current);
   const check = validateTuningSetup(values, { allNeedles: getAllNeedles(), carbType });
   if (!check.ok) {
-    showNotice(fillPlaceholder(t('tuning.apply.invalid'), '{field}', t(FIELD_LABEL_KEYS[check.field])));
+    // In the tab's message field, next to the button that was pressed.
+    tuningApplyMessage = {
+      kind: 'error', field: check.field, snapshot: null,
+      appliedKey: stateKey({ carbType, setups }), sessionKey: tuningSessionKey(),
+    };
+    renderTuning();
     return;
   }
 
@@ -1240,7 +1258,7 @@ function applyTuningToSlot(kind) {
   }
 
   saveSetups(setups);
-  tuningApplyUndo = {
+  tuningApplyMessage = {
     kind, slotName: slot.name, snapshot,
     appliedKey: stateKey({ carbType, setups }),
     sessionKey: tuningSessionKey(),
@@ -1249,7 +1267,7 @@ function applyTuningToSlot(kind) {
 }
 
 function undoTuningApply() {
-  const snapshot = tuningApplyUndo?.snapshot;
+  const snapshot = tuningApplyMessage?.snapshot;
   if (!snapshot) return;
   setups = snapshot.setups;
   Object.assign(tuningState, snapshot.tuning);
@@ -1317,9 +1335,10 @@ function handleTuningClick(e) {
   } else if (tuningAction === 'applyFree' || tuningAction === 'applyRef') {
     applyTuningToSlot(tuningAction === 'applyFree' ? 'free' : 'overwrite');
     // The pressed button is disabled now (current == ref after an
-    // overwrite): hand focus to the result banner instead of <body>.
+    // overwrite): hand focus to the message field instead of <body>.
     if (document.activeElement === document.body || document.activeElement?.disabled) {
-      const next = tuningApplyUndo?.snapshot ? 'btn-tuning-apply-undo' : 'btn-tuning-view-calc';
+      const next = tuningApplyMessage?.snapshot ? 'btn-tuning-apply-undo'
+        : tuningApplyMessage?.kind === 'error' ? 'btn-tuning-apply-close' : 'btn-tuning-view-calc';
       document.getElementById(next)?.focus();
     }
     return; // applyTuningToSlot() already re-rendered via updateUI()

@@ -1596,6 +1596,11 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   flex-wrap: wrap;
   margin-top: 0;
 }
+.tuning-apply-banner.is-error {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
 .tuning-actions button:disabled,
 .tuning-load:disabled {
   opacity: .45;

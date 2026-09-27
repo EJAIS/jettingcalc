@@ -151,7 +151,7 @@ mit Quelle in `KONSTANTEN_VERIFIKATION.md` festgehalten.
 **UI-Zustand, der bewusst NICHT persistiert wird:** `catalogState`
 (Nadelkatalog), `tuningState` (Feinabstimmung), der Undo-Snapshot eines
 Share-Imports (`importUndo`) und der einer Übernahme aus der
-Feinabstimmung (`tuningApplyUndo`).
+Feinabstimmung (`tuningApplyMessage`).
 
 ---
 
@@ -816,21 +816,29 @@ nennen den Grund sichtbar.
   Statuszeile; gekürzt auf `MAX_NAME_LENGTH`).
 - „Referenz-Slot überschreiben“: nur bei einer Slot-Referenz; der Slot
   behält seinen Namen. Vorher Snapshot von `setups` **und** `tuningState`
-  in `tuningApplyUndo` — nur im Speicher, nie localStorage. Danach startet
+  in `tuningApplyMessage` — nur im Speicher, nie localStorage. Danach startet
   die Feinabstimmung mit dem geschriebenen Setup als Referenz neu;
   „Rückgängig“ stellt beides wieder her.
 - Vor dem Schreiben `validateTuningSetup()` (gleiche Whitelist-Regeln wie
-  `decodeShare()`, aber gegen `allNeedles`); Fehlschlag → `showNotice()`,
-  nichts wird geschrieben. Persistenz nur über `saveSetups()`.
-- Rückmeldung im Banner `#tuning-apply-banner` direkt über den Aktionen
-  (Slot-Name, „Im Rechner ansehen“, ggf. „Rückgängig“, ✕) — `#app-notice`
-  läge oben außer Sicht. Das Banner verschwindet per ✕, sobald
+  `decodeShare()`, aber gegen `allNeedles`); bei Fehlschlag wird nichts
+  geschrieben. Persistenz nur über `saveSetups()`.
+- **Meldungsfeld** `#tuning-apply-banner` im Aktionsbereich, direkt über
+  den Buttons (`role="status"`, `aria-live="polite"`, Optik wie
+  `.app-notice`, Fehler in Rot). Es zeigt Erfolg (Slot-Name, „Im Rechner
+  ansehen“, bei Überschreiben „Rückgängig“) **und** Validierungsfehler
+  (`tuning.apply.invalid` mit dem Feldnamen). Nicht über `showNotice()`:
+  `#app-notice` steht oben auf der Seite und wäre vom Aktionsbereich aus
+  außer Sicht — auch auf dem Handy, wo das Überschreiben die Karten
+  darüber entfernt. `showNotice()` bleibt für Meldungen, die nicht aus
+  einer Aktion im Tab kommen (z. B. `msg.tuningReset`).
+- Die Meldung verschwindet per ✕, beim Laden einer Referenz, mit der
+  nächsten Tuning-Aktion (`tuningSessionKey()` weicht ab — „Rückgängig“
+  würde sonst die danach gemachten Schritte kommentarlos verwerfen), bei
+  jedem Neustart des Tabs (`resetTuningState()`) und sobald
   `stateKey({carbType, setups})` vom gemerkten Stand abweicht (geprüft
   zentral in `updateUI()` wie bei `importUndo`, damit ein Sprachwechsel es
-  nicht schließt), mit der nächsten Tuning-Aktion (`tuningSessionKey()`
-  weicht ab — „Rückgängig“ würde sonst die danach gemachten Schritte
-  kommentarlos verwerfen) und bei jedem Neustart des Tabs
-  (`resetTuningState()`).
+  nicht schließt). Der Text wird bei jedem Rendern aus Codes erzeugt, ein
+  Sprachwechsel übersetzt ihn also.
 
 ### Mobile-Regeln (verbindlich)
 

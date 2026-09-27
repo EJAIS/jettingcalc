@@ -363,9 +363,10 @@
       </div>
       <div id="tuning-alternatives" class="tuning-alternatives" data-tuning-block hidden></div>
       <div id="tuning-jets" class="tuning-jets" data-tuning-block hidden></div>
-      <!-- Result of "apply to slot"; text and Undo visibility set by app.js
+      <!-- Message field of the action area: result or validation error of
+           "apply to slot"; text and button visibility set by app.js
            (renderTuningApplyBanner), same pattern as #import-banner -->
-      <div id="tuning-apply-banner" class="app-notice import-banner tuning-apply-banner" role="status" hidden>
+      <div id="tuning-apply-banner" class="app-notice import-banner tuning-apply-banner" role="status" aria-live="polite" hidden>
         <span id="tuning-apply-text"></span>
         <button type="button" id="btn-tuning-view-calc" class="btn-ghost" data-i18n="tuning.apply.viewInCalc">View in calculator</button>
         <button type="button" id="btn-tuning-apply-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>

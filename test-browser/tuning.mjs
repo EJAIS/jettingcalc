@@ -399,6 +399,73 @@ test('apply to a free slot, then overwrite the reference slot and undo it', asyn
   });
 });
 
+test('apply messages appear in the tab: in view on a phone, errors included, gone on the next reference load', async () => {
+  // Visible = inside the viewport and not covered by the sticky tab bar /
+  // status line: the element at its centre belongs to the message field.
+  const messageVisible = page => page.evaluate(() => {
+    const box = document.getElementById('tuning-apply-banner');
+    if (box.hidden) return false;
+    const r = box.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > window.innerHeight) return false;
+    return box.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  });
+
+  await withPage(async page => {
+    const tap = await openTuningWithK27(page, { tap: true });
+    await tap('[data-tuning-step="1:1"]');
+    await tap('[data-tuning-action="applyFree"]');
+    assert.equal(await messageVisible(page), true, '360 px: message after "save to free slot" is in view');
+    assert.match(await page.textContent('#tuning-apply-text'), /K96 C5/);
+
+    // Overwriting restarts the session (cards disappear, content above
+    // shrinks) — the message must still be in view.
+    await tap('[data-tuning-step="1:1"]');
+    await tap('[data-tuning-action="applyRef"]');
+    assert.equal(await messageVisible(page), true, '360 px: message after "overwrite" is in view');
+    assert.equal(await isVisible(page, '#btn-tuning-apply-undo'), true);
+    assert.equal(await isVisible(page, '#app-notice'), false, 'nothing via showNotice()');
+  }, MOBILE);
+
+  await withPage(async page => {
+    // Loading a reference clears the message.
+    await openApp(page);
+    await createK27Setup(page);
+    await createSetup(page, 2, { needleType: 'K96', clipPos: 5 });
+    await page.click('#tab-tuning');
+    await page.click('[data-tuning-source="1"]');
+    await page.click('[data-tuning-step="1:1"]');
+    await page.click('[data-tuning-action="applyFree"]');
+    assert.equal(await isVisible(page, '#tuning-apply-banner'), true);
+    await page.click('[data-tuning-source="2"]'); // confirm auto-accepted
+    assert.equal(await isVisible(page, '#tuning-apply-banner'), false);
+  });
+});
+
+test('a validation error when applying shows in the message field, not via showNotice()', async () => {
+  const custom = [{ type: 'A1', carbType: 'VHSx', A: 2.5, B: 1.8, C: 42.5, clips: 4, length: 73.5 }];
+  await withPage(async page => {
+    await page.addInitScript(c => { if (!sessionStorage.seeded) { localStorage.setItem('dellorto_custom_needles', c); sessionStorage.seeded = '1'; } },
+      JSON.stringify(custom));
+    await openTuningWithK27(page);
+    await page.click('[data-tuning-step="1:1"]');
+    assert.match(await status(page), /K27 C3 → A1 C4/);
+    // Another tab deletes A1 behind this one's back: the next apply finds
+    // the needle gone.
+    await page.evaluate(() => localStorage.setItem('dellorto_custom_needles', '[]'));
+    await page.click('[data-tuning-action="applyFree"]');
+
+    assert.equal(await isVisible(page, '#tuning-apply-banner'), true);
+    assert.equal(await page.textContent('#tuning-apply-text'), 'Not saved: invalid value for Needle.');
+    assert.equal(await isVisible(page, '#btn-tuning-view-calc'), false);
+    assert.equal(await isVisible(page, '#btn-tuning-apply-undo'), false);
+    assert.equal(await isVisible(page, '#app-notice'), false);
+    assert.equal((await storedSetups(page)).filter(s => s.needleType).length, 1, 'nothing written');
+
+    await page.click('#btn-tuning-apply-close');
+    assert.equal(await isVisible(page, '#tuning-apply-banner'), false);
+  });
+});
+
 // ── i18n, carb type, mobile ──────────────────────────────────────────────────
 
 test('language switch keeps the tuning state, cards and apply banner', async () => {

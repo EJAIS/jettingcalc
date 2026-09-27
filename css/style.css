@@ -1204,8 +1204,10 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   gap: 16px;
 }
 .tuning-ref:empty,
-.tuning-alternatives:empty,
 .tuning-jets:empty { display: none; }
+/* The suggestions area stays in the layout when empty (height 0): hiding
+   it would also drop the flex gap before it, so removing the cards would
+   shrink the page by more than their own height (see the scroll spacer) */
 .tuning-empty,
 .tuning-hint,
 .tuning-note {
@@ -1297,10 +1299,12 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   min-width: 0;
   table-layout: fixed;
 }
-.tuning-col-range { width: 18%; }
-.tuning-col-eq    { width: 4.6rem; }
-.tuning-col-delta { width: 6.4rem; }
-.tuning-col-step  { width: 60px; }
+/* Narrow fixed columns leave the bar column >= 234 px at 768 px (the
+   narrowest table layout), enough for every reason text on one line */
+.tuning-col-range { width: 15%; }
+.tuning-col-eq    { width: 4.2rem; }
+.tuning-col-delta { width: 6rem; }
+.tuning-col-step  { width: 56px; }
 .tuning-ranges thead th { white-space: normal; }
 .tuning-ranges thead th.num { text-align: right; }
 .tuning-ranges .tuning-step-head { text-align: center; }
@@ -1328,6 +1332,7 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   white-space: nowrap;
 }
 .tuning-badge {
+  position: relative;
   display: inline-block;
   line-height: 15px;
   white-space: nowrap;
@@ -1339,6 +1344,12 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   font-size: 11px;
   font-weight: 600;
   cursor: help;
+}
+/* Badges are tooltip toggles like ⓘ (role="button"): a larger tap area */
+.tuning-badge::after {
+  content: '';
+  position: absolute;
+  inset: -12px -4px;
 }
 .tuning-eq,
 .tuning-delta { font-variant-numeric: tabular-nums; }
@@ -1369,9 +1380,10 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 .tuning-row.is-last-step { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 
 .tuning-step-cell {
-  width: 60px;
+  width: 56px;
   text-align: center;
 }
+.tuning-ranges td.tuning-step-cell { padding-left: 6px; padding-right: 6px; }
 .tuning-step-btn {
   width: 44px;
   height: 44px;
@@ -1427,10 +1439,11 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 .tuning-reason {
   display: block;
   margin-top: 4px;
-  /* Always two lines high in the table layout (≥ 768 px), even when
-     empty — enough for every reason text there */
-  height: 28px;
-  line-height: 14px;
+  /* Always one line of fixed height, even when empty; every reason text
+     fits it from 320 px (grid) and from 768 px (table) on */
+  height: 15px;
+  line-height: 15px;
+  white-space: nowrap;
   overflow: hidden;
   font-size: 11px;
   font-weight: 500;

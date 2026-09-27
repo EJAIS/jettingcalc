@@ -246,16 +246,27 @@ match the regression values in `test/tuning.test.mjs`:
   one `updateUI()` (an ND edit) reads `dellorto_custom_needles` at most
   once, with the calculator, the catalog and the fine tuning tab visible
   (before `readNeedleSnapshot()`: 15, 19 and 17 reads).
-- **Layout stability** — at 1280×800 and 360×740 (touch): around a
+- **Layout stability** — at 1280×800, 768×1024 (German, first width with
+  the table layout) and 360×740 (touch): around a
   needle step with side-effect warning (r3 leaner → K58 C2), "Step back",
   a needle step, HD + twice and "Save to free slot", no ± button, jet
   button or action button moves by more than 1 px (each target scrolled
-  into view first, so only layout changes count). After the warning step
+  to the middle of the viewport first, so the click itself needn't scroll
+  and only layout changes count). After the warning step
   the warning sits in the options area and a ⚠ marks at least one row
   besides the target; the apply message appears below the action buttons.
-- **Reason lines at 320 px (DE)** — all eight texts the reason line can
-  show (one direction, both alike, both different) fit one line without
-  overflow.
+- **Reason lines at 320 px and 768 px (DE)** — all eight texts the reason
+  line can show (one direction, both alike, both different) fit one line
+  without overflow, in the grid and in the table layout; no horizontal
+  page overflow.
+- **HD lever badge** — on a phone, a tap opens its tooltip naming the
+  HD-limited ranges, a tap elsewhere closes it; Enter / Space toggle it.
+- **Scroll-clamp spacer** — at 360×740 and 1280×800, scrolled to the page
+  end before each of six alternating steps (needle +, HD +, needle +,
+  HD +, needle −, HD −): the ± buttons stay within 1 px, the spacer is
+  never taller than the largest suggestions area so far and is needed at
+  least once; it is 0 after scrolling up, after "Reset" and after a tab
+  switch. It is `aria-hidden` and empty.
 - **Keyboard** — Enter steps and keeps focus; at a limit focus moves to
   the row label, so further Enters never step the other way.
 - **Carb type** — switching the calculator to PHBH resets the tab (empty

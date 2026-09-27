@@ -514,18 +514,24 @@ const CONTROLS = '#view-tuning [data-tuning-step], #view-tuning [data-tuning-jet
 const controlTops = page => page.evaluate(sel => Object.fromEntries([...document.querySelectorAll(sel)]
   .map(b => [b.dataset.tuningStep ?? b.dataset.tuningJet ?? b.dataset.tuningAction, b.getBoundingClientRect().top])), CONTROLS);
 
-for (const [name, contextOptions] of [
-  ['1280×800', { viewport: { width: 1280, height: 800 } }],
-  ['360×740 mobile', MOBILE],
+for (const [name, contextOptions, lang] of [
+  ['1280×800', { viewport: { width: 1280, height: 800 } }, 'en'],
+  ['768×1024 German', { viewport: { width: 768, height: 1024 } }, 'de'],
+  ['360×740 mobile', MOBILE, 'en'],
 ]) {
   test(`layout stability (${name}): steps, undo, jet steps and apply never move a control`, async () => {
     await withPage(async page => {
+      if (lang === 'de') await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
       const mobile = !!contextOptions.hasTouch;
       const press = await openTuningWithK27(page, { tap: mobile });
-      // Scroll the next target into view first, then measure, then press:
-      // the pointer stays where it was, so any change is a layout shift.
+      // Scroll the next target to the middle of the viewport first (so the
+      // click itself needn't scroll), then measure, then press: the pointer
+      // stays where it was, so any change is a layout shift.
       const event = async (label, selector) => {
-        await page.locator(selector).scrollIntoViewIfNeeded();
+        await page.evaluate(sel => new Promise(resolve => {
+          document.querySelector(sel).scrollIntoView({ block: 'center' });
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        }), selector);
         const before = await controlTops(page);
         await press(selector);
         const after = await controlTops(page);
@@ -573,10 +579,14 @@ for (const [name, contextOptions] of [
   });
 }
 
-test('320 px German: every reason text under the bar fits one line', async () => {
+for (const [name, contextOptions] of [
+  ['320 px (grid)', { ...MOBILE, viewport: { width: 320, height: 740 } }],
+  ['768 px (table)', { viewport: { width: 768, height: 1024 } }],
+]) test(`${name}, German: every reason text under the bar fits one line, no horizontal overflow`, async () => {
   await withPage(async page => {
     await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
-    await openTuningWithK27(page, { tap: true });
+    await openTuningWithK27(page, { tap: !!contextOptions.hasTouch });
+    assert.equal(await noHorizontalOverflow(page), true, `${name}: page overflows`);
     // Every text tuningReasonLine() can produce, built from the live
     // translations, measured in a real reason line of the table.
     const results = await page.evaluate(async () => {
@@ -607,8 +617,103 @@ test('320 px German: every reason text under the bar fits one line', async () =>
       assert.ok(r.height <= r.lineHeight + 1, `"${r.text}" is ${r.height} px high`);
       assert.ok(r.overflow <= 0, `"${r.text}" overflows its line by ${r.overflow} px`);
     }
-  }, { ...MOBILE, viewport: { width: 320, height: 740 } });
+  }, contextOptions);
 });
+
+// ── HD lever badge ───────────────────────────────────────────────────────────
+
+test('HD "lever" badge works like ⓘ: tap and Enter/Space open its tooltip with the ranges', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page, { tap: true });
+    const badge = 'tr[data-jet="hd"] .tuning-badge';
+    assert.equal(await page.getAttribute(badge, 'role'), 'button');
+    assert.equal(await page.getAttribute(badge, 'tabindex'), '0');
+    const tooltip = () => page.evaluate(() => {
+      const box = document.querySelector('.tooltip-box');
+      return box.hidden ? null : box.textContent;
+    });
+
+    await page.tap(badge);
+    const text = await tooltip();
+    assert.ok(text, 'tap opens the tooltip');
+    assert.match(text, /1\/2–3\/4.*3\/4–1/, 'tooltip names the HD-limited ranges');
+
+    await page.tap('#tuning-status'); // tap elsewhere closes it
+    assert.equal(await tooltip(), null);
+
+    await page.focus(badge);
+    await page.keyboard.press('Enter');
+    assert.equal(await tooltip(), text);
+    await page.keyboard.press(' ');
+    assert.equal(await tooltip(), null);
+  }, MOBILE);
+});
+
+// ── Scroll-clamp spacer ──────────────────────────────────────────────────────
+
+for (const [name, contextOptions] of [
+  ['360×740 mobile', MOBILE],
+  ['1280×800', { viewport: { width: 1280, height: 800 } }],
+]) {
+  test(`scroll-clamp spacer (${name}): at the page end ± never moves, spacer bounded, released on scroll-up and reset`, async () => {
+    await withPage(async page => {
+      await openTuningWithK27(page, { tap: !!contextOptions.hasTouch });
+      const spacerHeight = () => page.evaluate(() => document.getElementById('tuning-scroll-spacer').getBoundingClientRect().height);
+      const variantsHeight = () => page.evaluate(() => document.getElementById('tuning-alternatives').getBoundingClientRect().height);
+      const stepTops = () => page.evaluate(() => Object.fromEntries(
+        [...document.querySelectorAll('#view-tuning [data-tuning-step], #view-tuning [data-tuning-jet]')]
+          .map(b => [b.dataset.tuningStep ?? b.dataset.tuningJet, b.getBoundingClientRect().top])));
+      const toEnd = () => page.evaluate(() => new Promise(resolve => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+
+      assert.deepEqual(await page.evaluate(() => {
+        const el = document.getElementById('tuning-scroll-spacer');
+        return [el.getAttribute('aria-hidden'), el.children.length, el.textContent];
+      }), ['true', 0, ''], 'spacer is aria-hidden and empty');
+
+      let maxVariants = await variantsHeight();
+      // Needle +, HD +, needle +, HD +, needle −, HD −. The page end is
+      // far below the ± buttons, so they are pressed without scrolling.
+      const steps = ['[data-tuning-step="1:1"]', '[data-tuning-jet="hd:1"]', '[data-tuning-step="1:1"]',
+        '[data-tuning-jet="hd:1"]', '[data-tuning-step="1:-1"]', '[data-tuning-jet="hd:-1"]'];
+      let sawSpacer = false;
+      for (const [n, selector] of steps.entries()) {
+        await toEnd();
+        assert.equal(await page.isDisabled(selector), false, `step ${n + 1}: ${selector} available`);
+        const before = await stepTops();
+        await page.evaluate(sel => document.querySelector(sel).click(), selector);
+        const after = await stepTops();
+        for (const [key, top] of Object.entries(before)) {
+          assert.ok(Math.abs(after[key] - top) <= 1, `${name}, step ${n + 1} (${selector}): ${key} moved ${top} → ${after[key]}`);
+        }
+        maxVariants = Math.max(maxVariants, await variantsHeight());
+        const spacer = await spacerHeight();
+        if (spacer > 0) sawSpacer = true;
+        assert.ok(spacer <= maxVariants + 0.5, `step ${n + 1}: spacer ${spacer} > largest suggestions area ${maxVariants}`);
+      }
+      assert.ok(sawSpacer, 'the spacer was needed at least once (cards removed at the page end)');
+
+      // Scrolling up releases what is no longer needed …
+      await page.evaluate(() => new Promise(resolve => {
+        window.scrollTo(0, 0);
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+      assert.equal(await spacerHeight(), 0, 'released after scrolling up');
+      // … and "Reset" leaves it at 0.
+      await page.evaluate(() => document.querySelector('[data-tuning-action="reset"]').click());
+      assert.equal(await spacerHeight(), 0, 'reset: spacer 0');
+
+      // A tab switch releases it as well, even at the page end.
+      await page.evaluate(() => document.querySelector('[data-tuning-step="1:1"]').click());
+      await toEnd();
+      await page.evaluate(() => document.querySelector('[data-tuning-jet="hd:1"]').click());
+      await page.evaluate(() => document.getElementById('tab-calc').click());
+      assert.equal(await spacerHeight(), 0, 'tab switch: spacer 0');
+    }, contextOptions);
+  });
+}
 
 // ── i18n, carb type, mobile ──────────────────────────────────────────────────
 

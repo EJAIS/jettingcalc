@@ -823,19 +823,22 @@ Desktop, bis 507 px auf dem Handy).
   - Bereichszeile: Meta-Zeile unter dem Label (Haupthebel bzw. Badge
     „HD-begrenzt“, `nowrap`), ⚠-Platz fester Breite in der Δ-Zelle und
     die Hinweiszeile unter dem Balken sind immer vorhanden, auch leer.
-    Hinweiszeile: im Tabellenlayout zwei Zeilen hoch, im Grid-Layout eine
-    Zeile über die volle Breite. Texte (`tuningReasonLine()`): eine
+    Hinweiszeile: eine Zeile fester Höhe, im Grid-Layout über die volle
+    Breite, im Tabellenlayout in der Balkenspalte (die schmalen festen
+    Spalten lassen ihr bei 768 px ≥ 234 px). Texte (`tuningReasonLine()`): eine
     Richtung „Fetter: HD-begrenzt → HD anpassen“; beide Richtungen mit
     gleichem Grund nur der Grund; verschiedene Gründe die Kurzformen
     `tuning.reasonTiny.*` („Magerer: keine Nadel · Fetter: HD-begrenzt“) —
-    alle bei 320 px auf Deutsch einzeilig (`tuning.mjs` misst alle acht
-    Varianten).
+    alle auf Deutsch einzeilig bei 320 px (Grid) und 768 px (erste Breite
+    im Tabellenlayout); `tuning.mjs` misst alle acht Varianten in beiden.
   - Tabelle: `table-layout: fixed` mit festen Spaltenbreiten, damit
     wechselnde Zahlen keine Spalten verschieben.
   - Düsenblock: `table-layout: fixed`; unter jeder Düse eine immer
     vorhandene, einzeilige Hinweiszeile (Anschlag). Der HD-Hebel ist ein
     Badge neben „HD“ statt einer Textzeile, damit er nicht mit dem
-    Anschlag-Hinweis um dieselbe Zeile konkurriert.
+    Anschlag-Hinweis um dieselbe Zeile konkurriert. Badges sind
+    Tooltip-Schalter wie ⓘ (`role="button"`, `tabindex="0"`, Enter/Space,
+    Tap) mit vergrößerter Trefferfläche.
 - **Bereichstabelle ≤ 767 px als Grid** (Label + Meta | flow + Ø; Ref ≙ |
   Aktuell ≙; − | Balken | +; Hinweiszeile), mit gleich breiten
   `fr`-Spalten. Abweichung von der früheren Grenze 600 px: Zwischen 601
@@ -847,14 +850,33 @@ Desktop, bis 507 px auf dem Handy).
   „Zurücksetzen“) — darunter liegt kein Bedienelement mehr.
 - **Scroll-Begrenzung:** Werden Karten am Seitenende entfernt, wäre die
   Seite womöglich kürzer, als die aktuelle Scroll-Position erlaubt; der
-  Browser würde `scrollY` begrenzen und alles verschieben.
-  `renderTuning()` füllt dafür `#tuning-scroll-spacer` am Ende des Tabs
-  mit genau der fehlenden Höhe (bei jedem Rendern zurückgesetzt).
+  Browser würde `scrollY` begrenzen und alles verschieben. Dafür gibt es
+  `#tuning-scroll-spacer` am Ende des Tabs (leer, `aria-hidden`, nichts
+  Fokussierbares). **Regel:** Höhe = max(0, scrollY + innerHeight −
+  Dokumenthöhe ohne Platzhalter), also genau so viel, dass die aktuelle
+  Scroll-Position erreichbar bleibt — nur ungleich 0, wenn der Browser
+  sonst tatsächlich begrenzen würde (Nutzer am Seitenende). Nie
+  kumulativ: jedes Rendern beginnt bei 0 und gleicht danach nur das
+  tatsächlich begrenzte Stück aus; das Dokument wird so nie länger als vor
+  dem Rendern. Freigabe auf 0 beim Tab-Wechsel (`showView()`), beim Laden
+  einer Referenz, bei „Zurücksetzen“ (dort kein Ausgleich) und
+  schrittweise beim Hochscrollen (`onTuningScroll()`: schrumpft nur,
+  wächst nie). Der leere Variantenbereich bleibt mit Höhe 0 im Layout,
+  sonst fiele beim Entfernen der Karten auch die Flex-Lücke davor weg und
+  der Ausgleich wäre größer als die Karten. Gewählt statt einer festen
+  `min-height` für den Variantenbereich (mit horizontal scrollenden
+  Karten auf dem Handy): keine dauerhafte Leerfläche, Karten auf dem
+  Handy weiter untereinander lesbar.
 - **Ausnahme:** das bewusste Auf-/Zuklappen des manuellen
   Referenzformulars im Referenzblock ganz oben.
-- Abgesichert durch `tuning.mjs` („layout stability“ bei 1280 × 800 und
-  360 × 740): Nadelschritt mit Warnung, „Schritt zurück“, zweimal HD +,
-  Übernehmen — kein Bedienelement verschiebt sich um mehr als 1 px.
+- Abgesichert durch `tuning.mjs`: „layout stability“ bei 1280 × 800,
+  768 × 1024 (Deutsch) und 360 × 740 — Nadelschritt mit Warnung, „Schritt
+  zurück“, zweimal HD +, Übernehmen, kein Bedienelement verschiebt sich um
+  mehr als 1 px; „scroll-clamp spacer“ bei 360 × 740 und 1280 × 800 — am
+  Seitenende sechs Schritte im Wechsel (Nadel +, HD +, Nadel +, HD +,
+  Nadel −, HD −), ±-Buttons bleiben stehen, Platzhalter nie höher als der
+  bis dahin höchste Variantenbereich, 0 nach Hochscrollen, „Zurücksetzen“
+  und Tab-Wechsel.
 
 ### Zustand: `tuningState`
 

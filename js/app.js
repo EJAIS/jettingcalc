@@ -461,6 +461,7 @@ function hashToView() {
 
 function showView(view, { push = true } = {}) {
   if (!VIEW_PANELS[view]) view = 'calc';
+  releaseTuningSpacer(); // it only ever belongs to the tuning tab's last render
   // Initial call on page load (same view, no push) keeps the browser's
   // scroll restoration; every actual switch starts at the top.
   const changed = view !== currentView;
@@ -780,6 +781,7 @@ function tuningSessionKey() {
 
 function loadTuningReference(source, setup) {
   hideTuningApplyBanner(); // a message about the previous reference is stale
+  tuningSpacerRelease = true;
   tuningState.refSource = source;
   tuningState.ref = pickTuningFields(setup);
   tuningState.current = pickTuningFields(setup);
@@ -869,13 +871,13 @@ function renderTuning(snap = readNeedleSnapshot()) {
   // right after applying; any further tuning action ends it.
   if (tuningApplyMessage && tuningApplyMessage.sessionKey !== tuningSessionKey()) hideTuningApplyBanner();
 
-  // Content at the end of the tab (the cards) may shrink. If the page gets
-  // shorter than the current scroll position allows, the browser clamps
-  // scrollY and every control moves under the pointer — so pad the end of
-  // the tab by exactly that much instead (reset on every render).
-  const spacer = document.getElementById('tuning-scroll-spacer');
+  // Scroll-clamp spacer, see tuningSpacerNeed(): start every render at 0
+  // and compensate afterwards only if the browser actually clamped.
+  const spacer = tuningSpacer();
   const scrollYBefore = window.scrollY;
-  if (spacer) spacer.style.height = '0px';
+  const release = tuningSpacerRelease;
+  tuningSpacerRelease = false;
+  releaseTuningSpacer();
 
   withPreservedFocus(view, TUNING_FOCUS_ATTRS, () => {
     const carbLabel = document.getElementById('tuning-carb-type');
@@ -910,11 +912,51 @@ function renderTuning(snap = readNeedleSnapshot()) {
       ?.closest('tr')?.querySelector('th[scope="row"]')?.focus({ preventScroll: true });
   }
 
+  // Content at the end of the tab (the cards) may have shrunk. If the page
+  // got shorter than the scroll position allows, the browser has clamped
+  // scrollY and every control moved under the pointer: pad the end of the
+  // tab by exactly the clamped amount and restore the position. Not after
+  // loading a reference or "Reset" — a new session may move.
   const clamped = scrollYBefore - window.scrollY;
-  if (spacer && !view.hidden && clamped > 0.5) {
+  if (spacer && !release && !view.hidden && clamped > 0.5) {
     spacer.style.height = `${clamped}px`;
     window.scrollTo(0, scrollYBefore);
   }
+}
+
+// #tuning-scroll-spacer (end of the tab, aria-hidden, empty). Its height is
+//   max(0, scrollY + innerHeight − document height without it)
+// — exactly what keeps the current scroll position reachable, so it is
+// non-zero only while the user is at the page end and content above the
+// end shrank. It never exceeds what the document shrank in that render
+// (the document never ends up shorter than scrollY + innerHeight, which is
+// at most its height before) and is never cumulative: every render starts
+// it at 0. Released to 0 on a tab switch, when a reference is loaded, on
+// "Reset", and bit by bit as the user scrolls up (onTuningScroll).
+let tuningSpacerRelease = false;
+
+function tuningSpacer() {
+  return document.getElementById('tuning-scroll-spacer');
+}
+
+function releaseTuningSpacer() {
+  const spacer = tuningSpacer();
+  if (spacer) spacer.style.height = '0px';
+}
+
+function tuningSpacerNeed() {
+  const spacer = tuningSpacer();
+  if (!spacer) return 0;
+  const docWithout = document.documentElement.scrollHeight - spacer.offsetHeight;
+  return Math.max(0, window.scrollY + window.innerHeight - docWithout);
+}
+
+// Scrolling up: shrink the spacer to what is still needed (never grow it).
+function onTuningScroll() {
+  const spacer = tuningSpacer();
+  if (!spacer || spacer.offsetHeight === 0) return;
+  const need = tuningSpacerNeed();
+  if (need < spacer.offsetHeight) spacer.style.height = `${need}px`;
 }
 
 // Reference picker: one chip per usable setup slot (name + setup colour,
@@ -1416,6 +1458,7 @@ function handleTuningClick(e) {
     tuningState.suggestions = null;
     tuningState.lastStep = null;
   } else if (tuningAction === 'reset') {
+    tuningSpacerRelease = true;
     tuningState.current = pickTuningFields(tuningState.ref);
     tuningState.history = [];
     tuningState.suggestions = null;
@@ -2243,6 +2286,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('view-tuning')?.addEventListener('click', handleTuningClick);
   document.getElementById('view-tuning')?.addEventListener('change', handleTuningFieldChange);
   document.getElementById('view-tuning')?.addEventListener('input', handleTuningFieldInput);
+  window.addEventListener('scroll', onTuningScroll, { passive: true });
   document.getElementById('btn-tuning-apply-undo')?.addEventListener('click', undoTuningApply);
   document.getElementById('btn-tuning-apply-close')?.addEventListener('click', hideTuningApplyBanner);
   document.getElementById('btn-tuning-view-calc')?.addEventListener('click', () => showView('calc'));

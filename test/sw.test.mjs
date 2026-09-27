@@ -38,6 +38,7 @@ test('PRECACHE_URLS covers every file in the specified cache manifest', () => {
     './js/needledb.js',
     './js/share.js',
     './js/needlecatalog.js',
+    './js/tuning.js',
     './js/vendor/chart.umd.min.js',
     './icons/icon-192.png',
     './icons/icon-512.png',

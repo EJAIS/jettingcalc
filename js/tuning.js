@@ -9,7 +9,8 @@
 
 import { calcSetup } from './calc.js';
 import { ATOMIZER_SIZES, getClipCount } from './needledb.js';
-import { compareNeedleTypes, getNeedleSeries, getClipsSource } from './needlecatalog.js';
+import { compareNeedleTypes, getNeedleSeries, getClipsSource,
+         CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 import { JET_MIN, ND_MAX, HD_MAX } from './share.js';
 
 // Five throttle ranges on calcSetup()'s existing 5 % grid, points as
@@ -46,6 +47,10 @@ export const CLIP_BONUS = 0.5;
 // achievable with the needle alone.
 export const WARN_SIDE_RATIO = 3;
 export const MAX_SUGGESTIONS = 3;
+
+// Every `reason` code rankNextSteps() can return besides null. The UI maps
+// them to tuning.reason.* / tuning.reasonShort.* texts.
+export const TUNING_REASONS = Object.freeze(['hdLimited', 'noCandidates']);
 
 // First throttle point (integer percent) where calcSetup() no longer
 // blends the idle jet in: its BLEND table in calc.js covers 0–30 %, from
@@ -241,6 +246,17 @@ export function rankNextSteps(evaluated, {
     reason,
     warning: best != null && best.side > WARN_SIDE_RATIO * best.inc,
   };
+}
+
+// Display string for a signed percentage: '+6.3 %', '−2.0 %' (U+2212
+// minus), '0.0 %' for anything that rounds to zero. Decimal point in both
+// languages and a space before '%', like every other unit in the app.
+// null / non-finite → CATALOG_EMPTY_VALUE.
+export function formatSignedPercent(value, digits = 1) {
+  if (value == null || !Number.isFinite(value)) return CATALOG_EMPTY_VALUE;
+  const abs = Math.abs(value).toFixed(digits);
+  if (Number(abs) === 0) return `${abs} %`;
+  return `${value > 0 ? '+' : '\u2212'}${abs} %`;
 }
 
 // One step of a jet field in direction dir (+1 | −1).

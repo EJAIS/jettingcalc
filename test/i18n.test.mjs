@@ -27,6 +27,7 @@ globalThis.localStorage = {
 };
 const { TRANSLATIONS } = await import('../js/i18n.js');
 const { CATALOG_COLUMNS } = await import('../js/needlecatalog.js');
+const { TUNING_RANGES, TUNING_REASONS } = await import('../js/tuning.js');
 const { NEEDLE_LENGTHS } = await import('../js/needledb.js');
 
 const { en, de } = TRANSLATIONS;
@@ -96,6 +97,22 @@ test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', (
   for (const { key } of CATALOG_COLUMNS) {
     for (const lang of ['en', 'de']) {
       if (!Object.hasOwn(TRANSLATIONS[lang], `catalog.col.${key}`)) missing.push(`${lang}:catalog.col.${key}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+// The fine tuning view builds these keys dynamically from TUNING_RANGES and
+// the rankNextSteps() reason codes, which the literal t('…') check can't see.
+test('every tuning range and reason code has its tuning.* translations in en and de', () => {
+  const keys = [
+    ...TUNING_RANGES.map(({ key }) => `tuning.range.${key}`),
+    ...TUNING_REASONS.flatMap(code => [`tuning.reason.${code}`, `tuning.reasonShort.${code}`]),
+  ];
+  const missing = [];
+  for (const key of keys) {
+    for (const lang of ['en', 'de']) {
+      if (!Object.hasOwn(TRANSLATIONS[lang], key)) missing.push(`${lang}:${key}`);
     }
   }
   assert.deepEqual(missing, []);

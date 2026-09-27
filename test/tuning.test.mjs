@@ -13,8 +13,9 @@ import { calcSetup } from '../js/calc.js';
 import { NEEDLE_DB, ATOMIZER_SIZES } from '../js/needledb.js';
 import { ND_MAX, HD_MAX } from '../js/share.js';
 import {
-  TUNING_RANGES, MIN_STEP, MAX_SUGGESTIONS,
+  TUNING_RANGES, TUNING_REASONS, MIN_STEP, MAX_SUGGESTIONS,
   hdLimited, rangeSummary, evaluateCandidates, rankNextSteps, stepJet,
+  formatSignedPercent,
 } from '../js/tuning.js';
 
 // Reference values below come from the accepted prototype — if one of them
@@ -223,6 +224,22 @@ test('VHSx K27 C3: r3 leaner → K58 C2 with side-effect warning', () => {
   assert.ok(res.suggestions[0].side > 3 * res.suggestions[0].inc);
 });
 
+test('every returned reason is listed in TUNING_REASONS', () => {
+  const evaluated = evaluateCandidates({ allNeedles: NEEDLE_DB, ref: REF_VHSX, current: REF_VHSX });
+  const reasons = new Set();
+  for (let rangeIndex = 0; rangeIndex < TUNING_RANGES.length; rangeIndex++) {
+    for (const dir of [1, -1]) {
+      for (const hd of [true, false]) {
+        const { reason } = rankNextSteps(dir > 0 ? [] : evaluated, {
+          currentFlow: [0, 0, 0, 0, 0], currentHdLimited: Array(5).fill(hd), rangeIndex, dir, current: REF_VHSX,
+        });
+        if (reason != null) reasons.add(reason);
+      }
+    }
+  }
+  assert.deepEqual([...reasons].sort(), [...TUNING_REASONS].sort());
+});
+
 test('noCandidates when the range is not main-jet limited', () => {
   const res = rankNextSteps([], {
     currentFlow: [0, 0, 0, 0, 0], currentHdLimited: [false, false, false, false, true],
@@ -310,4 +327,17 @@ test('stepJet needleJet: walks ATOMIZER_SIZES and jumps from off-list values', (
   assert.equal(stepJet({ ...REF_VHSX, needleJet: 290 }, 'needleJet', -1).needleJet, sizes.at(-1));
   assert.equal(stepJet({ ...REF_VHSX, needleJet: 290 }, 'needleJet', 1), null);
   assert.equal(stepJet({ ...REF_VHSX, jetType: 'XX' }, 'needleJet', 1), null);
+});
+
+// ── formatSignedPercent ──────────────────────────────────────────────────────
+
+test('formatSignedPercent: sign, decimal point, space before %', () => {
+  assert.equal(formatSignedPercent(6.28), '+6.3 %');
+  assert.equal(formatSignedPercent(-2), '\u22122.0 %');
+  assert.equal(formatSignedPercent(0), '0.0 %');
+  assert.equal(formatSignedPercent(-0.04), '0.0 %');
+  assert.equal(formatSignedPercent(0.04), '0.0 %');
+  assert.equal(formatSignedPercent(12.345, 2), '+12.35 %');
+  assert.equal(formatSignedPercent(null), '–');
+  assert.equal(formatSignedPercent(NaN), '–');
 });

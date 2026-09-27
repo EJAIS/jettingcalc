@@ -594,41 +594,81 @@ gespiegelten Liste in `test/sw.test.mjs`.
 
 ## Feinabstimmung – tuning.js
 
+### Modul
+
 Reines ES-Modul wie `share.js`/`needlecatalog.js` (Imports nur `calc.js`,
 `needledb.js`, `needlecatalog.js`, `share.js`; Custom Needles kommen als
-Parameter `allNeedles`/`customTypes`). Noch nicht von `app.js` importiert
-und noch nicht in `PRECACHE_URLS` — beides kommt mit der UI.
-
-**UI-Gerüst (Tab „Feinabstimmung“, `#tuning`):**
-- `<section id="view-tuning">` mit festen Containern (Referenz, Status,
-  Bereichstabelle, Alternativen, Düsenblock, Aktionen, Hinweis).
-  `renderTuning()` ist vorerst ein Stub: Vergasertyp-Anzeige plus leerer
-  Zustand; Blöcke mit `data-tuning-block` sind ohne Referenz versteckt.
-  Neu gerendert wird in `showView()` und zentral in `updateUI()`.
-- `tuningState` nur im Speicher (Felder: siehe `initialTuningState()`).
-  `ref` ist eine Kopie zum Ladezeitpunkt, keine Live-Referenz auf den Slot.
-- Der Tab folgt dem Vergasertyp des Rechners und zeigt ihn nur an;
-  `handleCarbTypeChange()` setzt `tuningState` vollständig zurück.
-- Tab-Leiste ≤ 600 px: drei gleich breite Tabs, lange Beschriftungen
-  brechen zweizeilig um (≥ 44 px, kein Überlauf bis 320 px). Das deutsche
-  `view.tuning` enthält dafür ein weiches Trennzeichen
-  (`Fein\u00ADabstimmung`), weil `hyphens: auto` nicht überall ein
-  deutsches Wörterbuch hat.
+Parameter `allNeedles`/`customTypes`). Steht in `PRECACHE_URLS` und in der
+gespiegelten Liste in `test/sw.test.mjs`.
 
 - Alle Deltas gegen die **Referenz**, berechnet aus `curve[].overall` von
   `calcSetup()`; `calc.js` bleibt unverändert. Fünf Bereiche
   (`TUNING_RANGES`) auf dem 5-%-Raster, nie über 100 %.
 - Primäre Kennzahl ist `flow` (Mittel von overall²-Verhältnis − 1, in %),
-  `diameter` nur zur Anzeige.
+  `diameter` nur zur Anzeige. Anzeigeformat: `formatSignedPercent()`
+  (`+6.3 %`, `−2.0 %`, Dezimalpunkt in beiden Sprachen).
 - Ranking (`rankNextSteps()`): Nebenwirkung bewusst gegen **current**, nicht
   gegen die Referenz, damit bereits abgestimmte Bereiche erhalten bleiben.
-  Konstanten und Kostenfunktion: siehe Datei.
+  Konstanten und Kostenfunktion: siehe Datei. Mögliche `reason`-Codes:
+  `TUNING_REASONS`.
 - Die 35-%-Grenze der BLEND-Überblendung ist in `tuning.js` gespiegelt
   (`BLEND_END_PERCENT`), weil `calc.js` `BLEND` nicht exportiert.
 - nd/hd-Grenzen: einzige Quelle `JET_MIN`/`ND_MAX`/`HD_MAX` in `share.js`
   (auch für `NUM_FIELD_BOUNDS` und die min/max-Attribute in `app.js`).
 - Regressionswerte in `test/tuning.test.mjs` stammen aus dem abgenommenen
   Prototyp — bei Abweichung erst die Ursache klären, nicht die Werte anpassen.
+
+### Tab „Feinabstimmung“ (`#tuning`, `app.js`)
+
+- `tuningState` nur im Speicher (Felder: siehe `initialTuningState()`).
+  `ref`/`current` enthalten nur die sieben Rechen-Eingaben
+  (`TUNING_FIELDS`) und sind Kopien — keine Live-Referenz auf einen Slot.
+  `refSource` ist die im Referenz-Picker gewählte Quelle (Slot-id oder
+  `'manual'`).
+- Der Tab folgt dem Vergasertyp des Rechners und zeigt ihn nur an (plus
+  Beta-Banner über `renderBetaBanner()`); `handleCarbTypeChange()` setzt
+  `tuningState` vollständig zurück.
+- **Referenz:** Chips für jeden Slot, den `calcSetup()` rechnen kann (Name
+  escaped, Farbpunkt aus `getColors()`), plus „Manuelle Eingabe“. Das
+  Formular nutzt dieselben Builder wie die Setup-Tabelle
+  (`buildNeedleOptions`, `buildClipPosOptions`, `buildCarbSizeOptions`,
+  `buildJetTypeOptions`, `buildNeedleJetOptions`) und dieselbe
+  Werte-Logik (`applyFieldValue()`, auch von `handleFieldChange()`
+  genutzt) — keine Parallel-Implementierungen.
+- **Auswertung:** `getTuningEvaluation()` ruft `evaluateCandidates()` einmal
+  je Zustand auf und `rankNextSteps()` für alle 5 × 2 Richtungen;
+  memoisiert über `evalKey` (Referenz + current + Custom Needles).
+- **±-Schritt:** übernimmt den besten Vorschlag, pusht den alten Stand auf
+  `history`; bei `warning` erscheint `#tuning-warning` über der Tabelle.
+  Der Fokus bleibt auf dem Button (`withPreservedFocus()`; wird er
+  deaktiviert, auf dem anderen Button derselben Zeile).
+- **Robustheit:** `validateTuningState()` läuft in jedem `updateUI()`. Fehlt
+  die Nadel von `ref` oder `current` (Custom Needle gelöscht/umgetypt),
+  wird zurückgesetzt und `msg.tuningReset` gemeldet.
+- Dynamische Keys (`tuning.range.*`, `tuning.reason.*`,
+  `tuning.reasonShort.*`) prüft `test/i18n.test.mjs` gegen `TUNING_RANGES`
+  und `TUNING_REASONS`.
+
+**Mobile-Regeln (verbindlich, auch für spätere Schritte):**
+- Keine Information nur im Tooltip: ein deaktivierter ±-Button hat seinen
+  Grund als sichtbaren Text in der Zeile (`.tuning-reason`); der Tooltip
+  sitzt zusätzlich auf der Zelle (der Button hat `pointer-events: none`).
+- Bereichszeile ≤ 600 px zweizeilig (Label + Ref/Aktuell-Zeile | flow + Ø,
+  darunter − | Δ-Balken | +); Desktop behält die Tabelle. Kein Überlauf
+  bis 320 px.
+- Statuszeile `position: sticky`, einzeilig mit Ellipsis, direkt unter der
+  mobilen Tab-Leiste (`--view-tabs-height`). Vorschlagskarten kommen
+  direkt unter die Bereichstabelle, vor den Düsenblock. Kein
+  automatisches Scrollen nach ±-Klicks.
+- ±-Buttons: 44 × 44 px, `touch-action: manipulation`, ≥ 8 px Abstand.
+- Referenzformular ≤ 600 px einspaltig; Controls sind `.cell-input` und
+  erben dessen 16-px-/44-px-Regel (kein iOS-Zoom).
+- Tab-Leiste ≤ 600 px als Grid mit gleich breiten Spalten, Tabs
+  mindestens 48 px hoch; Beschriftungen brechen zweizeilig um. Das
+  deutsche `view.tuning` enthält dafür ein weiches Trennzeichen
+  (`Fein\u00ADabstimmung`), weil `hyphens: auto` nicht überall ein
+  deutsches Wörterbuch hat.
+- Farben des Δ-Balkens: `--tuning-lean` / `--tuning-rich` (inkl. Dark Mode).
 
 ---
 

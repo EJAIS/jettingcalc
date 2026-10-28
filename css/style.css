@@ -21,6 +21,11 @@
   --shadow:      0 2px 8px rgba(0,0,0,.08);
   --stripe-green: #1b8a4a;
   --flag-mid:     #f0f0f0;
+  --tuning-lean:  #d9480f;
+  --tuning-rich:  #1c64c8;
+  /* Height of the sticky view tab bar (≤ 600 px only, else 0) — the fine
+     tuning status line sticks just below it */
+  --view-tabs-height: 0px;
 }
 
 body.dark {
@@ -40,6 +45,8 @@ body.dark {
   --shadow:      0 2px 8px rgba(0,0,0,.3);
   --stripe-green: #1f9e58;
   --flag-mid:     #e8e8e8;
+  --tuning-lean:  #f08c4a;
+  --tuning-rich:  #6aa5f0;
 }
 
 body {
@@ -228,6 +235,18 @@ body.dark .btn-secondary:hover { background: #50565f; }
 }
 
 .carb-type-beta .cutaway-info { margin-left: 0; }
+
+/* Between the portrait layout (≤ 600 px) and 1024 px the single row is
+   tight: with wider system fonts than Segoe UI (Noto Sans on Linux, Roboto
+   on Android) it needed ~3 px more than a 915 px landscape phone offers and
+   the beta group wrapped. Slightly less padding and gap there buy 16 px;
+   from 1024 px on the measurements are unchanged. */
+@media (min-width: 601px) and (max-width: 1023px) {
+  .carb-type-selector {
+    padding: 14px 14px;
+    gap: 12px;
+  }
+}
 
 /* Larger hit area for the info icons (≈ 37 × 37 px) without changing the
    layout. The options are raised above it, so where the hit area overlaps
@@ -1167,7 +1186,552 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   gap: 24px;
 }
 .view-panel[hidden],
-.catalog-card[hidden] { display: none; }
+.catalog-card[hidden],
+.tuning-card[hidden],
+.tuning-card [hidden] { display: none; }
+
+/* ── Fine tuning ───────────────────────────────────────────────────────────── */
+/* No overflow clipping: it would pin the sticky status line to the card */
+.tuning-card { overflow: visible; }
+.tuning-carb-type {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tuning-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.tuning-ref:empty,
+.tuning-jets:empty { display: none; }
+/* The suggestions area stays in the layout when empty (height 0): hiding
+   it would also drop the flex gap before it, so removing the cards would
+   shrink the page by more than their own height (see the scroll spacer) */
+.tuning-empty,
+.tuning-hint,
+.tuning-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+.tuning-hint,
+.tuning-note { font-size: 12px; }
+
+/* Reference picker */
+.tuning-ref {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tuning-ref-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+.tuning-source { max-width: 100%; }
+.tuning-source-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tuning-manual {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.tuning-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+/* Same controls as the setup table (incl. its 16 px / 44 px mobile rules),
+   framed because they stand alone here */
+.tuning-manual .cell-input,
+.tuning-manual select.cell-input {
+  width: 100%;
+  border-color: var(--border);
+  background: var(--input-bg);
+}
+.tuning-load { align-self: flex-start; }
+
+/* Status line: compact, one line, sticks below the (mobile) tab bar */
+.tuning-status {
+  position: sticky;
+  top: var(--view-tabs-height);
+  z-index: 10;
+  margin: 0 -18px;
+  padding: 8px 18px;
+  /* Always one line of fixed height (text-overflow; full text as title),
+     so a longer status never pushes the table down */
+  height: 38px;
+  line-height: 21px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.tuning-status-val.is-changed {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tuning-warning {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* Range table. Fixed layout and column widths: changing numbers never
+   resize columns, and every row keeps the height the 44 px buttons give it
+   (label + meta line, flow + Ø, bar + reason block of fixed height). */
+.tuning-ranges {
+  min-width: 0;
+  table-layout: fixed;
+}
+/* Narrow fixed columns leave the bar column >= 234 px at 768 px (the
+   narrowest table layout), enough for every reason text on one line */
+.tuning-col-range { width: 15%; }
+.tuning-col-eq    { width: 4.2rem; }
+.tuning-col-delta { width: 6rem; }
+.tuning-col-step  { width: 56px; }
+.tuning-ranges thead th { white-space: normal; }
+.tuning-ranges thead th.num { text-align: right; }
+.tuning-ranges .tuning-step-head { text-align: center; }
+.tuning-ranges td,
+.tuning-ranges th[scope="row"] {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.tuning-ranges td.num { text-align: right; }
+.tuning-range {
+  text-align: left;
+  font-weight: 500;
+}
+.tuning-range-label { display: block; }
+/* Lever hint or HD-limited badge: a line that is always there, one line
+   high, so the badge appearing never changes the row height */
+.tuning-range-meta {
+  display: block;
+  height: 18px;
+  line-height: 18px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tuning-badge {
+  position: relative;
+  display: inline-block;
+  line-height: 15px;
+  white-space: nowrap;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--warning) 50%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
+}
+/* Badges are tooltip toggles like ⓘ (role="button"): a larger tap area */
+.tuning-badge::after {
+  content: '';
+  position: absolute;
+  inset: -12px -4px;
+}
+.tuning-eq,
+.tuning-delta { font-variant-numeric: tabular-nums; }
+.tuning-delta { white-space: nowrap; }
+.tuning-flow-line {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+}
+.tuning-flow { font-size: 15px; }
+/* Reserved for the side-effect ⚠ in every row, filled or not */
+.tuning-side-slot {
+  flex: none;
+  width: 1.3em;
+  text-align: left;
+}
+.tuning-side-flag {
+  color: var(--warning);
+  font-weight: 700;
+  cursor: help;
+}
+.tuning-flow.is-significant { font-weight: 700; }
+.tuning-diameter {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.tuning-row.is-last-step { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+
+.tuning-step-cell {
+  width: 56px;
+  text-align: center;
+}
+.tuning-ranges td.tuning-step-cell { padding-left: 6px; padding-right: 6px; }
+.tuning-step-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+.tuning-step-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tuning-step-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* pointer-events: none lets the cell's data-tooltip (the reason) react */
+.tuning-step-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
+.tuning-bar {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--border) 55%, var(--surface));
+  overflow: hidden;
+}
+/* Zero line */
+.tuning-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  width: 2px;
+  background: var(--text-muted);
+}
+.tuning-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.tuning-bar-fill.is-rich { left: 50%; background: var(--tuning-rich); }
+.tuning-bar-fill.is-lean { right: 50%; background: var(--tuning-lean); }
+.tuning-reason {
+  display: block;
+  margin-top: 4px;
+  /* Always one line of fixed height, even when empty; every reason text
+     fits it from 320 px (grid) and from 768 px (table) on */
+  height: 15px;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--warning);
+  text-align: center;
+}
+
+/* Legend above the range table, ⓘ with an enlarged tap area */
+.tuning-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tuning-legend .cutaway-info {
+  position: relative;
+  margin-left: 0;
+}
+.tuning-legend .cutaway-info::after {
+  content: '';
+  position: absolute;
+  inset: -17px;
+}
+
+.tuning-subhead {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+}
+.tuning-alternatives,
+.tuning-jets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Suggestion cards: the pick button's ::after covers the whole card, so a
+   tap anywhere picks it; badges with a tooltip sit above that layer
+   (isolation keeps the stacking inside the card). */
+.tuning-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.tuning-sugg {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.tuning-sugg:hover { border-color: var(--accent); }
+.tuning-sugg.is-adopted {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.tuning-sugg:has(.tuning-sugg-pick:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.tuning-sugg-pick {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  touch-action: manipulation;
+}
+.tuning-sugg-pick:focus-visible { outline: none; }
+.tuning-sugg-pick::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.tuning-sugg.is-adopted .tuning-sugg-pick { color: var(--accent); }
+.tuning-sugg-also {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.tuning-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tuning-tag {
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.tuning-tag.has-tip {
+  position: relative;
+  z-index: 1;
+  cursor: help;
+}
+.tuning-tag.has-tip::after {
+  content: '';
+  position: absolute;
+  inset: -12px -3px;
+}
+.tuning-mini {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+.tuning-mini-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 0;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.tuning-mini-range {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.tuning-mini-val {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tuning-mini-cell.is-rich .tuning-mini-val { color: var(--tuning-rich); }
+.tuning-mini-cell.is-lean .tuning-mini-val { color: var(--tuning-lean); }
+.tuning-mini-cell.is-significant .tuning-mini-val { font-weight: 700; }
+.tuning-mini-cell.is-target {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Jet block: fixed layout, so the HD lever badge never resizes columns */
+.tuning-jets-table {
+  width: auto;
+  min-width: 0;
+  table-layout: fixed;
+}
+.tuning-jets-col-label { width: 11rem; }
+.tuning-jets-col-val   { width: 4.5rem; }
+.tuning-jets-col-step  { width: 56px; }
+.tuning-jets-table thead th { white-space: normal; }
+.tuning-jets-table th[scope="row"],
+.tuning-jets-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.tuning-jets-table th[scope="row"] {
+  text-align: left;
+  font-weight: 500;
+}
+.tuning-jets-table thead th.num { text-align: right; }
+.tuning-jets-table .tuning-step-head { text-align: center; }
+.tuning-jets-table td.num {
+  min-width: 3.5em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tuning-jets-table td.is-changed {
+  color: var(--accent);
+  font-weight: 700;
+}
+.tuning-jet-step {
+  width: 52px;
+  text-align: center;
+}
+.tuning-jet-row.is-lever { background: color-mix(in srgb, var(--warning) 10%, var(--surface)); }
+
+/* Range table ≤ 767 px: a grid of fixed parts instead of the table. From
+   601 to 767 px the table's bar column would shrink to 50–90 px, too narrow
+   for the bar and its reason line, so the stacked layout already applies
+   there (the other mobile rules still start at ≤ 600 px). */
+@media (max-width: 767px) {
+  /* Range rows as a grid of fixed parts (equal fr columns, so values never
+     resize anything):
+     label + meta line | flow + Ø
+     Ref ≙ …           | Current ≙ …
+     −  |      Δ bar         | +
+     reason (one line, full width, always present)                        */
+  .tuning-ranges colgroup,
+  .tuning-ranges thead { display: none; }
+  .tuning-ranges,
+  .tuning-ranges tbody { display: block; min-width: 0; }
+  .tuning-ranges tr {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 44px;
+    grid-template-areas:
+      "range  range  delta  delta"
+      "ref    ref    cur    cur"
+      "lean   bar    bar    rich"
+      "reason reason reason reason";
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tuning-ranges td,
+  .tuning-ranges th[scope="row"] {
+    padding: 0;
+    border: 0;
+  }
+  .tuning-range { grid-area: range; align-self: start; min-width: 0; }
+  .tuning-delta { grid-area: delta; align-self: start; }
+  .tuning-ranges td.tuning-eq {
+    font-size: 11px;
+    line-height: 16px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    text-align: left;
+  }
+  .tuning-ranges td.tuning-eq.is-ref { grid-area: ref; }
+  .tuning-ranges td.tuning-eq.is-cur { grid-area: cur; text-align: right; }
+  .tuning-ranges td.tuning-eq::before { content: attr(data-label) " "; }
+  .tuning-step-cell { width: auto; }
+  .tuning-step-cell.is-lean { grid-area: lean; }
+  .tuning-step-cell.is-rich { grid-area: rich; }
+  /* The bar and the reason line become grid items of their own, so the
+     reason can use the full row width */
+  .tuning-bar-cell { display: contents; }
+  .tuning-bar { grid-area: bar; }
+  .tuning-reason {
+    grid-area: reason;
+    margin-top: 0;
+    height: 15px;
+    line-height: 15px;
+    white-space: nowrap;
+  }
+}
+.tuning-jet-row.has-hint th,
+.tuning-jet-row.has-hint td { border-bottom: 0; }
+.tuning-jets-table th[scope="row"] { white-space: nowrap; }
+/* One line of fixed height under every jet, present even when empty */
+.tuning-jets-table td.tuning-jet-hint {
+  height: 16px;
+  padding-top: 0;
+  padding-bottom: 2px;
+  line-height: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--warning);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tuning-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tuning-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* pointer-events: none lets the wrapper's data-tooltip (the reason) react */
+.tuning-apply-item button:disabled { pointer-events: none; }
+.tuning-apply-banner {
+  flex-wrap: wrap;
+  margin-top: 0;
+}
+.tuning-apply-banner.is-error {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
+.tuning-actions button:disabled,
+.tuning-load:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.tuning-actions .btn-ghost:disabled:hover {
+  background: transparent;
+  color: var(--accent);
+}
 
 /* ── Needle catalog ────────────────────────────────────────────────────────── */
 .catalog-count {
@@ -1458,7 +2022,9 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   header h1 { font-size: 1.05rem; }
   header .subtitle { font-size: 0.75rem; }
 
-  .header-controls { width: 100%; justify-content: flex-end; }
+  /* Wrap onto a second right-aligned row instead of running off the left
+     edge (body's overflow-x: hidden would hide that); gap spaces the rows */
+  .header-controls { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
   .header-controls button { padding: 6px 10px; font-size: 12px; }
 
   /* Main: tighter padding */
@@ -1565,17 +2131,34 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 
 /* ── Mobile (≤ 600px): view tabs + needle catalog ──────────────────────────── */
 @media (max-width: 600px) {
+  /* Tab min-height 48 px; the tabs' -1 px margin overlaps the 1 px border */
+  :root { --view-tabs-height: 48px; }
+
+  /* Equal-width columns for any number of tabs */
   .view-tabs {
     position: sticky;
     top: 0;
     z-index: 20;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 0;
     padding: 0;
   }
+  /* Three equal tabs: min-width 0 lets a long label wrap onto a second
+     line instead of pushing the bar past the viewport; the tab stays
+     ≥ 44 px tall either way. "Feinabstimmung" carries a soft hyphen
+     (view.tuning in i18n.js), since hyphens: auto has no German
+     dictionary in every browser; overflow-wrap is the last resort for
+     unusually wide fallback fonts. */
   .view-tabs [role="tab"] {
-    flex: 1 1 0;
-    min-height: 44px;
-    padding: 8px 6px 6px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 8px 4px 6px;
+    font-size: 13px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .view-panel { gap: 16px; }
@@ -1586,6 +2169,42 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
     flex: 1 1 100%;
     min-height: 44px;
   }
+
+  /* Tuning header: carb type on its own row below the heading */
+  .tuning-card .card-header { flex-wrap: wrap; }
+  .tuning-carb-type {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  /* .chip-group.… outranks the catalog's one-row .chip-group rule below */
+  .chip-group.tuning-sources { flex-wrap: wrap; }
+  .tuning-sources .chip { flex: 0 1 auto; min-width: 0; }
+  .tuning-manual { grid-template-columns: 1fr; }
+  .tuning-load { align-self: stretch; min-height: 44px; }
+  .tuning-status { margin: 0 -10px; padding: 6px 10px; height: 34px; }
+
+  .tuning-actions button,
+  .tuning-apply-banner .btn-ghost {
+    flex: 1 1 0;
+    min-height: 44px;
+  }
+  .tuning-apply-item {
+    display: flex;
+    flex: 1 1 0;
+  }
+  .tuning-apply-banner span { flex: 1 1 100%; }
+  .tuning-apply-banner .btn-icon { min-width: 44px; min-height: 44px; }
+
+  .tuning-cards { grid-template-columns: 1fr; }
+  .tuning-sugg-pick { min-height: 44px; }
+  .tuning-jets-table { width: 100%; }
+  .tuning-jets-table th[scope="row"],
+  .tuning-jets-table td { padding: 4px; }
+  .tuning-jets-table td.tuning-jet-hint { padding-top: 0; padding-bottom: 2px; }
+  .tuning-jets-col-label { width: auto; }
+  .tuning-jets-col-val   { width: 3.4rem; }
+  .tuning-jets-col-step  { width: 52px; }
 
   /* nowrap: a wrapping column flexbox sizes each line to its widest item
      (the chip row), which would push every control past the card edge */

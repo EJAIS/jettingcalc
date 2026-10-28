@@ -8,11 +8,13 @@
 // it lives outside test/ and is run explicitly:
 //
 //   npm install                       # pulls in the `playwright` devDependency
-//   npx playwright install chromium   # first time only, downloads the browser
+//   npx playwright install chromium   # first time and after every Playwright update
 //   node --test test-browser/*.mjs
 //
-// Set CHROMIUM_PATH to launch a preinstalled Chromium instead of the one
-// Playwright downloads (e.g. when the two versions don't match).
+// Each Playwright version expects its own Chromium build, so run the install
+// step again after every Playwright update. Alternatively, set CHROMIUM_PATH
+// to launch a preinstalled Chromium or Chrome — for environments that can't
+// download the browser.
 //
 // Each test spins up its own isolated browser context on a shared throwaway
 // static file server (serving the repo root). Service workers are blocked

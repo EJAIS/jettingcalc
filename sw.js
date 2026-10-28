@@ -21,7 +21,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = '1add027b7513';
+export const JETTINGCALC_CACHE_VERSION = '9a0c7e87d455';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so
@@ -38,6 +38,7 @@ export const PRECACHE_URLS = [
   './js/needledb.js',
   './js/share.js',
   './js/needlecatalog.js',
+  './js/tuning.js',
   './js/vendor/chart.umd.min.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

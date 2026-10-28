@@ -27,6 +27,7 @@ globalThis.localStorage = {
 };
 const { TRANSLATIONS } = await import('../js/i18n.js');
 const { CATALOG_COLUMNS } = await import('../js/needlecatalog.js');
+const { TUNING_RANGES, TUNING_REASONS } = await import('../js/tuning.js');
 const { NEEDLE_LENGTHS } = await import('../js/needledb.js');
 
 const { en, de } = TRANSLATIONS;
@@ -99,6 +100,52 @@ test('every CATALOG_COLUMNS key has a catalog.col.* translation in en and de', (
     }
   }
   assert.deepEqual(missing, []);
+});
+
+// The fine tuning view builds these keys dynamically from TUNING_RANGES and
+// the rankNextSteps() reason codes, which the literal t('…') check can't see.
+test('every tuning range and reason code has its tuning.* translations in en and de', () => {
+  const keys = [
+    ...TUNING_RANGES.flatMap(({ key }) => [`tuning.range.${key}`, `tuning.rangeShort.${key}`]),
+    ...TUNING_REASONS.flatMap(code => [`tuning.reason.${code}`, `tuning.reasonShort.${code}`, `tuning.reasonTiny.${code}`]),
+  ];
+  const missing = [];
+  for (const key of keys) {
+    for (const lang of ['en', 'de']) {
+      if (!Object.hasOwn(TRANSLATIONS[lang], key)) missing.push(`${lang}:${key}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+// German quotation marks: „ (U+201E) opens, “ (U+201C) closes. A straight
+// " after „ — the mix „…" that crept into several texts — fails, as does an
+// unclosed „ or a stray “.
+test('de: every „ is closed with “', () => {
+  const bad = [];
+  for (const [key, value] of Object.entries(de)) {
+    let open = false;
+    for (const ch of value) {
+      if (ch === '\u201E') {
+        if (open) bad.push(`${key}: „ inside „…“`);
+        open = true;
+      } else if (ch === '\u201C') {
+        if (!open) bad.push(`${key}: “ without „`);
+        open = false;
+      } else if (ch === '"' && open) {
+        bad.push(`${key}: „ closed with "`);
+        open = false;
+      }
+    }
+    if (open) bad.push(`${key}: „ never closed`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+// Uniform German quotes: no straight "…" pairs in German texts either.
+test('de: no straight double quotes', () => {
+  const found = Object.entries(de).filter(([, value]) => value.includes('"')).map(([key]) => key);
+  assert.deepEqual(found, []);
 });
 
 // Custom needle length texts must match NEEDLE_LENGTHS (the single source

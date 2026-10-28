@@ -1,7 +1,7 @@
 // storage.js — localStorage abstraction for setups and custom needles
 // Copyright (C) 2014 GUE — GPL v2.0
 
-import { NEEDLE_DB, getClipCount } from './needledb.js';
+import { NEEDLE_DB, resolveClipCount } from './needledb.js';
 
 const STORAGE_KEY        = 'dellorto_setups';
 const CUSTOM_NEEDLES_KEY = 'dellorto_custom_needles';
@@ -36,7 +36,7 @@ export function loadSetups() {
   let reconciled = false;
   setups.forEach(s => {
     if (s.needleType && s.clipPos != null) {
-      const maxClips = allNeedles[s.needleType]?.clips ?? getClipCount(s.needleType);
+      const maxClips = resolveClipCount(s.needleType, allNeedles);
       if (s.clipPos > maxClips) {
         s.clipPos = null;
         reconciled = true;
@@ -72,8 +72,9 @@ export function saveCarbType(ct) {
   localStorage.setItem(CARB_TYPE_KEY, ct);
 }
 
-export function getAllNeedles() {
-  const custom = loadCustomNeedles();
+// `custom` lets a caller that already read the custom needles (app.js's
+// readNeedleSnapshot()) pass them in instead of reading localStorage again.
+export function getAllNeedles(custom = loadCustomNeedles()) {
   const customMap = Object.fromEntries(
     custom.map(n => {
       const entry = { carbType: n.carbType, A: n.A, B: n.B, C: n.C };

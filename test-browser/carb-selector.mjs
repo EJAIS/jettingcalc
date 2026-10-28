@@ -1,7 +1,8 @@
 // test-browser/carb-selector.mjs — Browser-driven layout tests for the
 // carburetor type selector (#carb-type-selector): stacked layout in portrait
 // (≤ 600px), unchanged single row on wider screens, enlarged tap area of the
-// beta info icons, and translated attribute texts.
+// beta info icons, and translated attribute texts — plus the app-wide
+// tooltip behaviour for touch and keyboard (row action buttons, ⓘ).
 // Copyright (C) 2014 GUE — GPL v2.0
 //
 // Needs a real Chromium and the `playwright` package, so — like pwa.mjs,
@@ -9,11 +10,13 @@
 // explicitly:
 //
 //   npm install                       # pulls in the `playwright` devDependency
-//   npx playwright install chromium   # first time only, downloads the browser
+//   npx playwright install chromium   # first time and after every Playwright update
 //   node --test test-browser/*.mjs
 //
-// Set CHROMIUM_PATH to launch a preinstalled Chromium instead of the one
-// Playwright downloads (e.g. when the two versions don't match).
+// Each Playwright version expects its own Chromium build, so run the install
+// step again after every Playwright update. Alternatively, set CHROMIUM_PATH
+// to launch a preinstalled Chromium or Chrome — for environments that can't
+// download the browser.
 //
 // Service workers are blocked: a cached app shell would only add
 // nondeterminism here — offline behavior is pwa.mjs's job.
@@ -181,6 +184,11 @@ for (const lang of ['en', 'de']) {
         assert.ok(near(m.betaLabel.cy, m.PHBH.cy), `${where}: beta label not inline with the options`);
         assert.ok(m.VHSx.right < m.PHBH.x && m.PHBH.right < m.infoPHBH.x && m.infoPHBH.right < m.PHBL.x
           && m.PHBL.right < m.infoPHBL.x, `${where}: unexpected order VHSx, PHBH, ⓘ, PHBL, ⓘ`);
+        // Single row, strictly: all three options share offsetParent and offsetTop.
+        const tops = await page.evaluate(() => [...document.querySelectorAll('#carb-type-selector .carb-type-option')]
+          .map(o => ({ top: o.offsetTop, parent: o.offsetParent?.tagName + '#' + (o.offsetParent?.id ?? '') })));
+        assert.equal(tops.length, 3);
+        assert.equal(new Set(tops.map(t => `${t.parent}@${t.top}`)).size, 1, `${where}: ${JSON.stringify(tops)}`);
         assertNoOverflow(m, where);
       });
     });
@@ -212,8 +220,9 @@ for (const lang of ['en', 'de']) {
     });
   });
 
-  test(`${lang}: desktop — the ⓘ hit area never covers the neighbouring options, hover still opens the tooltip`, async () => {
-    await withPage(lang, { viewport: { width: 1280, height: 800 } }, async page => {
+  // 915 × 412 is inside the 601–1023 px range with the tighter padding/gap.
+  for (const [width, height] of [[915, 412], [1280, 800]]) test(`${lang}: ${width}×${height} — the ⓘ hit area never covers the neighbouring options, hover still opens the tooltip`, async () => {
+    await withPage(lang, { viewport: { width, height } }, async page => {
       const opts = await page.evaluate(() => ['PHBH', 'PHBL'].map(v => {
         const r = document.querySelector(`input[name="carbType"][value="${v}"]`).closest('label').getBoundingClientRect();
         return { v, left: r.left, right: r.right, cy: r.y + r.height / 2 };
@@ -291,5 +300,64 @@ test('touch: tapping a row action button runs it instead of opening its tooltip'
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     assert.equal(await page.evaluate(() => window.__actionClicked === true), true, 'button click reached the button');
     assert.equal(await page.evaluate(() => document.querySelector('.tooltip-box').hidden), true, 'no tooltip left open');
+  });
+});
+
+// A keyboard click has no pointerdown before it; buttons with a tooltip
+// must still run their action instead of only opening the tooltip.
+test('keyboard: Enter on ⧉ duplicates the row, Enter on ↺ asks to reset it; focus shows the button tooltip', async () => {
+  await withPage('en', { viewport: { width: 1280, height: 800 } }, async page => {
+    const dialogs = [];
+    page.on('dialog', d => dialogs.push(d.message())); // withPage's handler accepts
+    await page.click('#btn-load-demo');
+    dialogs.length = 0;
+    const filled = () => page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups')).filter(s => s.needleType).length);
+    const tooltip = () => page.evaluate(() => {
+      const box = document.querySelector('.tooltip-box');
+      return box.hidden ? null : box.textContent;
+    });
+    assert.equal(await filled(), 3);
+
+    // Reach ⧉ by keyboard (Tab / Shift+Tab), so its focus is :focus-visible.
+    const dup = '#setup-tbody tr[data-row-id="1"] [data-action="duplicate-row"]';
+    await page.focus(dup);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(sel => document.activeElement === document.querySelector(sel), dup), true);
+    assert.equal(await tooltip(), 'Duplicate this row', 'tooltip shown on keyboard focus');
+
+    await page.keyboard.press('Enter');
+    assert.equal(await filled(), 4, 'Enter on ⧉ duplicated the row');
+    assert.equal(await tooltip(), null);
+
+    const name = await page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups'))[0].name);
+    await page.focus('#setup-tbody tr[data-row-id="1"] [data-action="reset-row"]');
+    await page.keyboard.press('Enter');
+    assert.deepEqual(dialogs, [`Reset "${name}"?`], 'Enter on ↺ asked for confirmation');
+    assert.equal(await filled(), 3, 'confirmed reset emptied the row');
+  });
+});
+
+test('keyboard: Enter / Space toggle an ⓘ tooltip, Escape closes it', async () => {
+  await withPage('en', { viewport: { width: 1280, height: 800 } }, async page => {
+    const tooltip = () => page.evaluate(() => {
+      const box = document.querySelector('.tooltip-box');
+      return box.hidden ? null : box.textContent;
+    });
+    const expected = await page.getAttribute(PHBH_INFO, 'data-tooltip');
+    await page.focus(PHBH_INFO);
+    assert.equal(await tooltip(), null, 'focus alone does not open an ⓘ');
+
+    await page.keyboard.press('Enter');
+    assert.equal(await tooltip(), expected);
+    await page.keyboard.press('Escape');
+    assert.equal(await tooltip(), null);
+
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await page.keyboard.press(' ');
+    assert.equal(await tooltip(), expected);
+    assert.equal(await page.evaluate(() => window.scrollY), scrollY, 'Space did not scroll the page');
+    await page.keyboard.press(' ');
+    assert.equal(await tooltip(), null);
   });
 });

@@ -7,7 +7,7 @@
 // filter labels etc. are resolved in the UI via t() and catalog.* keys.
 // Copyright (C) 2014 GUE — GPL v2.0
 
-import { NEEDLE_DB, VERIFIED_DEFAULT_CLIP_PREFIXES, getClipCount,
+import { NEEDLE_DB, VERIFIED_DEFAULT_CLIP_PREFIXES, resolveClipCount,
          getNeedleLength, getTaperCount } from './needledb.js';
 
 // Catalog columns in display order. `key` doubles as the i18n suffix
@@ -58,7 +58,10 @@ export function compareNeedleTypes(a, b) {
   return ta < tb ? -1 : ta > tb ? 1 : 0;
 }
 
-function resolveClipsSource(type, isCustom) {
+// Where a needle's clip count comes from: 'custom' (custom needle),
+// 'verified' (per-needle NEEDLE_DB value or a verified series default) or
+// 'default' (unverified series placeholder). Shared with tuning.js.
+export function getClipsSource(type, isCustom) {
   if (isCustom) return 'custom';
   if (NEEDLE_DB[type]?.clips != null) return 'verified';
   if (VERIFIED_DEFAULT_CLIP_PREFIXES.includes(getNeedleSeries(type))) return 'verified';
@@ -83,9 +86,8 @@ export function buildCatalogRows({ allNeedles, carbType, customTypes = [], setup
         tapers: getTaperCount(needle),
       };
       for (const field of GEOMETRY_FIELDS) row[field] = needle[field] ?? null;
-      // Same resolution as resolveClipCount() in app.js.
-      row.clips = needle.clips ?? getClipCount(type);
-      row.clipsSource = resolveClipsSource(type, isCustom);
+      row.clips = resolveClipCount(type, allNeedles);
+      row.clipsSource = getClipsSource(type, isCustom);
       row.length = getNeedleLength(needle, type);
       row.isCustom = isCustom;
       row.usedBy = setups

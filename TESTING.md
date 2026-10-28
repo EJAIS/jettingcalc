@@ -197,6 +197,21 @@ right-aligned row instead of running off the left edge (which
 `body { overflow-x: hidden }` used to hide). At 1280 px they stay in one
 row.
 
+`test-browser/setup-table.mjs` covers the setup table of the calculator
+(demo setups loaded, service workers blocked):
+
+- **Column order** — in EN and DE the cells of a row are the inputs Name,
+  Needle, Clip, Carb Ø, Atomizer Type, Atomizer, ND, HD, then Max HD and
+  Cutaway, then the actions; the group header row reads "Inputs"
+  (colspan 8) and "Results (calculated)" (colspan 2) — „Eingaben“ /
+  „Ergebnisse (berechnet)“ in DE; one column header per cell.
+- **Highlighting** — result cells have another background than input
+  cells and a 2 px separator; Max HD uses the normal text colour (not
+  red); every input in a row has a visible border without hover.
+- **Phone 390×844** — scrolling the table sideways to its end leaves the
+  name column at the same x position, "#1 Demo-1" fits its field, Max HD
+  is in view, and the page has no horizontal overflow.
+
 `test-browser/tuning.mjs` covers the fine tuning tab (service workers
 blocked as above). The setup K27 C3 / 34 / DQ 264 / ND 50 / HD 128 is
 entered through the calculator table like a user would; expected needles

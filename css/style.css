@@ -23,6 +23,9 @@
   --flag-mid:     #f0f0f0;
   --tuning-lean:  #d9480f;
   --tuning-rich:  #1c64c8;
+  --result-bg:      #eef2f7;
+  --result-head-bg: #5b6672;
+  --result-sep:     #8a95a3;
   /* Height of the sticky view tab bar (≤ 600 px only, else 0) — the fine
      tuning status line sticks just below it */
   --view-tabs-height: 0px;
@@ -47,6 +50,9 @@ body.dark {
   --flag-mid:     #e8e8e8;
   --tuning-lean:  #f08c4a;
   --tuning-rich:  #6aa5f0;
+  --result-bg:      #353b45;
+  --result-head-bg: #56606d;
+  --result-sep:     #6f7a88;
 }
 
 body {
@@ -163,12 +169,13 @@ body.dark .btn-secondary:hover { background: #50565f; }
 .btn-icon:hover { color: var(--accent); }
 .btn-icon-danger:hover { color: var(--danger); }
 
+/* A real table cell (display: flex on a <td> broke the row's height and
+   borders); the buttons sit inline, right-aligned. */
 .row-actions {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
+  text-align: right;
   white-space: nowrap;
 }
+.row-actions .btn-icon + .btn-icon { margin-left: 4px; }
 .row-actions .btn-icon { font-size: 16px; padding: 2px 4px; }
 .row-actions .btn-icon:disabled { opacity: .3; cursor: not-allowed; }
 .row-actions .btn-icon:disabled:hover { color: var(--text-muted); }
@@ -414,10 +421,67 @@ tbody td {
   vertical-align: middle;
 }
 
+/* Inputs first, then the calculated results: a group header row names
+   both, and the result columns are tinted with a separator before them,
+   so nobody tries to type into Max HD or Cutaway. */
+.col-group-row th,
+.col-group-row td {
+  padding: 4px 10px;
+  font-size: 10px;
+  letter-spacing: .08em;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--header-fg) 25%, transparent);
+  background: var(--header-bg);
+}
+thead th.result-col { background: var(--result-head-bg); }
+tbody td.result-col { background: var(--result-bg); }
+.result-col-first { border-left: 2px solid var(--result-sep); }
+.result-empty { color: var(--text-muted); font-weight: 400; }
+
+/* Inputs look like fields everywhere, also without hover (no hover on
+   touch screens): frame and field background. */
+.setup-table .cell-input {
+  border-color: var(--border);
+  background: var(--input-bg);
+}
+.setup-table .cell-input:hover { border-color: var(--text-muted); }
+.setup-table .cell-input:focus { border-color: var(--accent); }
+
+/* The name column stays at the left edge while the table scrolls
+   sideways (phones), like the catalog's first column; it needs its own
+   background or scrolled cells show through. The group label "Inputs"
+   sticks inside its header cell the same way. */
+.setup-table .name-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  /* A shadow, not border-right: in a border-collapse table the border
+     stays behind when the cell sticks. */
+  box-shadow: inset -1px 0 0 var(--border);
+}
+.setup-table thead .name-col {
+  background: var(--header-bg);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--header-fg) 25%, transparent);
+}
+/* ⓘ in the dark header: light like the header text */
+.setup-table thead .cutaway-info {
+  color: var(--header-fg);
+  border-color: color-mix(in srgb, var(--header-fg) 70%, transparent);
+}
+.setup-table thead .cutaway-info:hover { border-color: var(--accent); color: var(--accent); }
+.setup-table tbody tr:nth-child(even) > .name-col { background: var(--row-even); }
+.setup-table tbody tr:hover > .name-col {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.col-group-label {
+  position: sticky;
+  left: 10px;
+}
+
 .maxhd-cell {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text);
   text-align: right;
   padding-right: 12px;
   white-space: nowrap;
@@ -2070,6 +2134,8 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 
   /* Setup table: tighter cell padding */
   tbody td { padding: 2px 4px; }
+  /* Room for "#1 Demo-1" in the sticky name column */
+  .setup-table .name-col { min-width: 112px; }
   thead th  { padding: 8px 6px; font-size: 10px; }
 
   /* Modal: nearly full-screen */

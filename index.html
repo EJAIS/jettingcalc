@@ -109,16 +109,23 @@
     </div>
     <div id="carb-beta-banner" class="carb-beta-banner" hidden></div>
     <div class="table-wrapper">
-      <table>
+      <table class="setup-table">
         <thead>
+          <tr class="col-group-row">
+            <th scope="colgroup" colspan="8"><span class="col-group-label" data-i18n="col.group.inputs">Inputs</span></th>
+            <th scope="colgroup" colspan="2" class="result-col result-col-first" data-i18n="col.group.results">Results (calculated)</th>
+            <td></td>
+          </tr>
           <tr>
-            <th data-i18n="col.name">Name</th>
+            <th class="name-col" data-i18n="col.name">Name</th>
             <th data-i18n="col.needle">Needle</th>
             <th data-i18n="col.clip">Clip</th>
             <th data-i18n="col.carbSize">Carb Ø</th>
             <th data-i18n="col.jetType" data-i18n-title="col.jetType.title" title="Atomizer type: DP/DQ = VHSA/VHSB carbs · AV/AS = PHBH carbs · AQ = PHBL carbs">Atomizer Type</th>
             <th data-i18n="col.needleJet">Atomizer</th>
-            <th>
+            <th data-i18n="col.nd">ND</th>
+            <th data-i18n="col.hd">HD</th>
+            <th class="result-col result-col-first">
               <span data-i18n="col.maxHD">Max HD</span>
               <span class="cutaway-info"
                     data-i18n-tooltip="col.maxHD.tooltip"
@@ -127,9 +134,7 @@
                     data-i18n-aria-label="col.maxHD.aria"
                     aria-label="About Max HD">ℹ</span>
             </th>
-            <th data-i18n="col.cutaway">Cutaway</th>
-            <th data-i18n="col.nd">ND</th>
-            <th data-i18n="col.hd">HD</th>
+            <th class="result-col" data-i18n="col.cutaway">Cutaway</th>
             <th data-i18n="col.actions">Actions</th>
           </tr>
         </thead>

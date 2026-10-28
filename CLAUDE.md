@@ -117,7 +117,7 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 .gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
-test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs)
+test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs, setup-table.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
 README.md                   Nutzer- und Entwicklerdoku (Features, Deployment, Tests)
 TESTING.md                  PWA-Audit, Browsertests, manuelle Checkliste
@@ -546,6 +546,38 @@ nur so lange vollständig nutzbar, wie alle darin referenzierten Werte auch
 in der aktuell ausgelieferten Datenbank noch existieren; andernfalls verliert
 der Empfänger beim Öffnen kommentarlos nur die betroffenen Felder (mit
 `msg.shareFieldsIgnored`-Hinweis), nicht den ganzen Link.
+
+---
+
+## Setup-Tabelle (Rechner)
+
+Nutzer versuchten, in Cutaway etwas einzugeben: Ergebnisse standen
+zwischen den Eingaben, und die Eingabefelder hatten keinen sichtbaren
+Rahmen. Deshalb gilt (Entscheidungen Alexander, 2026-10-28):
+
+- **Reihenfolge:** erst alle Eingaben — Name, Nadel, Clip, Vergaser Ø,
+  MR-Typ, Mischrohr, ND, HD —, dann die Ergebnisse Max HD und Cutaway,
+  zuletzt die Aktionen. Kopf (`index.html`) und Zeilen (`renderTable()`)
+  immer gemeinsam ändern.
+- **Gruppenkopf:** eine zusätzliche Kopfzeile `.col-group-row` mit
+  „Eingaben“ (`col.group.inputs`, colspan 8) und „Ergebnisse (berechnet)“
+  (`col.group.results`, colspan 2). Die Ergebnisspalten (`.result-col`)
+  sind getönt (`--result-bg`, im Kopf `--result-head-bg`), davor eine
+  2-px-Trennlinie (`.result-col-first`, `--result-sep`).
+- **Eingaben als Felder:** In `.setup-table` hat jedes `.cell-input`
+  dauerhaft Rahmen und Feldhintergrund — nicht erst bei Hover, den es auf
+  Touch-Geräten nicht gibt.
+- **Ergebnisse neutral:** Max HD und Cutaway in Textfarbe, fett; leere
+  Werte grau (`.result-empty`). Rot bleibt Warnungen (⚠) vorbehalten.
+- **Handy:** Die Tabelle scrollt seitlich; die Namensspalte (`.name-col`)
+  bleibt links stehen wie die erste Spalte im Katalog und ist ≤ 600 px
+  mindestens 112 px breit („#1 Demo-1“ passt). Die Kante ist ein
+  `box-shadow`, kein `border-right`: in einer `border-collapse`-Tabelle
+  bliebe der Rahmen beim Kleben zurück. Das Label „Eingaben“ klebt
+  innerhalb seiner Kopfzelle.
+- Die Aktionszelle ist eine echte Tabellenzelle (kein `display: flex` am
+  `<td>`, das Zeilenhöhe und Linien verschob).
+- Abgesichert durch `test-browser/setup-table.mjs`.
 
 ---
 
@@ -1087,8 +1119,8 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
   `TESTING.md`.
 - **Konvention:** vor jedem Merge ist `node --test` grün (ohne
   Warnungen); die Browsertests (`pwa.mjs`, `catalog.mjs`,
-  `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`, `header.mjs`)
-  laufen ebenfalls vollständig grün.
+  `custom-needles.mjs`, `carb-selector.mjs`, `tuning.mjs`, `header.mjs`,
+  `setup-table.mjs`) laufen ebenfalls vollständig grün.
 
 ### Tooling
 

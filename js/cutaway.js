@@ -22,7 +22,7 @@ export function isRoundSlide2Stroke(carbType) {
 /**
  * @param {number} carbSize     Carb bore diameter (mm)
  * @param {number} mainJetNum   Main jet number (s.hd, e.g. 175 → 1.75 mm Ø)
- * @param {number} needleJetNum Needle jet number (s.needleJet, e.g. 262 → 2.62 mm Ø)
+ * @param {number} needleJetNum Atomizer size (s.needleJet, e.g. 262 → 2.62 mm Ø)
  * @param {number} needleA      Needle shank diameter (needle.A in mm)
  */
 export function calcCutaway(carbSize, mainJetNum, needleJetNum, needleA) {
@@ -32,7 +32,7 @@ export function calcCutaway(carbSize, mainJetNum, needleJetNum, needleA) {
   const annulusArea = njHoleArea - needleArea;
   const ratio       = annulusArea / mainArea;
 
-  // Needle shank meets or exceeds the needle-jet bore — no annulus left to flow through.
+  // Needle shank meets or exceeds the atomizer bore — no annulus left to flow through.
   if (!(annulusArea > 0)) {
     return { cutawayRaw: null, cutawayClamped: null, ratio, ratioOk: false };
   }

@@ -468,6 +468,132 @@ test('a validation error when applying shows in the message field, not via showN
   });
 });
 
+// Replaces withPage()'s auto-accept: every dialog is recorded and answered
+// with `accept`.
+function answerDialogs(page, accept) {
+  const messages = [];
+  page.removeAllListeners('dialog');
+  page.on('dialog', d => { messages.push(d.message()); return accept ? d.accept() : d.dismiss(); });
+  return messages;
+}
+
+// Changes the HD of calculator row 1 behind the tuning session's back.
+async function editRefSlotHd(page, hd) {
+  await page.click('#tab-calc');
+  await page.fill('tr[data-row-id="1"] [data-field="hd"]', String(hd));
+  await page.press('tr[data-row-id="1"] [data-field="hd"]', 'Tab');
+  await page.click('#tab-tuning');
+}
+
+test('overwrite asks first when the reference slot was changed in the calculator; cancel keeps the slot', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    await page.click('[data-tuning-step="1:1"]');
+    await editRefSlotHd(page, 130);
+
+    let dialogs = answerDialogs(page, false);
+    await page.click('[data-tuning-action="applyRef"]');
+    assert.equal(dialogs.length, 1);
+    assert.match(dialogs[0], /"#1" was changed in the calculator/);
+    let setups = await storedSetups(page);
+    assert.deepEqual([setups[0].needleType, setups[0].hd], ['K27', 130], 'cancel keeps the calculator edit');
+    assert.equal(await isVisible(page, '#tuning-apply-banner'), false);
+
+    dialogs = answerDialogs(page, true);
+    await page.click('[data-tuning-action="applyRef"]');
+    assert.equal(dialogs.length, 1);
+    setups = await storedSetups(page);
+    assert.deepEqual([setups[0].needleType, setups[0].clipPos, setups[0].hd], ['K96', 5, 128]);
+  });
+
+  // Unchanged slot: no question.
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    const dialogs = answerDialogs(page, true);
+    await page.click('[data-tuning-step="1:1"]');
+    await page.click('[data-tuning-action="applyRef"]');
+    assert.equal(dialogs.length, 0);
+    assert.equal((await storedSetups(page))[0].needleType, 'K96');
+  });
+});
+
+test('overwrite is disabled with a visible reason once the reference slot was cleared', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    await page.click('[data-tuning-step="1:1"]');
+    await page.click('#tab-calc');
+    await page.click('tr[data-row-id="1"] [data-action="reset-row"]'); // confirm auto-accepted
+    await page.click('#tab-tuning');
+
+    assert.equal(await page.isDisabled('[data-tuning-action="applyRef"]'), true);
+    const hints = await page.$$eval('#tuning-actions .tuning-hint', els => els.map(el => el.textContent));
+    assert.ok(hints.some(h => /reference slot was cleared/.test(h)), `hints: ${hints}`);
+    assert.equal(await page.isDisabled('[data-tuning-action="applyFree"]'), false, 'a free slot still works');
+  });
+});
+
+test('a free slot is named after the needle plus every jet that differs from the reference', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    await page.click('[data-tuning-step="1:1"]');
+    await page.click('[data-tuning-jet="nd:-1"]');
+    await page.click('[data-tuning-jet="hd:1"]');
+    await page.click('[data-tuning-jet="needleJet:1"]');
+    await page.click('[data-tuning-action="applyFree"]');
+    const slot = (await storedSetups(page))[1];
+    assert.equal(slot.name, `K96 C5 ND49 HD129 DQ${slot.needleJet}`);
+    assert.notEqual(slot.needleJet, 264);
+    assert.ok(slot.name.length <= 30);
+  });
+});
+
+test('cards: the target cell alone shows the change of this step, against the state before it', async () => {
+  const num = text => parseFloat(text.replace('−', '-'));
+  const targetCells = page => page.$$eval('.tuning-sugg', cards => cards.map(card => {
+    const cells = [...card.querySelectorAll('.tuning-mini-cell')];
+    const step = card.querySelectorAll('.tuning-mini-step');
+    const cell = step[0]?.closest('.tuning-mini-cell');
+    return {
+      count: step.length, index: cells.indexOf(cell), isTarget: cell?.classList.contains('is-target'),
+      value: cell?.querySelector('.tuning-mini-val').textContent,
+      step: step[0]?.lastElementChild.textContent, tooltip: step[0]?.dataset.tooltip,
+    };
+  }));
+
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    await page.click('[data-tuning-step="1:1"]');
+    for (const c of await targetCells(page)) {
+      assert.deepEqual([c.count, c.index, c.isTarget], [1, 1, true]);
+      assert.equal(c.step, c.value, 'first step from the reference: step = total');
+      assert.ok(c.tooltip);
+    }
+
+    const before = num(await flowText(page, 'r1'));
+    await page.click('[data-tuning-step="1:1"]');
+    for (const c of await targetCells(page)) {
+      assert.ok(Math.abs(num(c.value) - before - num(c.step)) <= 0.11,
+        `step ${c.step} ≠ ${c.value} − ${before}`);
+    }
+    assert.notEqual((await targetCells(page))[0].step, (await targetCells(page))[0].value);
+  });
+});
+
+test('0–1/8 row: without a reason the line says ± changes the needle — one line, EN and DE, 320 and 768 px', async () => {
+  for (const [lang, hint] of [['en', '± changes the needle · ND: see below'], ['de', '± wechselt die Nadel · ND: siehe unten']]) {
+    for (const width of [320, 768]) {
+      await withPage(async page => {
+        await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
+        await openTuningWithK27(page);
+        const lines = await page.$$eval('.tuning-reason', els => els.map(el =>
+          ({ text: el.textContent, fits: el.scrollWidth <= el.clientWidth })));
+        assert.deepEqual(lines[0], { text: hint, fits: true }, `${lang} ${width}`);
+        assert.ok(lines.slice(1).every(l => l.text !== hint), 'only the 0–1/8 row');
+      }, { viewport: { width, height: 800 } });
+    }
+  }
+});
+
 // updateUI() reads the needle data once per pass (readNeedleSnapshot() in
 // app.js) and hands it to every renderer; before, one pass read the custom
 // needles 15 (calculator), 19 (catalog) or 17 (fine tuning) times.

@@ -238,14 +238,17 @@ body.dark .btn-secondary:hover { background: #50565f; }
 
 /* Between the portrait layout (≤ 600 px) and 1024 px the single row is
    tight: with wider system fonts than Segoe UI (Noto Sans on Linux, Roboto
-   on Android) it needed ~3 px more than a 915 px landscape phone offers and
-   the beta group wrapped. Slightly less padding and gap there buy 16 px;
+   on Android, Inter) it needed up to ~20 px more than a 915 px landscape
+   phone offers and the beta group wrapped. Less padding and gap there —
+   in the box, in the beta group and inside the options — buy the room;
    from 1024 px on the measurements are unchanged. */
 @media (min-width: 601px) and (max-width: 1023px) {
   .carb-type-selector {
-    padding: 14px 14px;
-    gap: 12px;
+    padding: 14px 12px;
+    gap: 10px;
   }
+  .carb-type-beta { padding-left: 10px; }
+  .carb-type-selector .carb-type-option { padding: 8px 10px; }
 }
 
 /* Larger hit area for the info icons (≈ 37 × 37 px) without changing the
@@ -1548,7 +1551,8 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   font-weight: 600;
   color: var(--text-muted);
 }
-.tuning-tag.has-tip {
+.tuning-tag.has-tip,
+.tuning-mini-step.has-tip {
   position: relative;
   z-index: 1;
   cursor: help;
@@ -1557,6 +1561,11 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   content: '';
   position: absolute;
   inset: -12px -3px;
+}
+.tuning-mini-step.has-tip::after {
+  content: '';
+  position: absolute;
+  inset: -6px -2px;
 }
 .tuning-mini {
   display: grid;
@@ -1582,6 +1591,17 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 .tuning-mini-cell.is-rich .tuning-mini-val { color: var(--tuning-rich); }
 .tuning-mini-cell.is-lean .tuning-mini-val { color: var(--tuning-lean); }
 .tuning-mini-cell.is-significant .tuning-mini-val { font-weight: 700; }
+/* Change of the last step alone, only in the target cell */
+.tuning-mini-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 .tuning-mini-cell.is-target {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
@@ -2218,14 +2238,11 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
     display: grid;
     grid-template-columns: repeat(3, 1fr);
   }
-  /* Chips: one horizontally scrollable row */
+  /* Chips wrap onto further rows. A single horizontally scrolling row cut
+     off "2-Taper"/"3-Taper" at the screen edge with nothing hinting that
+     it scrolls. */
   .catalog-chips,
-  .chip-group { flex-wrap: nowrap; }
-  .catalog-chips {
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: 2px;
-  }
+  .chip-group { flex-wrap: wrap; }
   .chip { flex: 0 0 auto; }
 
   .catalog-carb,

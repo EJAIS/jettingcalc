@@ -393,7 +393,7 @@ export function resolveClipCount(needleType, allNeedles = NEEDLE_DB) {
   return resolveNeedleClips(needleType, allNeedles[needleType]);
 }
 
-// Needle-jet offset by jet type
+// Atomizer offset by atomizer type (jetType)
 export const JET_OFFSETS = {
   "DP": 0,   // VHSA/VHSB — short type (reference)
   "DQ": 2,   // VHSA/VHSB — long type (+2mm)
@@ -402,7 +402,7 @@ export const JET_OFFSETS = {
   "AQ": 0,   // PHBL — single type, no pair
 };
 
-// Factory atomizer sizes (needle jet, ×10mm) per jetType — suggestions
+// Factory atomizer sizes (needleJet, ×10mm) per jetType — suggestions
 // only, matches the JET_OFFSETS keys above.
 // Source: Eurocarb (dellorto.co.uk) for AQ/AV/AS, Stein-Dinse (DE) for DP/DQ.
 export const ATOMIZER_SIZES = {

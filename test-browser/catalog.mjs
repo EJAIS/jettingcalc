@@ -270,6 +270,25 @@ test('390×844: the first column stays at the left edge while #catalog-scroll sc
   }, { viewport: { width: 390, height: 844 } });
 });
 
+test('360 px: filter chips wrap onto further rows, none cut off at the screen edge', async () => {
+  await withPage(async page => {
+    await openApp(page, '#needles');
+    const layout = await page.evaluate(() => {
+      const chips = [...document.querySelectorAll('.catalog-chips .chip')].map(c => c.getBoundingClientRect());
+      const box = document.querySelector('.catalog-chips');
+      return {
+        inView: chips.every(r => r.left >= 0 && r.right <= innerWidth + 0.5),
+        rows: new Set(chips.map(r => Math.round(r.top))).size,
+        scrolls: box.scrollWidth > box.clientWidth,
+      };
+    });
+    assert.equal(layout.inView, true, 'every chip inside the viewport');
+    assert.equal(layout.scrolls, false, 'no horizontal scrolling in the chip area');
+    assert.ok(layout.rows >= 2, `chips wrap (${layout.rows} rows)`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+  }, { viewport: { width: 360, height: 740 } });
+});
+
 test('dimension key toggle: aria-expanded and label switch, in EN and DE', async () => {
   const LABELS = {
     en: { show: 'Show dimension key', hide: 'Hide dimension key' },

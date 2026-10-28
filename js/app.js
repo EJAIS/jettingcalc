@@ -849,6 +849,19 @@ function tuningNeedleLabel(s) {
   return fillPlaceholder(fillPlaceholder(t('tuning.needleClip'), '{needle}', s.needleType), '{clip}', s.clipPos);
 }
 
+// Name for a free slot: needle and clip, plus every jet that differs from
+// the reference ("K98 C3 ND48 HD105"), so two results of the same needle
+// can be told apart in the calculator.
+function tuningSlotName(values, ref) {
+  const parts = [tuningNeedleLabel(values)];
+  if (values.nd !== ref.nd) parts.push(`${t('col.nd')}${values.nd}`);
+  if (values.hd !== ref.hd) parts.push(`${t('col.hd')}${values.hd}`);
+  if (values.needleJet !== ref.needleJet || values.jetType !== ref.jetType) {
+    parts.push(`${values.jetType}${values.needleJet}`);
+  }
+  return parts.join(' ').slice(0, MAX_NAME_LENGTH);
+}
+
 // The suggestion of the last needle step that `current` is using, if any.
 function adoptedSuggestion() {
   const { suggestions, current } = tuningState;
@@ -1054,7 +1067,10 @@ function tuningStepCell(rangeIndex, dir, ranking, rangeLabel) {
 // reason: just the reason; different reasons: the tiny forms of both
 // ("Leaner: no needle · Richer: HD-limited") — sized to fit one line at
 // 320 px in German.
-function tuningReasonLine(rankings) {
+//
+// 0–1/8 is mainly ND territory, yet its ± steps change the needle: without a
+// reason to show, that row says so (rangeIndex 0 only).
+function tuningReasonLine(rankings, rangeIndex) {
   const reasons = { [-1]: rankings[-1].reason, [1]: rankings[1].reason };
   const dirLabel = dir => t(dir > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner');
   const line = (dir, reason) =>
@@ -1068,6 +1084,7 @@ function tuningReasonLine(rankings) {
     const dir = reasons[-1] ? -1 : reasons[1] ? 1 : null;
     if (dir) text = line(dir, t(`tuning.reasonShort.${reasons[dir]}`));
   }
+  if (!text && TUNING_RANGES[rangeIndex]?.lever === 'nd') text = t('tuning.r0Hint');
   return `<div class="tuning-reason">${escapeHtml(text)}</div>`;
 }
 
@@ -1119,7 +1136,7 @@ function renderTuningRanges({ summary, rankings }) {
         <span class="tuning-diameter">${escapeHtml(diameter)}</span>
       </td>
       ${tuningStepCell(i, -1, rankings[i][-1], rangeLabel)}
-      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLine(rankings[i])}</td>
+      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLine(rankings[i], i)}</td>
       ${tuningStepCell(i, 1, rankings[i][1], rangeLabel)}
     </tr>`;
   }).join('');
@@ -1152,6 +1169,8 @@ function renderTuningSuggestions() {
   }
   const adopted = adoptedSuggestion();
   const target = tuningState.lastStep?.rangeIndex;
+  const flowBefore = tuningState.lastStep?.flowBefore;
+  const stepTip = t('tuning.stepDelta.tooltip');
   // Same rule as rankNextSteps()' warning, applied to whichever suggestion
   // is in use (for the best one both agree).
   const warn = adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc;
@@ -1177,8 +1196,19 @@ function renderTuningSuggestions() {
         flow > 0 ? 'is-rich' : flow < 0 ? 'is-lean' : '',
         flow != null && Math.abs(flow) >= SIGNIFICANT ? 'is-significant' : '',
         i === target ? 'is-target' : ''].filter(Boolean).join(' ');
+      // The target cell also shows what this step alone did there (the
+      // value above it is against the reference).
+      // Label and value on two lines: one line does not fit a mini cell.
+      const before = i === target ? flowBefore?.[i] : null;
+      const stepValue = flow != null && before != null ? formatSignedPercent(flow - before) : null;
+      const stepLabel = t('tuning.stepDelta');
+      const stepLine = stepValue
+        ? `<span class="tuning-mini-step has-tip" data-tooltip="${escapeHtml(stepTip)}" role="button" tabindex="0"`
+          + ` aria-label="${escapeHtml(`${stepLabel} ${stepValue} — ${stepTip}`)}">`
+          + `<span>${escapeHtml(stepLabel)}</span><span>${escapeHtml(stepValue)}</span></span>`
+        : '';
       return `<span class="${cls}"><span class="tuning-mini-range">${escapeHtml(t(`tuning.rangeShort.${range.key}`))}</span>`
-        + `<span class="tuning-mini-val">${escapeHtml(formatSignedPercent(flow))}</span></span>`;
+        + `<span class="tuning-mini-val">${escapeHtml(formatSignedPercent(flow))}</span>${stepLine}</span>`;
     }).join('');
     const pressed = sugg === adopted;
     return `<div class="tuning-sugg${pressed ? ' is-adopted' : ''}">
@@ -1197,7 +1227,7 @@ function renderTuningSuggestions() {
     ${anyUnverified ? `<p class="tuning-hint">* ${escapeHtml(t('catalog.clipsDefault.tooltip'))}</p>` : ''}`;
 }
 
-// ND / HD / needle jet with reference value, current value and −/+; all
+// ND / HD / atomizer with reference value, current value and −/+; all
 // stepping goes through stepJet() (null → button disabled).
 function renderTuningJets({ summary }) {
   const el = document.getElementById('tuning-jets');
@@ -1283,8 +1313,10 @@ function renderTuningActions() {
   // Applying is only offered once current differs from the reference.
   const freeReason = !changed ? 'tuning.apply.unchanged'
     : !setups.some(isSlotEmpty) ? 'tuning.apply.noFreeSlot' : null;
+  const refSlot = typeof refSource === 'number' ? setups.find(s => s.id === refSource) : null;
   const overwriteReason = !changed ? 'tuning.apply.unchanged'
-    : typeof refSource !== 'number' ? 'tuning.apply.manualRef' : null;
+    : typeof refSource !== 'number' ? 'tuning.apply.manualRef'
+    : !refSlot || isSlotDataEmpty(refSlot) ? 'tuning.apply.refSlotCleared' : null;
   const reasons = [...new Set([freeReason, overwriteReason].filter(Boolean))];
 
   el.innerHTML = `
@@ -1349,10 +1381,15 @@ function applyTuningToSlot(kind) {
   if (kind === 'free') {
     slot = setups.find(isSlotEmpty);
     if (!slot) return;
-    Object.assign(slot, values, { name: tuningNeedleLabel(values).slice(0, MAX_NAME_LENGTH) });
+    Object.assign(slot, values, { name: tuningSlotName(values, tuningState.ref) });
   } else {
     slot = setups.find(s => s.id === tuningState.refSource);
-    if (!slot) return;
+    // A cleared slot is no longer the reference setup (button disabled).
+    if (!slot || isSlotDataEmpty(slot)) return;
+    // Edits made in the calculator after loading the reference would be
+    // lost without a trace — ask first.
+    if (!sameTuningFields(slot, tuningState.ref)
+        && !confirm(fillPlaceholder(t('confirm.overwriteChangedRefSlot'), '{name}', slot.name))) return;
     // Undo restores the setups and the tuning session as they were.
     snapshot = {
       setups: structuredClone(setups),
@@ -1562,7 +1599,7 @@ function handleCarbTypeChange(newCarbType) {
 const NUM_FIELD_BOUNDS = JET_FIELD_BOUNDS;
 
 // Writes one form value into `target` (a setup slot or the tuning view's
-// manual reference): parses/clamps numbers and clears a needle jet or clip
+// manual reference): parses/clamps numbers and clears an atomizer or clip
 // position the new jet type / needle no longer allows. Shared by the setup
 // table and the fine tuning reference form.
 function applyFieldValue(target, field, value) {

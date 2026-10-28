@@ -72,6 +72,18 @@ Rules for all future UI implementations:
 - Chart axis labels and legends must also go through `t('key')` —
   re-render charts on language change
 
+### Terminology: atomizer / Mischrohr
+- The part with the needle in it (types DP/DQ, AV/AS, AQ, sizes such as
+  AQ262) is the **atomizer** in English and the **Mischrohr** in German
+  — in the UI, README and comments. "Jet"/"Düse" means only ND and HD.
+  Not "needle jet"/"Nadeldüse", not "Düsentyp".
+- Column headers: EN "Atomizer" / "Atomizer Type", DE "Mischrohr" /
+  "MR-Typ" (tooltip `col.jetType.title` spells out „Mischrohr-Typ“);
+  tuning jet block: "Jets & atomizer" / „Düsen & Mischrohr“.
+- The code names stay `needleJet` (size) and `jetType` (type): they are
+  keys in `dellorto_setups` and fields of the share-link format, so a
+  rename would break stored setups and links already sent.
+
 ### Language storage
 - localStorage key: `dellorto_lang`
 - Values: `'en'` (default) | `'de'`
@@ -309,12 +321,14 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
   PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht dem der
   Gruppe.
   - **Ab 1024 px** sind die Maße identisch zum Stand vor dem Wrapper.
-  - **601–1023 px:** Innenabstand und Lücke der Box sind reduziert (14 px /
-    12 px statt 18 px / 16 px), damit die Auswahl auch mit breiteren
-    Systemschriften als Segoe UI (Noto Sans unter Linux, Roboto unter
-    Android) einzeilig bleibt. Grund ist das Querformat von Smartphones,
-    z. B. 915 px: dort fehlten sonst rund 3 px und die Beta-Gruppe brach
-    um. Die Optionen liegen weiter über der ⓘ-Trefferfläche.
+  - **601–1023 px:** Abstände sind reduziert — Box 14 px / 12 px
+    Innenabstand und 10 px Lücke (statt 18 px / 16 px), Beta-Gruppe 10 px
+    Einzug, Optionen 8 px / 10 px Innenabstand —, damit die Auswahl auch
+    mit breiteren Systemschriften als Segoe UI (Noto Sans unter Linux,
+    Roboto unter Android, Inter) einzeilig bleibt. Grund ist das
+    Querformat von Smartphones, z. B. 915 px: dort fehlten sonst bis zu
+    rund 20 px und die Beta-Gruppe brach um. Die Optionen liegen weiter
+    über der ⓘ-Trefferfläche.
   - Abgesichert bei 915 × 412 und 1280 × 800: alle Optionen mit gleichem
     `offsetTop`, kein Überlauf, Treffertest an den Rändern neben den ⓘ.
 - **≤ 600 px** (Hochformat): gestapelt — VHSx in voller Breite, darunter
@@ -616,6 +630,13 @@ Entscheidung zur Vermeidung redundanter Einstiege.
 `#needles` öffnet den Katalog; die gemeinsamen Regeln stehen im Abschnitt
 „Ansichten und Routing“.
 
+### Mobil (≤ 600 px)
+
+Die Filter-Chips (Serie, Taper) brechen in weitere Zeilen um. Früher
+standen sie in einer horizontal scrollenden Zeile; „2-Taper“/„3-Taper“
+waren am Bildschirmrand abgeschnitten, ohne dass etwas auf das Scrollen
+hinwies. Abgesichert in `catalog.mjs` (360 px).
+
 ### Formatierung
 
 - `formatCatalogValue()`: Dezimalpunkt in beiden Sprachen (konsistent zu
@@ -662,8 +683,8 @@ nach dem Vorbild von kyajet, aber auf Basis der vollständigen Kennlinie
 aus `calcSetup()`. Der Nutzer lädt ein Setup als **Referenz**, sagt je
 Gasbereich „fetter“ oder „magerer“, und der Tab schlägt den Nadel-/Clip-
 Wechsel vor, der genau das bewirkt und die übrigen Bereiche möglichst in
-Ruhe lässt. Düsen (ND, HD, Nadeldüse) werden getrennt schrittweise
-verstellt. Das Ergebnis kann in einen Setup-Slot übernommen werden.
+Ruhe lässt. Düsen (ND, HD) und das Mischrohr werden getrennt
+schrittweise verstellt. Das Ergebnis kann in einen Setup-Slot übernommen werden.
 
 ### Modulaufteilung
 
@@ -789,6 +810,12 @@ Prozentpunkten flow:
   Stand **vor** dem Schritt, `lastStep.flowBefore`, nicht mit der
   Referenz), ein ⚠ im immer reservierten Platz der Δ-Zelle (`aria-label`
   und Tooltip `tuning.warn.sideFlag`).
+- **Schrittwirkung in den Karten:** Die Zielzelle (`is-target`) jeder
+  Varianten-Karte zeigt unter dem Wert gegen die Referenz die Wirkung nur
+  dieses Schritts („Schritt“ / „step“ und flow − `lastStep.flowBefore`,
+  zweizeilig, weil eine Zeile in die Mini-Zelle nicht passt), mit Tooltip
+  `tuning.stepDelta.tooltip`. Ab dem zweiten Schritt unterscheiden sich
+  beide Werte.
 - **Custom Needle gelöscht, umgetypt oder neu gespeichert**:
   `validateTuningState()` (in jedem `updateUI()`) prüft ref, current und
   jeden `history`-Eintrag mit `validateTuningSetup()` — also auch die
@@ -799,7 +826,7 @@ Prozentpunkten flow:
   älteren Custom-Needle-Stand (`suggestionsNeedles` ≠
   `customNeedlesVersion`) werden verworfen — eine veraltete Karte könnte
   sonst eine gelöschte Nadel laden.
-- **Düsen am Anschlag** (Grenze von ND/HD, Ende der Nadeldüsen-Liste):
+- **Düsen am Anschlag** (Grenze von ND/HD, Ende der Mischrohr-Liste):
   Button deaktiviert, Grund als Text in der Hinweiszeile unter der Düse
   (immer vorhanden, eine Zeile hoch) und als Tooltip an der Zelle.
 
@@ -831,6 +858,9 @@ Desktop, bis 507 px auf dem Handy).
     `tuning.reasonTiny.*` („Magerer: keine Nadel · Fetter: HD-begrenzt“) —
     alle auf Deutsch einzeilig bei 320 px (Grid) und 768 px (erste Breite
     im Tabellenlayout); `tuning.mjs` misst alle acht Varianten in beiden.
+    Ohne Grund zeigt die Zeile 0–1/8 (`lever: 'nd'`) den Hinweis
+    `tuning.r0Hint` („± wechselt die Nadel · ND: siehe unten“): der
+    Haupthebel dort ist die ND, die ±-Buttons tauschen aber die Nadel.
   - Tabelle: `table-layout: fixed` mit festen Spaltenbreiten, damit
     wechselnde Zahlen keine Spalten verschieben.
   - Düsenblock: `table-layout: fixed`; unter jeder Düse eine immer
@@ -918,11 +948,18 @@ Desktop, bis 507 px auf dem Handy).
 
 Nur aktiv, wenn current von der Referenz abweicht; deaktivierte Buttons
 nennen den Grund sichtbar.
-- „In freien Slot übernehmen“: erster Slot mit `isSlotEmpty()`, Name
-  `tuning.needleClip` (z. B. „K96 C5“, dieselbe Beschriftung wie in der
-  Statuszeile; gekürzt auf `MAX_NAME_LENGTH`).
+- „In freien Slot übernehmen“: erster Slot mit `isSlotEmpty()`, Name aus
+  `tuningSlotName()`: `tuning.needleClip` (z. B. „K96 C5“, dieselbe
+  Beschriftung wie in der Statuszeile) plus jede Düse, die von der
+  Referenz abweicht, in der Reihenfolge ND, HD, Mischrohr („K96 C5 ND49
+  HD129 DQ266“); gekürzt auf `MAX_NAME_LENGTH`. Grund: Mehrere Ergebnisse
+  mit derselben Nadel waren im Rechner sonst nicht zu unterscheiden.
 - „Referenz-Slot überschreiben“: nur bei einer Slot-Referenz; der Slot
-  behält seinen Namen. Vorher Snapshot von `setups` **und** `tuningState`
+  behält seinen Namen. Gesperrt mit Grund `tuning.apply.refSlotCleared`,
+  wenn der Slot im Rechner geleert wurde (`isSlotDataEmpty()`). Wurde der
+  Slot nach dem Laden im Rechner geändert (≠ `tuningState.ref`), fragt
+  `confirm.overwriteChangedRefSlot` vorher nach — diese Änderungen gingen
+  sonst still verloren; Abbrechen schreibt nichts. Vorher Snapshot von `setups` **und** `tuningState`
   in `tuningApplyMessage` — nur im Speicher, nie localStorage. Danach startet
   die Feinabstimmung mit dem geschriebenen Setup als Referenz neu;
   „Rückgängig“ stellt beides wieder her.

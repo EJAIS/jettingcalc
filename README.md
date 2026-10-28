@@ -9,14 +9,14 @@ Open `index.html` in any modern browser. No build step, no server required.
 > **Note:** Because the JS files use ES modules, browsers block them over `file://`. Serve locally with e.g. `python3 -m http.server 8080` and open `http://localhost:8080`.
 
 - Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), or, under **Beta Features**, **PHBH** (needles X, atomizers AV/AS) and **PHBL** (needles D, atomizer AQ). PHBH and PHBL are experimental — see the ℹ disclaimer next to each and the warning banner shown in the Setups section. This filters the available needle and atomizer options throughout the app.
-- Fill in up to 5 setups in the table (Needle, Clip, Carb Ø, Jet Type, Needle Jet, ND, HD). Max HD is calculated and displayed automatically.
+- Fill in up to 5 setups in the table (Needle, Clip, Carb Ø, Atomizer Type, Atomizer, ND, HD). Max HD is calculated and displayed automatically.
   - The **Clip** dropdown only offers the positions that actually exist on the selected needle. K-needles have 3, 4, or 5 positions depending on the specific needle, per the official Dellorto datasheet — not a uniform range. D-needles (PHBL) use a physically-verified 4-position default; X (PHBH) and U (VHSx) needles currently fall back to an unverified 4-position placeholder pending further research. See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md).
   - Use the ⧉ / ↺ icons on each row to duplicate a completed setup into the next empty slot, or reset a row back to empty.
 - The **Needle Profile** chart shows needle diameter vs. throttle position (0–115%) for each active setup.
 - The **Carb Profile** chart shows the blended equivalent flow (Overall HD) across the throttle range.
 - Click any chart panel (or the ⛶ icon) to open a full-screen modal with a larger version of that chart. Close with ✕, a backdrop click, or Escape.
-- Expand **Calculation Results** to inspect the raw per-throttle-point data for each setup — useful for verifying against the original Excel "Calc Data" sheets. For 2-stroke round-slide carbs (VHSx, PHBH, PHBL), each active setup also shows a **recommended slide cutaway** estimate and the needle-jet/main-jet area ratio. If the ratio falls outside the 0.45–0.80 target range, a warning is displayed instead of the cutaway value, indicating a likely needle jet / main jet mismatch. See the disclaimer note below.
-- The **Carburetor cross-section** card visualizes the selected needle inside the venturi / needle-jet bore for a chosen setup, driven by a throttle slider (0–115%) with a live-updated diagram, annulus-area readout, and needle position/diameter readout.
+- Expand **Calculation Results** to inspect the raw per-throttle-point data for each setup — useful for verifying against the original Excel "Calc Data" sheets. For 2-stroke round-slide carbs (VHSx, PHBH, PHBL), each active setup also shows a **recommended slide cutaway** estimate and the atomizer/main-jet area ratio. If the ratio falls outside the 0.45–0.80 target range, a warning is displayed instead of the cutaway value, indicating a likely atomizer / main jet mismatch. See the disclaimer note below.
+- The **Carburetor cross-section** card visualizes the selected needle inside the venturi / atomizer bore for a chosen setup, driven by a throttle slider (0–115%) with a live-updated diagram, annulus-area readout, and needle position/diameter readout.
 - Use **Load Demo** to populate three example setups (K98-based).
 - Use **Reset** to clear all setups back to empty.
 - Toggle **Dark Mode / Light Mode** with the button in the header; preference is persisted in localStorage.
@@ -56,7 +56,11 @@ change.
   their effect on all five ranges and tags (clip only, series change =
   different needle length, custom, `*` = clip count not verified). Needles
   with identical geometry are shown as one card ("also: K33 · Clip 4").
-  Tapping another card uses it instead — it stays one step.
+  Tapping another card uses it instead — it stays one step. The target
+  range of each card also shows what this step alone changed, against the
+  state before it (the value above is against the reference). In 0–1/8,
+  where the idle jet is the main lever, a hint says that ± changes the
+  needle.
 - **When nothing helps.** If a range is **HD-limited** (from 35 % throttle
   on, the main jet, not the needle, meters fuel at every point of the
   range), + is disabled with
@@ -70,8 +74,9 @@ change.
   about to press never move — the options for a step and the result of
   "Apply" therefore sit at the end of the tab, the sticky status line at
   the top shows the effect right away.
-- **Jets.** ND and HD step by 1, the needle jet through the factory sizes
-  of the atomizer type; at a limit the button is disabled and says why.
+- **Jets & atomizer.** ND and HD step by 1, the atomizer through the
+  factory sizes of its type; at a limit the button is disabled and says
+  why.
 - **Clip only.** If the current needle has an identical twin (e.g. K27 and
   K33), a card for the same curve is shown as a clip change of the needle
   you have fitted, not as a needle swap.
@@ -80,8 +85,10 @@ change.
   as reference asks first if tuning steps would be lost; tapping the
   already loaded reference changes nothing.
 - **Apply result.** Save the current state to the first free setup slot
-  (named e.g. "K96 C5"), or overwrite the reference slot (it keeps its
-  name). The result — or why it could not be saved — appears right above
+  (named e.g. "K96 C5", plus every jet that differs from the reference:
+  "K96 C5 HD129"), or overwrite the reference slot (it keeps its name).
+  If you changed that slot in the calculator after loading it, you are
+  asked first; if you cleared it, overwriting is disabled. The result — or why it could not be saved — appears right above
   the buttons, with "View in calculator" and, after an overwrite, Undo;
   it goes away with ✕, the next tuning step or a new reference. Nothing
   of the tuning session itself is stored — it lives only in the open tab.
@@ -321,12 +328,12 @@ Original-Excel".
 ## Cutaway calculation disclaimer
 
 The recommended slide cutaway feature uses an unverified third-party heuristic
-(M. Forrest, dragonfly75.com). The 0.6 target needle-jet/main-jet area ratio is
+(M. Forrest, dragonfly75.com). The 0.6 target atomizer/main-jet area ratio is
 not an official Dellorto specification and has no published derivation. Treat the
 result as a rough starting point only — confirm with real-world testing.
 
 The calculation is intentionally omitted when the ratio falls outside 0.45–0.80,
-as the estimate becomes unreliable when needle jet and main jet are poorly matched.
+as the estimate becomes unreliable when atomizer and main jet are poorly matched.
 
 ## Upstream copyright
 

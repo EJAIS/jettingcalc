@@ -134,6 +134,10 @@ workers are blocked there — the tests are about the UI, not caching):
 - **Phone layout (390×844)** — horizontally scrolling `#catalog-scroll`
   leaves the sticky first column at the same x position, and the page
   itself has no horizontal overflow.
+- **Filter chips (360×740)** — the series and taper chips wrap onto two
+  or more rows; every chip lies inside the viewport, the chip area does
+  not scroll horizontally (before, "2-Taper"/"3-Taper" were cut off at the
+  screen edge of a scrolling row).
 
 `test-browser/custom-needles.mjs` covers the one-time startup migration
 of stored custom needle lengths (service workers blocked as above), once
@@ -159,9 +163,10 @@ in EN and once in DE:
 - **Landscape 915×412 and desktop 1280×800** — VHSx, beta label, PHBH and
   PHBL in one row, in the order VHSx, PHBH, ⓘ, PHBL, ⓘ (layout as before).
   All three options share the same `offsetTop`. Between 601 and 1023 px
-  the selector uses slightly less padding and gap, so the row also fits
-  with fonts wider than Segoe UI (Noto Sans on Linux, Roboto on Android);
-  the 915 px case failed there before by ~3 px.
+  the selector, the beta group and the options use less padding and gap,
+  so the row also fits with fonts wider than Segoe UI (Noto Sans on
+  Linux, Roboto on Android, Inter); the 915 px case failed there before
+  by up to ~20 px.
 - **Tap area** — the point 15 px right of the PHBH ⓘ's centre hit-tests to
   the icon (`elementFromPoint`; a tap alone isn't proof, since Chromium's
   touch adjustment snaps taps to nearby targets), and a touch tap there
@@ -236,11 +241,28 @@ match the regression values in `test/tuning.test.mjs`:
   chips asks nothing; after a step, the slot chip of another setup asks
   (`confirm.replaceTuningRef` with the slot name): cancel keeps the
   session and its undo history, confirm loads the new reference.
+- **Overwrite after a calculator edit** — HD of the reference slot
+  changed in the calculator after loading: "Overwrite reference slot"
+  asks first (`confirm.overwriteChangedRefSlot` with the slot name);
+  cancel keeps the edited slot and shows no message, confirm writes. An
+  unchanged slot is overwritten without a question.
+- **Reference slot cleared** — after "Clear row" in the calculator,
+  overwriting is disabled with the visible reason; the free slot still
+  works.
+- **Free slot name** — after a needle step plus ND −, HD + and atomizer +
+  the slot is named "K96 C5 ND49 HD129 DQ<size>" (≤ 30 characters).
+- **Step line on the cards** — after a needle step each card has exactly
+  one step line, in the target cell, with a tooltip; after the first step
+  it equals the value against the reference, after a second step it is
+  that value minus the range's flow before the step (±0.1).
+- **0–1/8 hint** — right after loading K27, the 0–1/8 reason line reads
+  "± changes the needle · ND: see below" (DE „± wechselt die Nadel · ND:
+  siehe unten“) on one line at 320 and 768 px; no other row shows it.
 - **Custom needle deleted** — custom needle A1 (ranked first for "richer in
   1/8–1/4") is on the cards: after adopting another card and deleting A1
   the stale cards are gone and the session stays; if A1 was current, the
   tab resets with a notice. No page errors either way.
-- **Jet at its limit** — stepping the DQ needle jet to 274 disables + and
+- **Jet at its limit** — stepping the DQ atomizer to 274 disables + and
   shows "largest value reached" as text plus a cell tooltip.
 - **Reads per render pass** — with `Storage.prototype.getItem` wrapped,
   one `updateUI()` (an ND edit) reads `dellorto_custom_needles` at most

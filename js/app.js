@@ -256,9 +256,10 @@ function renderTable(snap = readNeedleSnapshot()) {
 
   tbody.innerHTML = setups.map(s => {
     const result = s.needleType ? calcSetup(s, allNeedles) : null;
-    const maxHD  = result ? Math.round(result.maxHD) : '—';
+    const empty = '<span class="result-empty">—</span>';
+    const maxHD  = result ? Math.round(result.maxHD) : empty;
 
-    let cutawayCell = '—';
+    let cutawayCell = empty;
     const needle = allNeedles[s.needleType];
     if (isRoundSlide2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
       const ca    = calcCutaway(s.carbSize, s.hd, s.needleJet, needle.A);
@@ -273,7 +274,7 @@ function renderTable(snap = readNeedleSnapshot()) {
 
     return `
     <tr data-row-id="${s.id}">
-      <td>
+      <td class="name-col">
         <input type="text" class="cell-input" data-id="${s.id}" data-field="name"
                value="${escapeHtml(s.name)}" title="${t('field.setupName.title')}">
       </td>
@@ -303,8 +304,6 @@ function renderTable(snap = readNeedleSnapshot()) {
           ${buildNeedleJetOptions(s.jetType, s.needleJet)}
         </select>
       </td>
-      <td class="maxhd-cell">${maxHD}</td>
-      <td class="cutaway-col-cell">${cutawayCell}</td>
       <td>
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="nd"
                value="${s.nd ?? ''}" min="${JET_MIN}" max="${ND_MAX}" placeholder="${t('col.nd')}">
@@ -313,6 +312,8 @@ function renderTable(snap = readNeedleSnapshot()) {
         <input type="number" class="cell-input num" data-id="${s.id}" data-field="hd"
                value="${s.hd ?? ''}" min="${JET_MIN}" max="${HD_MAX}" placeholder="${t('col.hd')}">
       </td>
+      <td class="maxhd-cell result-col result-col-first">${maxHD}</td>
+      <td class="cutaway-col-cell result-col">${cutawayCell}</td>
       <td class="row-actions">
         <button type="button" class="btn-icon" data-action="duplicate-row"
                 data-id="${s.id}" data-tooltip="${t('action.duplicateRow')}"

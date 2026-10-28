@@ -838,6 +838,26 @@ Prozentpunkten flow:
   sie zum Repräsentanten — dieselbe Kurve ist dann ein reiner Clip-Wechsel
   (`clipOnly`, `CLIP_BONUS`) statt eines Nadeltauschs.
 
+### Düsen als Kandidaten (`evaluateJetCandidates()`)
+
+Entschieden 2026-10-28 nach einem Nutzertest: „3/4–1 zu fett“ bei
+K27 C3 / HD 128 (Bereich „wirkt: HD“) wählte nur unter Nadeln K74 C2 —
+Ziel −2.9 %, 1/4–1/2 und 1/2–3/4 dafür −32 % / −24 %; HD −1 ist sauber.
+- ND und HD (`JET_CANDIDATE_FIELDS`) in Einzelschritten 1 …
+  `MAX_JET_STEPS` (10) je Richtung ab current, innerhalb
+  `JET_FIELD_BOUNDS`; Nadel, Clip und Mischrohr bleiben. Das Mischrohr ist
+  bewusst kein Kandidat (nicht entschieden, ändert alle Bereiche).
+- Gleiches Ranking und gleiche Kosten wie Nadeln, kein `CLIP_BONUS`
+  (Tag `jet` statt `clipOnly`). Bei Kostengleichstand Nadeln zuerst.
+  **Je Düse nur der beste Schritt** in den Karten (HD 127, nicht auch 126
+  und 125), damit Nadel-Alternativen sichtbar bleiben.
+- Karte „HD 128 → 127“ (Ausgangswert = Stand vor dem Schritt,
+  `history.at(-1)`), Tag „nur Düse“. `adoptedSuggestion()` vergleicht
+  alle Felder, nicht nur Nadel + Clip.
+- Folgen: 0–1/8 (ND 80 %) wählt meist die ND; HD-begrenzte Bereiche sind
+  in beide Richtungen bedienbar (+ = HD größer). Der Grund `hdLimited`
+  erscheint nur noch, wenn auch die HD am Anschlag ist.
+
 ### Grenzfälle
 
 - **`hdLimited`**: der Bereich hat Punkte ab 35 % (außerhalb der
@@ -926,9 +946,8 @@ Desktop, bis 507 px auf dem Handy).
     `tuning.reasonTiny.*` („Magerer: keine Nadel · Fetter: HD-begrenzt“) —
     alle auf Deutsch einzeilig bei 320 px (Grid) und 768 px (erste Breite
     im Tabellenlayout); `tuning.mjs` misst alle acht Varianten in beiden.
-    Ohne Grund zeigt die Zeile 0–1/8 (`lever: 'nd'`) den Hinweis
-    `tuning.r0Hint` („± wechselt die Nadel · ND: siehe unten“): der
-    Haupthebel dort ist die ND, die ±-Buttons tauschen aber die Nadel.
+    Seit ND/HD-Schritte Kandidaten sind, bleibt die Zeile fast immer leer
+    (der frühere 0–1/8-Hinweis „± wechselt die Nadel“ entfiel).
   - Tabelle: `table-layout: fixed` mit festen Spaltenbreiten, damit
     wechselnde Zahlen keine Spalten verschieben.
   - Düsenblock: `table-layout: fixed`; unter jeder Düse eine immer

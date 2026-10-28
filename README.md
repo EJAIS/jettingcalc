@@ -53,9 +53,11 @@ change.
   30 % throttle), the gap between needle and atomizer, or the main jet (a
   cap from 35 % on). "How the calculator works" under the jets explains
   the model.
-- **− / +.** Makes that range leaner or richer with the best needle/clip
-  change of all needles of the carburetor type (all series, custom needles
-  included). "Best" means: at least 1 % flow in that range, as little
+- **− / +.** Makes that range leaner or richer with the best step: a
+  needle/clip change of all needles of the carburetor type (all series,
+  custom needles included) or an ND / HD step (up to 10 in either
+  direction; the cards show only the best one per jet, e.g. "HD 128 →
+  127"). "Best" means: at least 1 % flow in that range, as little
   change as possible in the other ranges — measured against your current
   state, so ranges you already tuned stay where they are. A clip-only
   change gets a small bonus. The fitting box at the top ("Fit: needle K27 →
@@ -67,15 +69,15 @@ change.
   with identical geometry are shown as one card ("also: K33 · Clip 4").
   Tapping another card uses it instead — it stays one step. The target
   range of each card also shows what this step alone changed, against the
-  state before it (the value above is against the reference). In 0–1/8,
-  where the idle jet is the main lever, a hint says that ± changes the
-  needle.
+  state before it (the value above is against the reference). Where a
+  jet meters the range (0–1/8 is 80 % ND, HD-limited ranges are all HD),
+  the jet step usually wins.
 - **When nothing helps.** If a range is **HD-limited** (from 35 % throttle
   on, the main jet, not the needle, meters fuel at every point of the
-  range), + is disabled with
-  "HD-limited → adjust HD" and the HD row in the jet block is highlighted
-  with a "lever" badge. If no needle changes a range by at least 1 %, the
-  button says so. If the chosen step shifts other ranges a lot, a warning
+  range), ± steps the HD and the HD row in the jet block is highlighted
+  with a "lever" badge; only with the HD at its limit is + disabled
+  ("HD-limited → adjust HD"). If no step changes a range by at least 1 %,
+  the button says so. If the chosen step shifts other ranges a lot, a warning
   appears in the fitting box, and a "shifted too" chip marks every range the last step
   moved noticeably besides the one you asked for.
 - **Nothing jumps.** Hints, warnings and the options appear either in

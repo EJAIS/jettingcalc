@@ -181,7 +181,7 @@ test('direct #tuning opens the tab; tab switches and history.back follow the has
 
 // ── Steps, suggestion cards, undo ───────────────────────────────────────────
 
-test('+ in 1/8–1/4 → K96 C5 with three cards; + in 3/4–1 disabled with a visible reason', async () => {
+test('+ in 1/8–1/4 → K96 C5 with three cards incl. an ND step; + in 3/4–1 → HD 129', async () => {
   await withPage(async page => {
     await openTuningWithK27(page);
     assert.match(await status(page), /^K27 C3 → K27 C3/);
@@ -189,14 +189,24 @@ test('+ in 1/8–1/4 → K96 C5 with three cards; + in 3/4–1 disabled with a v
 
     await page.click('[data-tuning-step="1:1"]');
     assert.match(await status(page), /K27 C3 → K96 C5/);
-    assert.deepEqual(await cardTitles(page), ['K96 · Clip 5', 'U7 · Clip 3', 'K97 · Clip 3']);
-    const u7Tags = await page.$$eval('.tuning-sugg:nth-child(2) .tuning-tag', els => els.map(el => el.textContent));
+    assert.deepEqual(await cardTitles(page), ['K96 · Clip 5', 'ND 50 → 52', 'U7 · Clip 3']);
+    const ndTags = await page.$$eval('.tuning-sugg:nth-child(2) .tuning-tag', els => els.map(el => el.textContent));
+    assert.deepEqual(ndTags, ['jet only']);
+    const u7Tags = await page.$$eval('.tuning-sugg:nth-child(3) .tuning-tag', els => els.map(el => el.textContent));
     assert.ok(u7Tags.includes('series change'), `U7 tags: ${u7Tags}`);
     assert.equal(await page.getAttribute('.tuning-sugg:nth-child(1) .tuning-sugg-pick', 'aria-pressed'), 'true');
 
-    assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), true);
-    assert.equal(await isVisible(page, 'tr[data-range="r4"] .tuning-reason'), true);
-    assert.match(await page.textContent('tr[data-range="r4"] .tuning-reason'), /HD-limited/);
+    // The ND card swaps the needle back and steps the ND — still one step.
+    await page.click('.tuning-sugg:nth-child(2)');
+    assert.match(await status(page), /^K27 C3 → K27 C3 · ND 52 · HD 128/);
+    assert.equal(await page.getAttribute('.tuning-sugg:nth-child(2) .tuning-sugg-pick', 'aria-pressed'), 'true');
+
+    // 3/4–1 is HD-limited: + is no longer blocked, it steps the HD.
+    await page.click('[data-tuning-action="reset"]');
+    assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), false);
+    await page.click('[data-tuning-step="4:1"]');
+    assert.match(await status(page), /^K27 C3 → K27 C3 · ND 50 · HD 129/);
+    assert.equal((await cardTitles(page))[0], 'HD 128 → 129');
   });
 });
 
@@ -205,7 +215,7 @@ test('switching cards adds no undo step; step back and reset', async () => {
     await openTuningWithK27(page);
     await page.click('[data-tuning-step="1:1"]');
     await page.click('.tuning-sugg:nth-child(3)'); // anywhere on the card picks it
-    assert.match(await status(page), /K27 C3 → K97 C3/);
+    assert.match(await status(page), /K27 C3 → U7 C3/);
     assert.equal(await page.getAttribute('.tuning-sugg:nth-child(3) .tuning-sugg-pick', 'aria-pressed'), 'true');
 
     // One step back returns to the reference — the card switch was not a step.
@@ -597,18 +607,18 @@ test('cards: the target cell alone shows the change of this step, against the st
   });
 });
 
-test('0–1/8 row: without a reason the line says ± changes the needle — one line, EN and DE, 320 and 768 px', async () => {
-  for (const [lang, hint] of [['en', '± changes the needle · ND: see below'], ['de', '± wechselt die Nadel · ND: siehe unten']]) {
-    for (const width of [320, 768]) {
-      await withPage(async page => {
-        await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
-        await openTuningWithK27(page);
-        const lines = await page.$$eval('.tuning-reason', els => els.map(el =>
-          ({ text: el.textContent, fits: el.scrollWidth <= el.clientWidth })));
-        assert.deepEqual(lines[0], { text: hint, fits: true }, `${lang} ${width}`);
-        assert.ok(lines.slice(1).every(l => l.text !== hint), 'only the 0–1/8 row');
-      }, { viewport: { width, height: 800 } });
-    }
+test('0–1/8 row (ND 80 %): + / − step the ND first; no hint line without a reason', async () => {
+  for (const lang of ['en', 'de']) {
+    await withPage(async page => {
+      await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
+      await openTuningWithK27(page);
+      assert.equal(await page.textContent('tr[data-range="r0"] .tuning-reason'), '');
+      await page.click('[data-tuning-step="0:1"]');
+      assert.match(await status(page), /^K27 C3 → K27 C3 · ND 51 · HD 128/);
+      await page.click('[data-tuning-action="reset"]');
+      await page.click('[data-tuning-step="0:-1"]');
+      assert.match(await status(page), /^K27 C3 → K27 C3 · ND 49 · HD 128/);
+    }, { viewport: { width: 1280, height: 800 } });
   }
 });
 
@@ -812,8 +822,11 @@ for (const [name, contextOptions, lang] of [
         }
       };
 
-      // a) Needle step with side-effect warning: r3 leaner → K58 C2.
-      await event('a) needle step with warning', '[data-tuning-step="3:-1"]');
+      // a) r3 leaner → HD 127, then its card K58 C2, which has a large
+      // side effect (warning in the fitting box, chips in the rows).
+      await event('a) step', '[data-tuning-step="3:-1"]');
+      assert.match(await status(page), /HD 127/);
+      await event('a) card with warning', '.tuning-sugg:nth-child(2) .tuning-sugg-pick');
       assert.match(await status(page), /K27 C3 → K58 C2/);
       assert.equal(await page.locator('#tuning-fit #tuning-warning').count(), 1,
         'warning sits in the fitting box');
@@ -1044,16 +1057,15 @@ test('changing the carb type in the calculator resets the tuning state', async (
   });
 });
 
-test('mobile: taps, visible reason, sticky status, no horizontal overflow at 320 and 360 px', async () => {
+test('mobile: taps, sticky fitting box, no horizontal overflow at 320 and 360 px', async () => {
   for (const width of [320, 360]) {
     await withPage(async page => {
       const tap = await openTuningWithK27(page, { tap: true });
       await tap('[data-tuning-step="1:1"]');
       assert.match(await status(page), /K96 C5/, `${width}: tap on + steps`);
 
-      assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), true);
-      assert.equal(await isVisible(page, 'tr[data-range="r4"] .tuning-reason'), true,
-        `${width}: reason text visible next to the disabled +`);
+      // HD-limited 3/4–1: + steps the HD now instead of being disabled.
+      assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), false, `${width}: + in 3/4–1`);
 
       const box = await page.locator('[data-tuning-step="1:1"]').boundingBox();
       assert.ok(box.width >= 44 && box.height >= 44, `${width}: ± tap target ${box.width}×${box.height}`);

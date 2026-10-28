@@ -221,9 +221,10 @@ match the regression values in `test/tuning.test.mjs`:
   state); tab clicks set `#tuning` / `#needles`, and `history.back()`
   (popstate) walks back through the tuning tab to the calculator.
 - **Steps and cards** — loading K27 as reference, + in 1/8–1/4 gives
-  K96 · Clip 5 in the fitting box and three cards (K96 · Clip 5, U7 · Clip 3
-  with the "series change" tag, K97 · Clip 3), the first one pressed;
-  + in 3/4–1 is disabled with its "HD-limited" reason visible in the row.
+  K96 · Clip 5 in the fitting box and three cards (K96 · Clip 5, ND 50 → 52
+  with "jet only", U7 · Clip 3 with "series change"), the first one
+  pressed; the ND card swaps the needle back. + in 3/4–1 (HD-limited) steps
+  the HD to 129.
 - **Undo semantics** — picking another card (tap anywhere on the card)
   adds no history entry: one "Step back" returns to the reference and
   hides the cards. A second step shows the K27 · Clip 4 card with "also:
@@ -270,9 +271,8 @@ match the regression values in `test/tuning.test.mjs`:
   one step line, in the target cell, with a tooltip; after the first step
   it equals the value against the reference, after a second step it is
   that value minus the range's flow before the step (±0.1).
-- **0–1/8 hint** — right after loading K27, the 0–1/8 reason line reads
-  "± changes the needle · ND: see below" (DE „± wechselt die Nadel · ND:
-  siehe unten“) on one line at 320 and 768 px; no other row shows it.
+- **0–1/8 row** — right after loading K27 the reason line is empty; + / −
+  step the ND to 51 / 49 (EN and DE).
 - **Custom needle deleted** — custom needle A1 (ranked first for "richer in
   1/8–1/4") is on the cards: after adopting another card and deleting A1
   the stale cards are gone and the session stays; if A1 was current, the

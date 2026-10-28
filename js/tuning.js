@@ -47,6 +47,11 @@ export const CLIP_BONUS = 0.5;
 // achievable with the needle alone.
 export const WARN_SIDE_RATIO = 3;
 export const MAX_SUGGESTIONS = 3;
+// Jet candidates: ND and HD in single steps up to this many from current
+// (decided 2026-10-28: where a jet meters the range, it often is the
+// clean step — HD −2 instead of a needle that shifts its neighbours by 30 %).
+export const JET_CANDIDATE_FIELDS = Object.freeze(['nd', 'hd']);
+export const MAX_JET_STEPS = 10;
 
 // Every `reason` code rankNextSteps() can return besides null. The UI maps
 // them to tuning.reason.* / tuning.reasonShort.* texts.
@@ -240,11 +245,46 @@ export function evaluateCandidates({ allNeedles, ref, current }) {
   });
 }
 
+// ND / HD steps of 1…MAX_JET_STEPS in both directions from `current`,
+// needle, clip and atomizer unchanged, within the share.js bounds. Same
+// shape as evaluateCandidates() entries plus `jet: { field, value }`
+// (needleType / clipPos are those of current, alsoTypes empty).
+export function evaluateJetCandidates({ allNeedles, ref, current }) {
+  const refResult = calcSetup(ref, allNeedles);
+  if (!refResult) return [];
+  const out = [];
+  for (const field of JET_CANDIDATE_FIELDS) {
+    const [min, max] = JET_FIELD_BOUNDS[field];
+    for (const dir of [-1, 1]) {
+      for (let k = 1; k <= MAX_JET_STEPS; k++) {
+        const value = current[field] + dir * k;
+        if (value < min || value > max) break;
+        const setup = { ...current, [field]: value };
+        const result = calcSetup(setup, allNeedles);
+        if (!result) continue;
+        const summary = rangeSummary(refResult, result, setup);
+        out.push({
+          needleType: current.needleType,
+          clipPos: current.clipPos,
+          alsoTypes: [],
+          setup,
+          flow: summary.map(r => r.flow),
+          diameter: summary.map(r => r.diameter),
+          eq: summary.map(r => r.eqCand),
+          jet: { field, value },
+        });
+      }
+    }
+  }
+  return out;
+}
+
 // A group of identical curves that contains the current needle (at another
 // clip) is presented as that needle: the same curve is then a clip-only
 // change instead of a needle swap. The former representative moves into
 // alsoTypes. Other groups are returned unchanged.
 function asSeenFrom(cand, current) {
+  if (cand.jet) return cand;
   const own = cand.alsoTypes.find(a => a.needleType === current.needleType);
   if (!own) return cand;
   return {
@@ -270,6 +310,8 @@ function sideWeight(r, rangeIndex) {
 // side = Σ_{r≠R} w_r · |flow_r(cand) − flow_r(current)| — measured against
 //        current, not the reference, so ranges already tuned stay put.
 // cost = (inc − MIN_STEP) + LAMBDA · side − (clipOnly ? CLIP_BONUS : 0).
+// `evaluated` may also hold evaluateJetCandidates() entries (tags.jet =
+// 'nd' | 'hd', no clip bonus); only the best step per jet is kept.
 // Returns { suggestions (≤ MAX_SUGGESTIONS), count, reason, warning }:
 // reason: null | 'hdLimited' (no candidates and the range is main-jet
 // limited in current) | 'noCandidates'; warning: the best suggestion's
@@ -294,13 +336,15 @@ export function rankNextSteps(evaluated, {
         side += sideWeight(r, rangeIndex) * Math.abs(flow - currentFlow[r]);
       });
 
-      const isCustom = customTypes.includes(cand.needleType);
+      // A jet step keeps the needle: none of the needle tags apply.
+      const isCustom = !cand.jet && customTypes.includes(cand.needleType);
       const tags = {
-        clipOnly: cand.needleType === current.needleType,
-        seriesChange: getNeedleSeries(cand.needleType) !== getNeedleSeries(current.needleType),
+        clipOnly: !cand.jet && cand.needleType === current.needleType,
+        seriesChange: !cand.jet && getNeedleSeries(cand.needleType) !== getNeedleSeries(current.needleType),
         custom: isCustom,
-        clipsUnverified: getClipsSource(cand.needleType, isCustom) === 'default',
+        clipsUnverified: !cand.jet && getClipsSource(cand.needleType, isCustom) === 'default',
       };
+      if (cand.jet) tags.jet = cand.jet.field;
       const cost = (inc - MIN_STEP) + LAMBDA * side - (tags.clipOnly ? CLIP_BONUS : 0);
       ranked.push({ ...cand, inc, side, cost, tags });
     }
@@ -308,18 +352,34 @@ export function rankNextSteps(evaluated, {
 
   ranked.sort((a, b) => {
     if (Math.abs(a.cost - b.cost) > COST_EPSILON) return a.cost - b.cost;
+    // Equal cost: needle candidates first (order as before jets existed),
+    // jet steps by field and size.
+    if (!!a.jet !== !!b.jet) return a.jet ? 1 : -1;
+    if (a.jet) {
+      return a.jet.field.localeCompare(b.jet.field)
+        || Math.abs(a.jet.value - current[a.jet.field]) - Math.abs(b.jet.value - current[b.jet.field]);
+    }
     return compareTypeClip(a, b);
+  });
+  // Per jet only its best step (HD 126, not also HD 125 and 124): the
+  // other cards stay for real alternatives.
+  const seenJets = new Set();
+  const kept = ranked.filter(c => {
+    if (!c.jet) return true;
+    if (seenJets.has(c.jet.field)) return false;
+    seenJets.add(c.jet.field);
+    return true;
   });
 
   let reason = null;
-  if (ranked.length === 0) {
+  if (kept.length === 0) {
     reason = currentHdLimited[rangeIndex] ? 'hdLimited' : 'noCandidates';
   }
-  const best = ranked[0];
+  const best = kept[0];
 
   return {
-    suggestions: ranked.slice(0, MAX_SUGGESTIONS),
-    count: ranked.length,
+    suggestions: kept.slice(0, MAX_SUGGESTIONS),
+    count: kept.length,
     reason,
     warning: best != null && best.side > WARN_SIDE_RATIO * best.inc,
   };

@@ -12,7 +12,7 @@ import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlot
          JET_MIN, ND_MAX, HD_MAX, JET_FIELD_BOUNDS, MAX_NAME_LENGTH } from './share.js';
 import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, WARN_SIDE_RATIO, evaluateCandidates, rankNextSteps,
          rangeSummary, stepJet, formatSignedPercent, validateTuningSetup,
-         rangeLevers, leverDisplay } from './tuning.js';
+         rangeLevers, leverDisplay, evaluateJetCandidates } from './tuning.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
          sortCatalogRows, formatCatalogValue, CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 
@@ -833,7 +833,11 @@ function getTuningEvaluation(snap) {
   const currentResult = calcSetup(current, allNeedles);
   const summary = rangeSummary(calcSetup(ref, allNeedles), currentResult, current);
   const levers = rangeLevers(currentResult, current);
-  const evaluated = evaluateCandidates({ allNeedles, ref, current });
+  // Needle/clip changes and ND/HD steps compete in one ranking.
+  const evaluated = [
+    ...evaluateCandidates({ allNeedles, ref, current }),
+    ...evaluateJetCandidates({ allNeedles, ref, current }),
+  ];
   const options = {
     currentFlow: summary.map(r => r.flow),
     currentHdLimited: summary.map(r => r.hdLimited),
@@ -869,8 +873,7 @@ function tuningSlotName(values, ref) {
 // The suggestion of the last needle step that `current` is using, if any.
 function adoptedSuggestion() {
   const { suggestions, current } = tuningState;
-  return suggestions?.suggestions.find(s =>
-    s.needleType === current.needleType && s.clipPos === current.clipPos) ?? null;
+  return suggestions?.suggestions.find(s => sameTuningFields(s.setup, current)) ?? null;
 }
 
 function formatEq(value) {
@@ -1139,9 +1142,7 @@ function tuningStepCell(rangeIndex, dir, ranking, rangeLabel) {
 // ("Leaner: no needle · Richer: HD-limited") — sized to fit one line at
 // 320 px in German.
 //
-// 0–1/8 is mainly ND territory, yet its ± steps change the needle: without a
-// reason to show, that row says so (rangeIndex 0 only).
-function tuningReasonLine(rankings, rangeIndex) {
+function tuningReasonLine(rankings) {
   const reasons = { [-1]: rankings[-1].reason, [1]: rankings[1].reason };
   const dirLabel = dir => t(dir > 0 ? 'tuning.dir.richer' : 'tuning.dir.leaner');
   const line = (dir, reason) =>
@@ -1155,7 +1156,6 @@ function tuningReasonLine(rankings, rangeIndex) {
     const dir = reasons[-1] ? -1 : reasons[1] ? 1 : null;
     if (dir) text = line(dir, t(`tuning.reasonShort.${reasons[dir]}`));
   }
-  if (!text && TUNING_RANGES[rangeIndex]?.lever === 'nd') text = t('tuning.r0Hint');
   return `<div class="tuning-reason">${escapeHtml(text)}</div>`;
 }
 
@@ -1232,7 +1232,7 @@ function renderTuningRanges({ summary, rankings, levers }) {
         <span class="tuning-diameter">${escapeHtml(diameter)}</span>
       </td>
       ${tuningStepCell(i, -1, rankings[i][-1], rangeLabel)}
-      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningLeverLine(levers[i])}${tuningReasonLine(rankings[i], i)}</td>
+      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningLeverLine(levers[i])}${tuningReasonLine(rankings[i])}</td>
       ${tuningStepCell(i, 1, rankings[i][1], rangeLabel)}
     </tr>`;
   }).join('');
@@ -1270,10 +1270,15 @@ function renderTuningSuggestions() {
   const target = tuningState.lastStep?.rangeIndex;
   const flowBefore = tuningState.lastStep?.flowBefore;
   const stepTip = t('tuning.stepDelta.tooltip');
+  const beforeStep = tuningState.history.at(-1) ?? tuningState.ref;
   let anyUnverified = false;
 
   const cards = ranking.suggestions.map((sugg, idx) => {
-    const title = tuningClipLabel(sugg.needleType, sugg.clipPos);
+    // A jet step: "HD 128 → 126", from the state before this step (picking
+    // a card adds no history entry); everything else is a needle/clip change.
+    const title = sugg.jet
+      ? `${t(`col.${sugg.jet.field}`)} ${beforeStep[sugg.jet.field]} → ${sugg.jet.value}`
+      : tuningClipLabel(sugg.needleType, sugg.clipPos);
     const also = sugg.alsoTypes.length
       ? `<span class="tuning-sugg-also">${escapeHtml(fillPlaceholder(t('tuning.also'), '{list}',
           sugg.alsoTypes.map(a => tuningClipLabel(a.needleType, a.clipPos)).join(', ')))}</span>`
@@ -1281,6 +1286,7 @@ function renderTuningSuggestions() {
     const { tags } = sugg;
     if (tags.clipsUnverified) anyUnverified = true;
     const badges = [
+      tags.jet && tuningTagBadge(t('tuning.tag.jetOnly')),
       tags.clipOnly && tuningTagBadge(t('tuning.tag.clipOnly')),
       tags.seriesChange && tuningTagBadge(t('tuning.tag.seriesChange'), t('tuning.tag.seriesChange.tooltip')),
       tags.custom && tuningTagBadge(t('tuning.tag.custom')),

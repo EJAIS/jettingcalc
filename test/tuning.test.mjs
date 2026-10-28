@@ -16,6 +16,7 @@ import {
   TUNING_RANGES, TUNING_REASONS, MIN_STEP, MAX_SUGGESTIONS,
   hdLimited, rangeSummary, evaluateCandidates, rankNextSteps, stepJet,
   formatSignedPercent, validateTuningSetup, rangeLevers, leverDisplay, LEVER_MIN_SHARE,
+  evaluateJetCandidates, MAX_JET_STEPS,
 } from '../js/tuning.js';
 
 // Reference values below come from the accepted prototype — if one of them
@@ -161,6 +162,72 @@ test('hdLimited: 1/4–1/2 can be limited while its blended 30 % point is not', 
   // Just below the 35 % value the range is no longer limited.
   const higher = { ...REF_VHSX, hd: 119 };
   assert.equal(hdLimited(calcSetup(higher, NEEDLE_DB), higher, 2), false);
+});
+
+// ── ND / HD steps as candidates ──────────────────────────────────────────────
+
+// Same flow as the UI: needles and jet steps in one ranking.
+function rankAll(ref, current, rangeIndex, dir) {
+  const summary = rangeSummary(calcSetup(ref, NEEDLE_DB), calcSetup(current, NEEDLE_DB), current);
+  const evaluated = [
+    ...evaluateCandidates({ allNeedles: NEEDLE_DB, ref, current }),
+    ...evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref, current }),
+  ];
+  return rankNextSteps(evaluated, {
+    currentFlow: summary.map(r => r.flow), currentHdLimited: summary.map(r => r.hdLimited),
+    rangeIndex, dir, current,
+  });
+}
+
+test('evaluateJetCandidates: ND and HD ±1…MAX_JET_STEPS, needle and atomizer kept, bounds respected', () => {
+  const jets = evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref: REF_VHSX, current: REF_VHSX });
+  assert.equal(jets.length, 2 * 2 * MAX_JET_STEPS);
+  for (const j of jets) {
+    assert.equal(j.setup.needleType, 'K27');
+    assert.equal(j.setup.clipPos, 3);
+    assert.equal(j.setup.needleJet, 264);
+    assert.equal(j.setup[j.jet.field], j.jet.value);
+    const other = j.jet.field === 'nd' ? 'hd' : 'nd';
+    assert.equal(j.setup[other], REF_VHSX[other]);
+  }
+  const atMax = { ...REF_VHSX, hd: HD_MAX };
+  const up = evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref: atMax, current: atMax })
+    .filter(j => j.jet.field === 'hd' && j.jet.value > HD_MAX);
+  assert.equal(up.length, 0);
+});
+
+test('K27 C3 / HD 128: 3/4–1 leaner → HD 127 (clean), not K74 C2 that shifts 1/4–3/4 by ~30 %', () => {
+  const res = rankAll(REF_VHSX, REF_VHSX, 4, -1);
+  const best = res.suggestions[0];
+  assert.deepEqual(best.jet, { field: 'hd', value: 127 });
+  assert.equal(best.tags.jet, 'hd');
+  assert.equal(best.tags.clipOnly, false, 'no clip bonus for a jet step');
+  assert.equal(res.warning, false);
+  assert.ok(res.suggestions.some(s => !s.jet), 'needle alternatives stay as cards');
+});
+
+test('K27 C3 / HD 128: 3/4–1 richer is no longer blocked — HD 129', () => {
+  const res = rankAll(REF_VHSX, REF_VHSX, 4, 1);
+  assert.equal(res.reason, null);
+  assert.deepEqual(res.suggestions[0].jet, { field: 'hd', value: 129 });
+});
+
+test('0–1/8 (ND 80 %): richer and leaner pick the ND first', () => {
+  assert.deepEqual(rankAll(REF_VHSX, REF_VHSX, 0, 1).suggestions[0].jet, { field: 'nd', value: 51 });
+  assert.deepEqual(rankAll(REF_VHSX, REF_VHSX, 0, -1).suggestions[0].jet, { field: 'nd', value: 49 });
+});
+
+test('only the best step per jet is kept; 1/8–1/4 richer still picks K96 C5', () => {
+  for (let r = 0; r < 5; r++) {
+    for (const dir of [-1, 1]) {
+      const res = rankAll(REF_VHSX, REF_VHSX, r, dir);
+      for (const field of ['nd', 'hd']) {
+        assert.ok(res.suggestions.filter(s => s.jet?.field === field).length <= 1, `r${r} ${dir} ${field}`);
+      }
+    }
+  }
+  const r1 = rankAll(REF_VHSX, REF_VHSX, 1, 1).suggestions[0];
+  assert.equal(`${r1.needleType} C${r1.clipPos}`, 'K96 C5');
 });
 
 // ── rangeLevers / leverDisplay ───────────────────────────────────────────────

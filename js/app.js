@@ -1829,7 +1829,10 @@ function applyShareFromUrl({ offlineStale = false } = {}) {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    return await navigator.serviceWorker.register('./sw.js', { type: 'module' });
+    // updateViaCache: 'none' — the update check fetches sw.js and its
+    // import (js/share.js) past the HTTP cache, so a CDN's long max-age
+    // can't delay or mix a release.
+    return await navigator.serviceWorker.register('./sw.js', { type: 'module', updateViaCache: 'none' });
   } catch (err) {
     console.warn('Service worker registration failed:', err);
     return null;

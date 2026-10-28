@@ -21,7 +21,7 @@
 
 import { hasShareParams } from './js/share.js';
 
-export const JETTINGCALC_CACHE_VERSION = '300beb181111';
+export const JETTINGCALC_CACHE_VERSION = 'b3901d1a2153';
 export const CACHE_NAME = `jettingcalc-${JETTINGCALC_CACHE_VERSION}`;
 
 // All paths are relative to this file's own location (the repo root), so
@@ -46,6 +46,15 @@ export const PRECACHE_URLS = [
   './icons/apple-touch-icon.png',
   './manifest.json',
 ];
+
+// Precache requests use `cache: 'reload'` so install() always fetches from
+// the network and never picks up a stale copy from the browser's HTTP cache
+// (e.g. a CDN's `Cache-Control: max-age=14400`). Otherwise a fresh install
+// can store a mix of old and new modules, which breaks ES-module imports
+// ("module doesn't provide an export named ...") until the next release.
+export function precacheRequests(urls = PRECACHE_URLS) {
+  return urls.map(url => new Request(url, { cache: 'reload' }));
+}
 
 const NETWORK_TIMEOUT_MS = 3000;
 
@@ -152,7 +161,7 @@ if (inServiceWorkerScope) {
   self.addEventListener('install', event => {
     event.waitUntil(
       caches.open(CACHE_NAME)
-        .then(cache => cache.addAll(PRECACHE_URLS)),
+        .then(cache => cache.addAll(precacheRequests())),
     );
   });
 

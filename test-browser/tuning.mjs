@@ -122,6 +122,10 @@ async function openTuningWithK27(page, { tap = false } = {}) {
 }
 
 const isVisible = (page, selector) => page.isVisible(selector);
+// Empty state (no reference): the steps bar is at step 1, the blocks hidden.
+const inStepOne = page => page.evaluate(() =>
+  /^1/.test(document.querySelector('#tuning-steps [aria-current="step"]')?.textContent ?? '')
+  && document.getElementById('tuning-fit').hidden);
 // The fitting box shows "Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 ·
 // HD 128 · DQ 264" (changed parts as "ref → new"). Most tests only care
 // about reference and current state, so this folds it into the compact
@@ -155,7 +159,7 @@ test('direct #tuning opens the tab; tab switches and history.back follow the has
     assert.equal(await isVisible(page, '#view-tuning'), true);
     assert.equal(await isVisible(page, '#view-calc'), false);
     assert.equal(await page.getAttribute('#tab-tuning', 'aria-selected'), 'true');
-    assert.equal(await isVisible(page, '#tuning-empty'), true);
+    assert.equal(await inStepOne(page), true);
   });
 
   await withPage(async page => {
@@ -372,7 +376,7 @@ test('deleting a custom needle drops stale suggestion cards; deleting the curren
         assert.equal(await page.locator('.tuning-sugg').count(), 0, 'stale cards dropped');
         assert.match(await status(page), /K27 C3 → K96 C5/, 'session kept');
       } else {
-        assert.equal(await isVisible(page, '#tuning-empty'), true, 'current needle gone → reset');
+        assert.equal(await inStepOne(page), true, 'current needle gone → reset');
         assert.equal(await isVisible(page, '#app-notice'), true);
       }
     });
@@ -650,10 +654,18 @@ test('steps bar: 1 → 2 → 3 with ✓ for finished steps, same height in every
       const s3 = await state();
       assert.match(s3.current, /^3Apply/);
       assert.equal(s3.done, 2);
+      // Right after applying all three steps are done; the next step ends it.
+      await page.click('[data-tuning-action="applyFree"]');
+      const s5 = await state();
+      assert.equal(s5.current, undefined);
+      assert.equal(s5.done, 3);
+      assert.deepEqual(s5.visibleText, ['Saved. Tap a range again for the next step.']);
+      await page.click('[data-tuning-step="1:1"]');
+      assert.match((await state()).current, /^3/, 'a further step ends the done state');
       await page.click('[data-tuning-action="reset"]');
       const s4 = await state();
       assert.match(s4.current, /^2/, 'back to step 2 after reset');
-      for (const s of [s2, s3, s4]) {
+      for (const s of [s2, s3, s4, s5]) {
         assert.ok(Math.abs(s.height - s1.height) <= 0.5, `${viewport.width}: steps bar ${s.height} vs ${s1.height}`);
       }
     }, { viewport });
@@ -1050,7 +1062,7 @@ test('changing the carb type in the calculator resets the tuning state', async (
     await page.click('#tab-calc');
     await page.click('input[name="carbType"][value="PHBH"]');
     await page.click('#tab-tuning');
-    assert.equal(await isVisible(page, '#tuning-empty'), true);
+    assert.equal(await inStepOne(page), true);
     assert.equal(await isVisible(page, '#tuning-status'), false);
     assert.match(await page.textContent('#tuning-carb-type'), /PHBH/);
     assert.equal(await page.locator('[data-tuning-source][aria-pressed="true"]').count(), 0);

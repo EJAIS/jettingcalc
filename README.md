@@ -38,7 +38,7 @@ change.
 
 - **Guided steps.** A bar at the top shows where you are: 1 pick a
   reference, 2 adjust a range, 3 apply — with one sentence for the current
-  step.
+  step, and all three ticked right after saving.
 - **Reference.** Pick one of your calculator setups (any complete one) or
   enter a setup manually. The tab uses the calculator's carburetor type and
   only displays it; changing the type in the calculator starts over.

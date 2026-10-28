@@ -1278,7 +1278,6 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 /* The suggestions area stays in the layout when empty (height 0): hiding
    it would also drop the flex gap before it, so removing the cards would
    shrink the page by more than their own height (see the scroll spacer) */
-.tuning-empty,
 .tuning-hint,
 .tuning-note {
   margin: 0;
@@ -1389,7 +1388,8 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 }
 .tuning-steps-texts[data-active="1"] .tuning-steps-text:nth-child(1),
 .tuning-steps-texts[data-active="2"] .tuning-steps-text:nth-child(2),
-.tuning-steps-texts[data-active="3"] .tuning-steps-text:nth-child(3) { visibility: visible; }
+.tuning-steps-texts[data-active="3"] .tuning-steps-text:nth-child(3),
+.tuning-steps-texts[data-active="4"] .tuning-steps-text:nth-child(4) { visibility: visible; }
 
 /* Fitting box: what to fit, sticks below the (mobile) tab bar. Fixed
    height — line 1 is clamped (full text as title), line 2 is always there —

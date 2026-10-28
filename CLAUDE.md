@@ -1004,7 +1004,11 @@ HD und Mischrohr in die Rechnung eingehen. Entscheidungen (Alexander):
 - **Schritte-Leiste 1–2–3** über der Referenz (`#tuning-steps`):
   „Referenz wählen“ (keine Referenz) → „Bereich anpassen“ (current = ref)
   → „Übernehmen“ (current ≠ ref); erledigte Schritte mit ✓, nur der
-  aktuelle Schritt mit Erklärsatz. Kein Symptom-Einstieg, kein Overlay.
+  aktuelle Schritt mit Erklärsatz. Direkt nach einem erfolgreichen
+  Übernehmen alle drei ✓ mit „Gespeichert …“ (`tuning.steps.4.text`), bis
+  die nächste Aktion das Meldungsfeld beendet. Kein Symptom-Einstieg, kein
+  Overlay; der frühere Leertext `tuning.empty` entfiel (die Leiste sagt
+  dasselbe).
 - **Einbau-Box** statt der früheren Statuszeile: „Einbauen: Nadel K27 →
   K96 · Clip 3 → 5 · ND 50 · HD 128 · DQ 264“ — geänderte Teile als
   „Ref → neu“, der neue Wert hervorgehoben; Zeile 2 „noch nichts

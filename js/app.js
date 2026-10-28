@@ -908,8 +908,6 @@ function renderTuning(snap = readNeedleSnapshot()) {
     renderTuningApplyBanner();
 
     const hasRef = tuningState.ref != null;
-    const empty = document.getElementById('tuning-empty');
-    if (empty) empty.hidden = hasRef;
     view.querySelectorAll('[data-tuning-block]').forEach(block => { block.hidden = !hasRef; });
 
     if (!hasRef) return;
@@ -1028,13 +1026,17 @@ function buildTuningManualForm(snap = readNeedleSnapshot()) {
 }
 
 // Guided steps 1–2–3 above the reference picker, always visible: 1 until
-// a reference is loaded, 2 while current equals it, 3 once it differs.
+// a reference is loaded, 2 while current equals it, 3 once it differs,
+// and 4 (all three ✓) right after a successful apply — until the next
+// tuning action ends that apply message (renderTuning() hides it first).
 // Every step's sentence is in the DOM and they share one grid cell (only
 // the current one visible), so the bar is as high as the longest sentence
 // whichever step is current — it never moves the controls below.
 function tuningCurrentStep() {
   const { ref, current } = tuningState;
   if (!ref) return 1;
+  const msg = tuningApplyMessage;
+  if (msg && msg.kind !== 'error' && msg.sessionKey === tuningSessionKey()) return 4;
   return sameTuningFields(ref, current) ? 2 : 3;
 }
 
@@ -1053,7 +1055,7 @@ function renderTuningSteps() {
       + (srState ? `<span class="visually-hidden"> (${escapeHtml(srState)})</span>` : '')
       + `</li>`;
   }).join('');
-  const texts = steps.map(n =>
+  const texts = [...steps, 4].map(n =>
     `<p class="tuning-steps-text"${n === active ? '' : ' aria-hidden="true"'}>${escapeHtml(t(`tuning.steps.${n}.text`))}</p>`).join('');
   el.innerHTML = `<ol class="tuning-steps-list">${items}</ol>`
     + `<div class="tuning-steps-texts" data-active="${active}">${texts}</div>`;

@@ -206,7 +206,6 @@ export const TRANSLATIONS = {
     // Fine tuning
     'tuning.heading':  'Fine tuning',
     'tuning.carbType': 'Carburetor type: {type} (as in the calculator)',
-    'tuning.empty':    'Pick a setup from the calculator as reference, or enter one manually, to start fine tuning.',
     'tuning.ref.label':   'Reference',
     'tuning.ref.manual':  'Manual entry',
     'tuning.ref.noSlots': 'No complete setup in the calculator yet — enter a reference manually.',
@@ -288,6 +287,7 @@ export const TRANSLATIONS = {
     'tuning.steps.2.text':  'Is the engine too rich or too lean in a throttle range? Tap leaner or richer there; the calculator finds the cleanest step: needle, clip, ND or HD.',
     'tuning.steps.3.title': 'Apply',
     'tuning.steps.3.text':  'Check the fitting box and save the result as a setup.',
+    'tuning.steps.4.text':  'Saved. Tap a range again for the next step.',
     'tuning.steps.done':    'done',
     'tuning.steps.current': 'current step',
     'tuning.fit.label':     'Fit:',
@@ -554,7 +554,6 @@ export const TRANSLATIONS = {
     // Fine tuning
     'tuning.heading':  'Feinabstimmung',
     'tuning.carbType': 'Vergasertyp: {type} (wie im Rechner)',
-    'tuning.empty':    'Wähle ein Setup aus dem Rechner als Referenz oder gib eines manuell ein, um mit der Feinabstimmung zu beginnen.',
     'tuning.ref.label':   'Referenz',
     'tuning.ref.manual':  'Manuelle Eingabe',
     'tuning.ref.noSlots': 'Noch kein vollständiges Setup im Rechner — Referenz manuell eingeben.',
@@ -636,6 +635,7 @@ export const TRANSLATIONS = {
     'tuning.steps.2.text':  'Läuft der Motor in einem Gasbereich zu fett oder zu mager? Dann tippe dort auf magerer bzw. fetter, den saubersten Schritt (Nadel, Clip, ND oder HD) sucht der Rechner.',
     'tuning.steps.3.title': 'Übernehmen',
     'tuning.steps.3.text':  'Prüfe die Einbau-Box und speichere das Ergebnis als Setup.',
+    'tuning.steps.4.text':  'Gespeichert. Für den nächsten Schritt einfach wieder einen Bereich antippen.',
     'tuning.steps.done':    'erledigt',
     'tuning.steps.current': 'aktueller Schritt',
     'tuning.fit.label':     'Einbauen:',

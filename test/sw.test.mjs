@@ -17,9 +17,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, isShareNavigation, appShellUrl } from '../sw.js';
+import { JETTINGCALC_CACHE_VERSION, CACHE_NAME, PRECACHE_URLS, precacheRequests, isShareNavigation, appShellUrl } from '../sw.js';
 import { hasShareParams, shareParamKeys } from '../js/share.js';
 import { computeCacheVersion, hashEntries } from '../scripts/sync-sw-cache-version.mjs';
+
+test('precacheRequests bypasses the HTTP cache for every precached file', () => {
+  // Node's Request needs absolute URLs; in the worker they resolve against sw.js.
+  const base = 'https://example.test/jettingcalc/sw.js';
+  const requests = precacheRequests(PRECACHE_URLS.map(url => new URL(url, base).href));
+  assert.equal(requests.length, PRECACHE_URLS.length);
+  for (const request of requests) assert.equal(request.cache, 'reload', request.url);
+});
 
 test('CACHE_NAME is derived from JETTINGCALC_CACHE_VERSION', () => {
   assert.equal(CACHE_NAME, `jettingcalc-${JETTINGCALC_CACHE_VERSION}`);

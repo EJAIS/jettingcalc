@@ -122,7 +122,29 @@ async function openTuningWithK27(page, { tap = false } = {}) {
 }
 
 const isVisible = (page, selector) => page.isVisible(selector);
-const status = page => page.textContent('#tuning-status');
+// Empty state (no reference): the steps bar is at step 1, the blocks hidden.
+const inStepOne = page => page.evaluate(() =>
+  /^1/.test(document.querySelector('#tuning-steps [aria-current="step"]')?.textContent ?? '')
+  && document.getElementById('tuning-fit').hidden);
+// The fitting box shows "Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 ·
+// HD 128 · DQ 264" (changed parts as "ref → new"). Most tests only care
+// about reference and current state, so this folds it into the compact
+// form "K27 C3 → K96 C5 · ND 50 · HD 128 · DQ 264" (current jet values).
+// The visible format itself is checked in "fitting box".
+const fitText = page => page.textContent('#tuning-status');
+const status = async page => {
+  const text = (await fitText(page)).replace(/^[^:]*:\s*/, '');
+  const pair = part => {
+    const [a, b] = part.split(' → ');
+    return [a, b ?? a];
+  };
+  const [needle, clip, nd, hd, atom] = text.split(' · ').map(pair);
+  const last = v => v.split(' ').at(-1);
+  const [refNeedle, curNeedle] = needle.map(last);
+  const [refClip, curClip] = clip.map(last);
+  // An unchanged atomizer reads "DQ 264"; a changed one "DQ 264 → DQ 266".
+  return `${refNeedle} C${refClip} → ${curNeedle} C${curClip} · ND ${last(nd[1])} · HD ${last(hd[1])} · ${atom[1]}`;
+};
 const cardTitles = page => page.$$eval('.tuning-sugg-pick', els => els.map(el => el.textContent.trim()));
 const flowText = (page, rangeKey) => page.textContent(`tr[data-range="${rangeKey}"] .tuning-flow`);
 const storedSetups = page => page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups')));
@@ -137,7 +159,7 @@ test('direct #tuning opens the tab; tab switches and history.back follow the has
     assert.equal(await isVisible(page, '#view-tuning'), true);
     assert.equal(await isVisible(page, '#view-calc'), false);
     assert.equal(await page.getAttribute('#tab-tuning', 'aria-selected'), 'true');
-    assert.equal(await isVisible(page, '#tuning-empty'), true);
+    assert.equal(await inStepOne(page), true);
   });
 
   await withPage(async page => {
@@ -163,7 +185,7 @@ test('direct #tuning opens the tab; tab switches and history.back follow the has
 
 // ── Steps, suggestion cards, undo ───────────────────────────────────────────
 
-test('+ in 1/8–1/4 → K96 C5 with three cards; + in 3/4–1 disabled with a visible reason', async () => {
+test('+ in 1/8–1/4 → K96 C5 with three cards incl. an ND step; + in 3/4–1 → HD 129', async () => {
   await withPage(async page => {
     await openTuningWithK27(page);
     assert.match(await status(page), /^K27 C3 → K27 C3/);
@@ -171,14 +193,24 @@ test('+ in 1/8–1/4 → K96 C5 with three cards; + in 3/4–1 disabled with a v
 
     await page.click('[data-tuning-step="1:1"]');
     assert.match(await status(page), /K27 C3 → K96 C5/);
-    assert.deepEqual(await cardTitles(page), ['K96 · Clip 5', 'U7 · Clip 3', 'K97 · Clip 3']);
-    const u7Tags = await page.$$eval('.tuning-sugg:nth-child(2) .tuning-tag', els => els.map(el => el.textContent));
+    assert.deepEqual(await cardTitles(page), ['K96 · Clip 5', 'ND 50 → 52', 'U7 · Clip 3']);
+    const ndTags = await page.$$eval('.tuning-sugg:nth-child(2) .tuning-tag', els => els.map(el => el.textContent));
+    assert.deepEqual(ndTags, ['jet only']);
+    const u7Tags = await page.$$eval('.tuning-sugg:nth-child(3) .tuning-tag', els => els.map(el => el.textContent));
     assert.ok(u7Tags.includes('series change'), `U7 tags: ${u7Tags}`);
     assert.equal(await page.getAttribute('.tuning-sugg:nth-child(1) .tuning-sugg-pick', 'aria-pressed'), 'true');
 
-    assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), true);
-    assert.equal(await isVisible(page, 'tr[data-range="r4"] .tuning-reason'), true);
-    assert.match(await page.textContent('tr[data-range="r4"] .tuning-reason'), /HD-limited/);
+    // The ND card swaps the needle back and steps the ND — still one step.
+    await page.click('.tuning-sugg:nth-child(2)');
+    assert.match(await status(page), /^K27 C3 → K27 C3 · ND 52 · HD 128/);
+    assert.equal(await page.getAttribute('.tuning-sugg:nth-child(2) .tuning-sugg-pick', 'aria-pressed'), 'true');
+
+    // 3/4–1 is HD-limited: + is no longer blocked, it steps the HD.
+    await page.click('[data-tuning-action="reset"]');
+    assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), false);
+    await page.click('[data-tuning-step="4:1"]');
+    assert.match(await status(page), /^K27 C3 → K27 C3 · ND 50 · HD 129/);
+    assert.equal((await cardTitles(page))[0], 'HD 128 → 129');
   });
 });
 
@@ -187,7 +219,7 @@ test('switching cards adds no undo step; step back and reset', async () => {
     await openTuningWithK27(page);
     await page.click('[data-tuning-step="1:1"]');
     await page.click('.tuning-sugg:nth-child(3)'); // anywhere on the card picks it
-    assert.match(await status(page), /K27 C3 → K97 C3/);
+    assert.match(await status(page), /K27 C3 → U7 C3/);
     assert.equal(await page.getAttribute('.tuning-sugg:nth-child(3) .tuning-sugg-pick', 'aria-pressed'), 'true');
 
     // One step back returns to the reference — the card switch was not a step.
@@ -344,7 +376,7 @@ test('deleting a custom needle drops stale suggestion cards; deleting the curren
         assert.equal(await page.locator('.tuning-sugg').count(), 0, 'stale cards dropped');
         assert.match(await status(page), /K27 C3 → K96 C5/, 'session kept');
       } else {
-        assert.equal(await isVisible(page, '#tuning-empty'), true, 'current needle gone → reset');
+        assert.equal(await inStepOne(page), true, 'current needle gone → reset');
         assert.equal(await isVisible(page, '#app-notice'), true);
       }
     });
@@ -579,19 +611,153 @@ test('cards: the target cell alone shows the change of this step, against the st
   });
 });
 
-test('0–1/8 row: without a reason the line says ± changes the needle — one line, EN and DE, 320 and 768 px', async () => {
-  for (const [lang, hint] of [['en', '± changes the needle · ND: see below'], ['de', '± wechselt die Nadel · ND: siehe unten']]) {
-    for (const width of [320, 768]) {
+test('0–1/8 row (ND 80 %): + / − step the ND first; no hint line without a reason', async () => {
+  for (const lang of ['en', 'de']) {
+    await withPage(async page => {
+      await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
+      await openTuningWithK27(page);
+      assert.equal(await page.textContent('tr[data-range="r0"] .tuning-reason'), '');
+      await page.click('[data-tuning-step="0:1"]');
+      assert.match(await status(page), /^K27 C3 → K27 C3 · ND 51 · HD 128/);
+      await page.click('[data-tuning-action="reset"]');
+      await page.click('[data-tuning-step="0:-1"]');
+      assert.match(await status(page), /^K27 C3 → K27 C3 · ND 49 · HD 128/);
+    }, { viewport: { width: 1280, height: 800 } });
+  }
+});
+
+// ── Guidance: steps bar, fitting box, lever line, model explanation ─────────
+
+test('steps bar: 1 → 2 → 3 with ✓ for finished steps, same height in every step', async () => {
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 360, height: 740 }]) {
+    await withPage(async page => {
+      await openApp(page);
+      await createK27Setup(page);
+      await page.click('#tab-tuning');
+      const state = () => page.evaluate(() => ({
+        current: document.querySelector('#tuning-steps [aria-current="step"]')?.textContent,
+        done: document.querySelectorAll('#tuning-steps .tuning-step.is-done').length,
+        visibleText: [...document.querySelectorAll('.tuning-steps-text')]
+          .filter(p => getComputedStyle(p).visibility === 'visible').map(p => p.textContent),
+        height: document.getElementById('tuning-steps').getBoundingClientRect().height,
+      }));
+      const s1 = await state();
+      assert.match(s1.current, /^1Pick reference/);
+      assert.equal(s1.done, 0);
+      assert.deepEqual(s1.visibleText, ['Pick the setup that is in the carburetor right now.']);
+      await page.click('[data-tuning-source="1"]');
+      const s2 = await state();
+      assert.match(s2.current, /^2Adjust range/);
+      assert.equal(s2.done, 1);
+      assert.match(s2.visibleText[0], /^Is the engine too rich or too lean/);
+      await page.click('[data-tuning-step="1:1"]');
+      const s3 = await state();
+      assert.match(s3.current, /^3Apply/);
+      assert.equal(s3.done, 2);
+      // Right after applying all three steps are done; the next step ends it.
+      await page.click('[data-tuning-action="applyFree"]');
+      const s5 = await state();
+      assert.equal(s5.current, undefined);
+      assert.equal(s5.done, 3);
+      assert.deepEqual(s5.visibleText, ['Saved. Tap a range again for the next step.']);
+      await page.click('[data-tuning-step="1:1"]');
+      assert.match((await state()).current, /^3/, 'a further step ends the done state');
+      await page.click('[data-tuning-action="reset"]');
+      const s4 = await state();
+      assert.match(s4.current, /^2/, 'back to step 2 after reset');
+      for (const s of [s2, s3, s4, s5]) {
+        assert.ok(Math.abs(s.height - s1.height) <= 0.5, `${viewport.width}: steps bar ${s.height} vs ${s1.height}`);
+      }
+    }, { viewport });
+  }
+});
+
+test('fitting box: what to fit with ref → new for changed parts, note or jump to the cards', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    assert.equal(await fitText(page), 'Fit: Needle K27 · Clip 3 · ND 50 · HD 128 · DQ 264');
+    assert.equal(await page.textContent('#tuning-fit-extra'), 'nothing changed yet, same as the reference');
+    await page.click('[data-tuning-step="1:1"]');
+    assert.equal(await fitText(page), 'Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 · HD 128 · DQ 264');
+    assert.deepEqual(await page.$$eval('#tuning-status .is-changed', els => els.map(el => el.textContent)), ['K96', '5']);
+    assert.equal(await page.textContent('[data-tuning-action="viewOptions"]'), 'View options (3) ↓');
+    const y0 = await page.evaluate(() => window.scrollY);
+    await page.click('[data-tuning-action="viewOptions"]');
+    await page.waitForFunction(y => {
+      const r = document.getElementById('tuning-alternatives').getBoundingClientRect();
+      return window.scrollY > y && r.top >= 0 && r.top < innerHeight;
+    }, y0);
+    await page.click('[data-tuning-jet="nd:1"]');
+    assert.equal(await fitText(page), 'Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 → 51 · HD 128 · DQ 264');
+    assert.equal(await page.locator('[data-tuning-action="viewOptions"]').count(), 0, 'no cards after a jet step');
+  });
+});
+
+test('lever line: which part meters each range, from the model; fits one line at 320 and 768 px', async () => {
+  const expected = {
+    en: ['acts: ND 80 % · needle/atomizer 20 %', 'acts: ND 23 % · needle/atomizer 77 %',
+      'acts: needle/atomizer 60 % · HD 40 %', 'acts: HD', 'acts: HD'],
+    de: ['wirkt: ND 80 % · Nadel/MR 20 %', 'wirkt: ND 23 % · Nadel/MR 77 %',
+      'wirkt: Nadel/MR 60 % · HD 40 %', 'wirkt: HD', 'wirkt: HD'],
+  };
+  for (const lang of ['en', 'de']) {
+    for (const width of [320, 768, 1280]) {
       await withPage(async page => {
         await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
         await openTuningWithK27(page);
-        const lines = await page.$$eval('.tuning-reason', els => els.map(el =>
+        const lines = await page.$$eval('.tuning-lever', els => els.map(el =>
           ({ text: el.textContent, fits: el.scrollWidth <= el.clientWidth })));
-        assert.deepEqual(lines[0], { text: hint, fits: true }, `${lang} ${width}`);
-        assert.ok(lines.slice(1).every(l => l.text !== hint), 'only the 0–1/8 row');
+        assert.deepEqual(lines.map(l => l.text), expected[lang], `${lang} ${width}`);
+        assert.ok(lines.every(l => l.fits), `${lang} ${width}: ${JSON.stringify(lines)}`);
+        // HD + far enough: in 3/4–1 the needle takes over from the HD.
+        const r4 = () => page.textContent('tr[data-range="r4"] .tuning-lever');
+        let steps = 0;
+        while (/HD$/.test(await r4()) && steps++ < 120) await page.click('[data-tuning-jet="hd:1"]');
+        assert.match(await r4(), lang === 'en' ? /^acts: needle\/atomizer \d+ % · HD \d+ %$/ : /^wirkt: Nadel\/MR \d+ % · HD \d+ %$/);
       }, { viewport: { width, height: 800 } });
     }
   }
+});
+
+test('± buttons: direction word from 601 px on, symbol only on phones; Ø columns and bar legend', async () => {
+  for (const [width, words] of [[1280, true], [768, true], [601, true], [600, false], [360, false]]) {
+    await withPage(async page => {
+      await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+      await openTuningWithK27(page);
+      assert.equal(await page.isVisible('[data-tuning-step="1:1"] .tuning-step-word'), words, `${width}`);
+      if (words) assert.equal(await page.textContent('[data-tuning-step="1:-1"] .tuning-step-word'), 'magerer');
+      const box = await page.locator('[data-tuning-step="1:1"]').boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, `${width}: tap target ${box.width}×${box.height}`);
+      assert.equal(await page.isVisible('.tuning-bar-legend >> visible=true'), true, `${width}: a bar legend is visible`);
+      assert.equal(await noHorizontalOverflow(page), true, `${width}: overflow`);
+    }, { viewport: { width, height: 800 } });
+  }
+  await withPage(async page => {
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await openTuningWithK27(page);
+    const heads = await page.$$eval('#tuning-ranges thead th', els => els.map(el => el.textContent.trim()));
+    assert.equal(heads[1], 'Ref Ø');
+    assert.match(heads[2], /^Aktuell Ø/);
+    assert.match(heads[4], /◀ magerer.*Referenz.*fetter ▶/);
+    assert.ok(await page.getAttribute('#tuning-ranges thead .cutaway-info', 'data-tooltip'));
+  }, { viewport: { width: 1280, height: 800 } });
+});
+
+test('model explanation: closed by default in the jets block, survives re-renders when opened', async () => {
+  await withPage(async page => {
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await openTuningWithK27(page);
+    assert.equal(await page.getAttribute('#tuning-explain', 'open'), null);
+    await page.click('#tuning-explain summary');
+    assert.match(await page.textContent('#tuning-explain'), /√\(MR² − Nadel-Ø²\)/);
+    await page.click('[data-tuning-jet="hd:1"]');
+    assert.notEqual(await page.getAttribute('#tuning-explain', 'open'), null, 'still open after a step');
+    const order = await page.evaluate(() => {
+      const top = id => document.getElementById(id).getBoundingClientRect().top;
+      return top('tuning-jets') < top('tuning-explain') && top('tuning-explain') < top('tuning-actions');
+    });
+    assert.equal(order, true, 'between jets and actions');
+  }, { viewport: { width: 1280, height: 800 } });
 });
 
 // updateUI() reads the needle data once per pass (readNeedleSnapshot() in
@@ -668,14 +834,26 @@ for (const [name, contextOptions, lang] of [
         }
       };
 
-      // a) Needle step with side-effect warning: r3 leaner → K58 C2.
-      await event('a) needle step with warning', '[data-tuning-step="3:-1"]');
+      // a) r3 leaner → HD 127, then its card K58 C2, which has a large
+      // side effect (warning in the fitting box, chips in the rows).
+      await event('a) step', '[data-tuning-step="3:-1"]');
+      assert.match(await status(page), /HD 127/);
+      await event('a) card with warning', '.tuning-sugg:nth-child(2) .tuning-sugg-pick');
       assert.match(await status(page), /K27 C3 → K58 C2/);
-      assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 1,
-        'warning sits in the suggestions area');
+      assert.equal(await page.locator('#tuning-fit #tuning-warning').count(), 1,
+        'warning sits in the fitting box');
+      assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 0);
+      // Warning and jump share one line: the warning shrinks, the jump
+      // stays whole and tappable (it was cut off at 390 px once).
+      const jump = await page.evaluate(() => {
+        const link = document.querySelector('[data-tuning-action="viewOptions"]').getBoundingClientRect();
+        const line = document.getElementById('tuning-fit-extra').getBoundingClientRect();
+        return { inside: link.left >= line.left - 0.5 && link.right <= line.right + 0.5, width: link.width };
+      });
+      assert.ok(jump.inside && jump.width > 40, `${name}: jump to the cards ${JSON.stringify(jump)}`);
       const flaggedRows = await page.$$eval('tr[data-range]:not(.is-last-step) .tuning-side-flag', els => els.length);
-      assert.ok(flaggedRows >= 1, 'a ⚠ marks at least one row besides the target');
-      assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no ⚠ on the target row');
+      assert.ok(flaggedRows >= 1, 'a "shifted too" chip marks at least one row besides the target');
+      assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no chip on the target row');
       assert.ok(await page.getAttribute('tr[data-range]:not(.is-last-step) .tuning-side-flag >> nth=0', 'aria-label'));
 
       // b) Step back: warning, cards and flags disappear.
@@ -884,23 +1062,22 @@ test('changing the carb type in the calculator resets the tuning state', async (
     await page.click('#tab-calc');
     await page.click('input[name="carbType"][value="PHBH"]');
     await page.click('#tab-tuning');
-    assert.equal(await isVisible(page, '#tuning-empty'), true);
+    assert.equal(await inStepOne(page), true);
     assert.equal(await isVisible(page, '#tuning-status'), false);
     assert.match(await page.textContent('#tuning-carb-type'), /PHBH/);
     assert.equal(await page.locator('[data-tuning-source][aria-pressed="true"]').count(), 0);
   });
 });
 
-test('mobile: taps, visible reason, sticky status, no horizontal overflow at 320 and 360 px', async () => {
+test('mobile: taps, sticky fitting box, no horizontal overflow at 320 and 360 px', async () => {
   for (const width of [320, 360]) {
     await withPage(async page => {
       const tap = await openTuningWithK27(page, { tap: true });
       await tap('[data-tuning-step="1:1"]');
       assert.match(await status(page), /K96 C5/, `${width}: tap on + steps`);
 
-      assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), true);
-      assert.equal(await isVisible(page, 'tr[data-range="r4"] .tuning-reason'), true,
-        `${width}: reason text visible next to the disabled +`);
+      // HD-limited 3/4–1: + steps the HD now instead of being disabled.
+      assert.equal(await page.isDisabled('[data-tuning-step="4:1"]'), false, `${width}: + in 3/4–1`);
 
       const box = await page.locator('[data-tuning-step="1:1"]').boundingBox();
       assert.ok(box.width >= 44 && box.height >= 44, `${width}: ± tap target ${box.width}×${box.height}`);

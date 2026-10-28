@@ -15,7 +15,8 @@ import { ND_MAX, HD_MAX } from '../js/share.js';
 import {
   TUNING_RANGES, TUNING_REASONS, MIN_STEP, MAX_SUGGESTIONS,
   hdLimited, rangeSummary, evaluateCandidates, rankNextSteps, stepJet,
-  formatSignedPercent, validateTuningSetup,
+  formatSignedPercent, validateTuningSetup, rangeLevers, leverDisplay, LEVER_MIN_SHARE,
+  evaluateJetCandidates, MAX_JET_STEPS,
 } from '../js/tuning.js';
 
 // Reference values below come from the accepted prototype — if one of them
@@ -161,6 +162,132 @@ test('hdLimited: 1/4–1/2 can be limited while its blended 30 % point is not', 
   // Just below the 35 % value the range is no longer limited.
   const higher = { ...REF_VHSX, hd: 119 };
   assert.equal(hdLimited(calcSetup(higher, NEEDLE_DB), higher, 2), false);
+});
+
+// ── ND / HD steps as candidates ──────────────────────────────────────────────
+
+// Same flow as the UI: needles and jet steps in one ranking.
+function rankAll(ref, current, rangeIndex, dir) {
+  const summary = rangeSummary(calcSetup(ref, NEEDLE_DB), calcSetup(current, NEEDLE_DB), current);
+  const evaluated = [
+    ...evaluateCandidates({ allNeedles: NEEDLE_DB, ref, current }),
+    ...evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref, current }),
+  ];
+  return rankNextSteps(evaluated, {
+    currentFlow: summary.map(r => r.flow), currentHdLimited: summary.map(r => r.hdLimited),
+    rangeIndex, dir, current,
+  });
+}
+
+test('evaluateJetCandidates: ND and HD ±1…MAX_JET_STEPS, needle and atomizer kept, bounds respected', () => {
+  const jets = evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref: REF_VHSX, current: REF_VHSX });
+  assert.equal(jets.length, 2 * 2 * MAX_JET_STEPS);
+  for (const j of jets) {
+    assert.equal(j.setup.needleType, 'K27');
+    assert.equal(j.setup.clipPos, 3);
+    assert.equal(j.setup.needleJet, 264);
+    assert.equal(j.setup[j.jet.field], j.jet.value);
+    const other = j.jet.field === 'nd' ? 'hd' : 'nd';
+    assert.equal(j.setup[other], REF_VHSX[other]);
+  }
+  const atMax = { ...REF_VHSX, hd: HD_MAX };
+  const up = evaluateJetCandidates({ allNeedles: NEEDLE_DB, ref: atMax, current: atMax })
+    .filter(j => j.jet.field === 'hd' && j.jet.value > HD_MAX);
+  assert.equal(up.length, 0);
+});
+
+test('K27 C3 / HD 128: 3/4–1 leaner → HD 127 (clean), not K74 C2 that shifts 1/4–3/4 by ~30 %', () => {
+  const res = rankAll(REF_VHSX, REF_VHSX, 4, -1);
+  const best = res.suggestions[0];
+  assert.deepEqual(best.jet, { field: 'hd', value: 127 });
+  assert.equal(best.tags.jet, 'hd');
+  assert.equal(best.tags.clipOnly, false, 'no clip bonus for a jet step');
+  assert.equal(res.warning, false);
+  assert.ok(res.suggestions.some(s => !s.jet), 'needle alternatives stay as cards');
+});
+
+test('K27 C3 / HD 128: 3/4–1 richer is no longer blocked — HD 129', () => {
+  const res = rankAll(REF_VHSX, REF_VHSX, 4, 1);
+  assert.equal(res.reason, null);
+  assert.deepEqual(res.suggestions[0].jet, { field: 'hd', value: 129 });
+});
+
+test('0–1/8 (ND 80 %): richer and leaner pick the ND first', () => {
+  assert.deepEqual(rankAll(REF_VHSX, REF_VHSX, 0, 1).suggestions[0].jet, { field: 'nd', value: 51 });
+  assert.deepEqual(rankAll(REF_VHSX, REF_VHSX, 0, -1).suggestions[0].jet, { field: 'nd', value: 49 });
+});
+
+test('only the best step per jet is kept; 1/8–1/4 richer still picks K96 C5', () => {
+  for (let r = 0; r < 5; r++) {
+    for (const dir of [-1, 1]) {
+      const res = rankAll(REF_VHSX, REF_VHSX, r, dir);
+      for (const field of ['nd', 'hd']) {
+        assert.ok(res.suggestions.filter(s => s.jet?.field === field).length <= 1, `r${r} ${dir} ${field}`);
+      }
+    }
+  }
+  const r1 = rankAll(REF_VHSX, REF_VHSX, 1, 1).suggestions[0];
+  assert.equal(`${r1.needleType} C${r1.clipPos}`, 'K96 C5');
+});
+
+// ── rangeLevers / leverDisplay ───────────────────────────────────────────────
+
+test('rangeLevers: idle-jet weights match calc.js BLEND (derived from calcSetup)', () => {
+  // overall = nd · w + hdEquiv · (1 − w) at blended points: one ND step
+  // more changes overall by exactly w there.
+  const a = calcSetup(REF_VHSX, NEEDLE_DB);
+  const b = calcSetup({ ...REF_VHSX, nd: REF_VHSX.nd + 1 }, NEEDLE_DB);
+  const levers = rangeLevers(a, REF_VHSX);
+  TUNING_RANGES.forEach((range, i) => {
+    const pts = range.points.map(pct => {
+      const at = res => res.curve.find(p => Math.round(p.tp * 100) === pct).overall;
+      return at(b) - at(a);
+    });
+    const expected = pts.reduce((sum, w) => sum + w, 0) / pts.length;
+    assert.ok(Math.abs(levers[i].nd - expected) < 1e-9, `${range.key}: nd ${levers[i].nd} vs ${expected}`);
+  });
+});
+
+test('rangeLevers: shares sum to 1; HD only at points ≥ 35 % where hdEquiv ≥ HD', () => {
+  const result = calcSetup(REF_VHSX, NEEDLE_DB);
+  const levers = rangeLevers(result, REF_VHSX);
+  assert.deepEqual(levers.map(l => l.key), ['r0', 'r1', 'r2', 'r3', 'r4']);
+  for (const l of levers) assert.ok(Math.abs(l.nd + l.needle + l.hd - 1) < 1e-9, l.key);
+  assert.equal(levers[0].hd, 0);
+  assert.equal(levers[1].hd, 0);
+  // K27 C3 / HD 128: 35–50 % → hdEquiv 118.0–133.0, so 40–50 % are capped.
+  const capped = [30, 35, 40, 45, 50].filter(pct => {
+    const p = result.curve.find(q => Math.round(q.tp * 100) === pct);
+    return pct >= 35 && p.hdEquiv >= REF_VHSX.hd;
+  }).length;
+  assert.ok(Math.abs(levers[2].hd - capped / 5) < 1e-9);
+  // hdLimited() ⇔ every unblended point is HD.
+  [2, 3, 4].forEach(i => assert.equal(levers[i].hd === 1, hdLimited(result, REF_VHSX, i), `r${i}`));
+});
+
+test('rangeLevers: r0 is 80 % ND, r1 23 % ND for every setup', () => {
+  for (const setup of [REF_VHSX, REF_PHBL, { ...REF_VHSX, hd: 300 }]) {
+    const levers = rangeLevers(calcSetup(setup, NEEDLE_DB), setup);
+    assert.ok(Math.abs(levers[0].nd - 0.8) < 1e-9);
+    assert.ok(Math.abs(levers[1].nd - 0.7 / 3) < 1e-9);
+  }
+});
+
+test('leverDisplay: drops shares below LEVER_MIN_SHARE, percents add up to 100', () => {
+  assert.deepEqual(leverDisplay({ nd: 0.8, needle: 0.2, hd: 0 }),
+    [{ lever: 'nd', percent: 80 }, { lever: 'needle', percent: 20 }]);
+  assert.deepEqual(leverDisplay({ nd: 0.7 / 3, needle: 2.3 / 3, hd: 0 }),
+    [{ lever: 'nd', percent: 23 }, { lever: 'needle', percent: 77 }]);
+  // 1/4–1/2 with ND 1 %: only the needle is left — no percent.
+  assert.deepEqual(leverDisplay({ nd: 0.01, needle: 0.99, hd: 0 }), [{ lever: 'needle', percent: null }]);
+  assert.deepEqual(leverDisplay({ nd: 0, needle: 0, hd: 1 }), [{ lever: 'hd', percent: null }]);
+  // Renormalised after dropping: 0.01 / 0.59 / 0.40 → 60 / 40.
+  assert.deepEqual(leverDisplay({ nd: 0.01, needle: 0.59, hd: 0.4 }),
+    [{ lever: 'needle', percent: 60 }, { lever: 'hd', percent: 40 }]);
+  // Three thirds: largest remainder keeps the sum at 100.
+  const thirds = leverDisplay({ nd: 1 / 3, needle: 1 / 3, hd: 1 / 3 });
+  assert.equal(thirds.reduce((s, x) => s + x.percent, 0), 100);
+  assert.equal(LEVER_MIN_SHARE, 0.05);
 });
 
 test('diameter is smaller than flow for positive changes', () => {

@@ -818,6 +818,14 @@ for (const [name, contextOptions, lang] of [
       assert.equal(await page.locator('#tuning-fit #tuning-warning').count(), 1,
         'warning sits in the fitting box');
       assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 0);
+      // Warning and jump share one line: the warning shrinks, the jump
+      // stays whole and tappable (it was cut off at 390 px once).
+      const jump = await page.evaluate(() => {
+        const link = document.querySelector('[data-tuning-action="viewOptions"]').getBoundingClientRect();
+        const line = document.getElementById('tuning-fit-extra').getBoundingClientRect();
+        return { inside: link.left >= line.left - 0.5 && link.right <= line.right + 0.5, width: link.width };
+      });
+      assert.ok(jump.inside && jump.width > 40, `${name}: jump to the cards ${JSON.stringify(jump)}`);
       const flaggedRows = await page.$$eval('tr[data-range]:not(.is-last-step) .tuning-side-flag', els => els.length);
       assert.ok(flaggedRows >= 1, 'a "shifted too" chip marks at least one row besides the target');
       assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no chip on the target row');

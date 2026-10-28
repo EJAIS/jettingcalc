@@ -1418,21 +1418,31 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   color: var(--accent);
   font-weight: 700;
 }
+/* Warning shrinks (ellipsis, full text as title), the jump to the cards
+   never: it must stay tappable on a phone */
 .tuning-fit-extra {
+  display: flex;
+  gap: 8px;
   margin: 0;
   height: 18px;
   line-height: 18px;
   font-size: 12px;
   white-space: nowrap;
+}
+.tuning-fit-note,
+.tuning-fit-warning {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .tuning-fit-note { color: var(--text-muted); }
 .tuning-fit-warning {
+  flex: 0 1 auto;
   color: var(--warning);
   font-weight: 600;
 }
 .tuning-fit-link {
+  flex: none;
   padding: 0;
   border: 0;
   background: none;

@@ -1094,7 +1094,8 @@ function renderTuningFit() {
     // Same rule as rankNextSteps()' warning, applied to whichever
     // suggestion is in use (for the best one both agree).
     if (adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc) {
-      parts.push(`<span id="tuning-warning" class="tuning-fit-warning" role="status">${escapeHtml(t('tuning.fit.sideEffects'))}</span>`);
+      const warning = t('tuning.fit.sideEffects');
+      parts.push(`<span id="tuning-warning" class="tuning-fit-warning" role="status" title="${escapeHtml(warning)}">${escapeHtml(warning)}</span>`);
     }
     const count = tuningState.suggestions?.suggestions.length ?? 0;
     if (count > 0) {
@@ -1102,7 +1103,7 @@ function renderTuningFit() {
         + `${escapeHtml(fillPlaceholder(t('tuning.fit.viewOptions'), '{n}', count))}</button>`);
     }
   }
-  extra.innerHTML = parts.join(' ');
+  extra.innerHTML = parts.join('');
 }
 
 function tuningBar(flow) {

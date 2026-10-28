@@ -87,6 +87,65 @@ export function hdLimited(result, setup, rangeIndex) {
   return unblended.length > 0 && unblended.every(p => p.hdEquiv >= setup.hd);
 }
 
+// Idle-jet weight per blended throttle point (integer percent). Mirrors the
+// ndWeight column of calc.js' BLEND table, like BLEND_END_PERCENT above —
+// keep both in sync (test/tuning.test.mjs derives the weights from
+// calcSetup() and fails when they drift apart).
+const ND_BLEND_WEIGHTS = Object.freeze({ 0: 1, 5: 0.8, 10: 0.6, 15: 0.4, 20: 0.2, 25: 0.1, 30: 0.05 });
+
+// Which part meters the fuel in each range of `result` (calcSetup() of
+// `setup`), as shares of the range's points that sum to 1:
+//   nd     — idle jet, its blend weight at the points ≤ 30 %
+//   needle — the ring gap between needle and atomizer (needle, clip and
+//            atomizer act together there); the rest of a blended point,
+//            and every point ≥ 35 % where the gap is smaller than the HD
+//   hd     — main jet: every point ≥ 35 % where the gap is at least the
+//            HD (overall = min(hd, hdEquiv); same >= as hdLimited())
+// Returns [{ key, nd, needle, hd }] in TUNING_RANGES order.
+export function rangeLevers(result, setup) {
+  return TUNING_RANGES.map((range, i) => {
+    const points = rangePoints(result, i);
+    const shares = { nd: 0, needle: 0, hd: 0 };
+    for (const p of points) {
+      const percent = Math.round(p.tp * 100);
+      if (percent < BLEND_END_PERCENT) {
+        const w = ND_BLEND_WEIGHTS[percent] ?? 0;
+        shares.nd += w;
+        shares.needle += 1 - w;
+      } else if (p.hdEquiv >= setup.hd) {
+        shares.hd += 1;
+      } else {
+        shares.needle += 1;
+      }
+    }
+    const n = points.length || 1;
+    return { key: range.key, nd: shares.nd / n, needle: shares.needle / n, hd: shares.hd / n };
+  });
+}
+
+// Shares below this are left out of the lever display (e.g. the idle
+// jet's 1 % in 1/4–1/2).
+export const LEVER_MIN_SHARE = 0.05;
+export const LEVER_ORDER = Object.freeze(['nd', 'needle', 'hd']);
+
+// Display form of one rangeLevers() entry: the levers with a share of at
+// least LEVER_MIN_SHARE in LEVER_ORDER, as whole percent of what is left
+// (largest remainder, so they always add up to 100). A single lever gets
+// percent null — "acts: HD" instead of "HD 100 %".
+// Returns [{ lever, percent }].
+export function leverDisplay(levers) {
+  const kept = LEVER_ORDER.filter(lever => levers[lever] >= LEVER_MIN_SHARE);
+  if (kept.length <= 1) return kept.map(lever => ({ lever, percent: null }));
+  const total = kept.reduce((sum, lever) => sum + levers[lever], 0);
+  const exact = kept.map(lever => levers[lever] / total * 100);
+  const rounded = exact.map(Math.floor);
+  let missing = 100 - rounded.reduce((sum, v) => sum + v, 0);
+  exact.map((v, i) => ({ i, rest: v - rounded[i] }))
+    .sort((a, b) => b.rest - a.rest || a.i - b.i)
+    .forEach(({ i }) => { if (missing-- > 0) rounded[i] += 1; });
+  return kept.map((lever, i) => ({ lever, percent: rounded[i] }));
+}
+
 // Per-range comparison of a candidate curve against the reference curve.
 // flow: mean of (overall_cand² / overall_ref² − 1) × 100 — flow scales
 //       with the open area, i.e. with the square of the equivalent jet.

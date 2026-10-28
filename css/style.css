@@ -23,6 +23,9 @@
   --flag-mid:     #f0f0f0;
   --tuning-lean:  #d9480f;
   --tuning-rich:  #1c64c8;
+  /* Bar legend in the (always dark) table head */
+  --tuning-lean-head: #f5a06a;
+  --tuning-rich-head: #8fbaf5;
   --result-bg:      #eef2f7;
   --result-head-bg: #5b6672;
   --result-sep:     #8a95a3;
@@ -1326,27 +1329,129 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 }
 .tuning-load { align-self: flex-start; }
 
-/* Status line: compact, one line, sticks below the (mobile) tab bar */
-.tuning-status {
+/* Guided steps 1–2–3. All three sentences share one grid cell, only the
+   current one visible: the bar is always as high as the longest one. */
+.tuning-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
+.tuning-steps-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tuning-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.tuning-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* Colour only, no bolder font: the titles must wrap the same whichever
+   step is current */
+.tuning-step.is-current { color: var(--text); }
+.tuning-step.is-current .tuning-step-num {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.tuning-step.is-done .tuning-step-num {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tuning-steps-texts { display: grid; }
+.tuning-steps-text {
+  grid-area: 1 / 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  visibility: hidden;
+}
+.tuning-steps-texts[data-active="1"] .tuning-steps-text:nth-child(1),
+.tuning-steps-texts[data-active="2"] .tuning-steps-text:nth-child(2),
+.tuning-steps-texts[data-active="3"] .tuning-steps-text:nth-child(3) { visibility: visible; }
+
+/* Fitting box: what to fit, sticks below the (mobile) tab bar. Fixed
+   height — line 1 is clamped (full text as title), line 2 is always there —
+   so nothing in it ever pushes the table down. */
+.tuning-fit {
   position: sticky;
   top: var(--view-tabs-height);
   z-index: 10;
   margin: 0 -18px;
-  padding: 8px 18px;
-  /* Always one line of fixed height (text-overflow; full text as title),
-     so a longer status never pushes the table down */
-  height: 38px;
-  line-height: 21px;
+  padding: 6px 18px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+}
+.tuning-status {
+  margin: 0;
+  height: 21px;
+  line-height: 21px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
 }
-.tuning-status-val.is-changed {
+.tuning-fit-label { font-weight: 700; }
+.tuning-status .is-changed {
   color: var(--accent);
   font-weight: 700;
+}
+.tuning-fit-extra {
+  margin: 0;
+  height: 18px;
+  line-height: 18px;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tuning-fit-note { color: var(--text-muted); }
+.tuning-fit-warning {
+  color: var(--warning);
+  font-weight: 600;
+}
+.tuning-fit-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  /* Two lines of fixed height on phones, so the parts still fit */
+  .tuning-status {
+    height: 42px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
 }
 
 .tuning-warning {
@@ -1427,16 +1532,26 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   align-items: baseline;
 }
 .tuning-flow { font-size: 15px; }
-/* Reserved for the side-effect ⚠ in every row, filled or not */
-.tuning-side-slot {
-  flex: none;
-  width: 1.3em;
-  text-align: left;
-}
+/* "shifted too" chip in the meta line: the last step also moved this
+   range; a tooltip toggle like the badges */
 .tuning-side-flag {
+  position: relative;
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 7px;
+  line-height: 15px;
+  border: 1px dashed color-mix(in srgb, var(--warning) 60%, transparent);
+  border-radius: 999px;
   color: var(--warning);
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   cursor: help;
+}
+.tuning-side-flag:first-child { margin-left: 0; }
+.tuning-side-flag::after {
+  content: '';
+  position: absolute;
+  inset: -12px -4px;
 }
 .tuning-flow.is-significant { font-weight: 700; }
 .tuning-diameter {
@@ -1462,6 +1577,21 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   font-size: 22px;
   line-height: 1;
   touch-action: manipulation;
+}
+.tuning-step-sym { display: block; }
+/* Direction word under the symbol from 601 px on; phones keep −/+ (the
+   bar legend explains the direction there) */
+.tuning-step-word {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  line-height: 11px;
+  font-weight: 600;
+}
+.tuning-step-btn:has(.tuning-step-word) .tuning-step-sym { font-size: 18px; line-height: 18px; }
+@media (max-width: 600px) {
+  .tuning-step-word { display: none; }
+  .tuning-step-btn:has(.tuning-step-word) .tuning-step-sym { font-size: 22px; line-height: 1; }
 }
 .tuning-step-btn:hover:not(:disabled) {
   border-color: var(--accent);
@@ -1503,9 +1633,24 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
 }
 .tuning-bar-fill.is-rich { left: 50%; background: var(--tuning-rich); }
 .tuning-bar-fill.is-lean { right: 50%; background: var(--tuning-lean); }
-.tuning-reason {
+/* "acts: ND 80 % · needle/atomizer 20 %": one line of fixed height,
+   always present; a tooltip toggle */
+.tuning-lever {
+  position: relative;
   display: block;
   margin-top: 4px;
+  height: 15px;
+  line-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  cursor: help;
+}
+.tuning-reason {
+  display: block;
+  margin-top: 2px;
   /* Always one line of fixed height, even when empty; every reason text
      fits it from 320 px (grid) and from 768 px (table) on */
   height: 15px;
@@ -1518,9 +1663,72 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   text-align: center;
 }
 
+/* Bar legend: "◀ leaner · reference · richer ▶" across the bar column */
+.tuning-bar-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+}
+.tuning-bar-legend .is-lean { color: var(--tuning-lean); }
+.tuning-bar-legend .is-rich { color: var(--tuning-rich); }
+.tuning-ranges .tuning-step-head .tuning-bar-legend { padding: 0 56px; }
+.tuning-ranges thead .tuning-bar-legend .is-lean { color: var(--tuning-lean-head); }
+.tuning-ranges thead .tuning-bar-legend .is-rich { color: var(--tuning-rich-head); }
+/* Above the table only in the grid layout (≤ 767 px, table head hidden) */
+.tuning-bar-legend-wrap { display: none; }
+
+/* How ND, HD and the atomizer enter the model (part of the jets block) */
+.tuning-explain {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.tuning-explain summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+}
+.tuning-explain ul { margin: 8px 0; padding-left: 18px; }
+.tuning-explain li { margin: 4px 0; line-height: 1.45; }
+.tuning-explain p { margin: 0; color: var(--text-muted); font-size: 12px; }
+.tuning-explain-zones {
+  display: flex;
+  margin-top: 10px;
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.tuning-explain-zone { padding: 6px 8px; }
+/* 0–30 % of the throttle scale, ND fading into the gap */
+.tuning-explain-zone.is-blend {
+  flex: 0 0 32%;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--warning) 35%, var(--surface)),
+    color-mix(in srgb, var(--tuning-rich) 25%, var(--surface)));
+}
+.tuning-explain-zone.is-cap {
+  flex: 1;
+  background: color-mix(in srgb, var(--tuning-rich) 25%, var(--surface));
+}
+.tuning-explain-axis {
+  position: relative;
+  height: 14px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.tuning-explain-axis span { position: absolute; top: 0; }
+.tuning-explain-axis span:nth-child(1) { left: 0; }
+.tuning-explain-axis span:nth-child(2) { left: 32%; transform: translateX(-50%); }
+.tuning-explain-axis span:nth-child(3) { right: 0; }
+
 /* Legend above the range table, ⓘ with an enlarged tap area */
 .tuning-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin: 0 0 6px;
@@ -1730,6 +1938,7 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
       "range  range  delta  delta"
       "ref    ref    cur    cur"
       "lean   bar    bar    rich"
+      "lever  lever  lever  lever"
       "reason reason reason reason";
     column-gap: 8px;
     row-gap: 8px;
@@ -1761,6 +1970,9 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
      reason can use the full row width */
   .tuning-bar-cell { display: contents; }
   .tuning-bar { grid-area: bar; }
+  .tuning-lever { grid-area: lever; margin-top: 0; }
+  .tuning-bar-legend-wrap { display: block; flex: 1 0 100%; }
+  .tuning-bar-legend-wrap .tuning-bar-legend { padding: 0 52px; }
   .tuning-reason {
     grid-area: reason;
     margin-top: 0;
@@ -2268,7 +2480,7 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
   .tuning-sources .chip { flex: 0 1 auto; min-width: 0; }
   .tuning-manual { grid-template-columns: 1fr; }
   .tuning-load { align-self: stretch; min-height: 44px; }
-  .tuning-status { margin: 0 -10px; padding: 6px 10px; height: 34px; }
+  .tuning-fit { margin: 0 -10px; padding: 6px 10px; }
 
   .tuning-actions button,
   .tuning-apply-banner .btn-ghost {

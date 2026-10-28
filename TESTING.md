@@ -221,7 +221,7 @@ match the regression values in `test/tuning.test.mjs`:
   state); tab clicks set `#tuning` / `#needles`, and `history.back()`
   (popstate) walks back through the tuning tab to the calculator.
 - **Steps and cards** — loading K27 as reference, + in 1/8–1/4 gives
-  K96 C5 in the status line and three cards (K96 · Clip 5, U7 · Clip 3
+  K96 · Clip 5 in the fitting box and three cards (K96 · Clip 5, U7 · Clip 3
   with the "series change" tag, K97 · Clip 3), the first one pressed;
   + in 3/4–1 is disabled with its "HD-limited" reason visible in the row.
 - **Undo semantics** — picking another card (tap anywhere on the card)
@@ -236,7 +236,7 @@ match the regression values in `test/tuning.test.mjs`:
   kept) and restarts tuning from it; Undo restores slot 1 and the tuning
   session; `dellorto_carb_type` is never written; "View in calculator"
   switches the view.
-- **Language switch** — EN → DE → EN keeps status line, cards, the apply
+- **Language switch** — EN → DE → EN keeps the fitting box, cards, the apply
   banner (translated) and the undo history.
 - **Undo lifecycle** — after "Overwrite reference slot", the next tuning
   step closes the banner and keeps that step (Undo can't discard it).
@@ -311,7 +311,7 @@ match the regression values in `test/tuning.test.mjs`:
 - **Mobile 320×740 and 360×740** (`hasTouch`, `isMobile`, `tap()`) —
   tapping + steps; the reason next to the disabled + in 3/4–1 is visible;
   ± targets are ≥ 44 × 44 px; after scrolling to the bottom the sticky
-  status line is still in the viewport, right below the tab bar; neither
+  fitting box is still in the viewport, right below the tab bar; neither
   the page nor the tab bar overflows horizontally.
 
 Set `CHROMIUM_PATH` to run these against a preinstalled Chromium when the
@@ -384,7 +384,7 @@ real device and a human eye.
 - [ ] Phone (portrait, Android and iOS): the three tabs fit, "Fein-/
       abstimmung" breaks at the hyphen in DE, no label is cut off.
 - [ ] Load a setup as reference, tap + a few times quickly: every tap
-      steps once (no double-tap zoom, no missed taps), the status line
+      steps once (no double-tap zoom, no missed taps), the fitting box
       stays visible at the top while scrolling, nothing scrolls on its own.
 - [ ] A disabled + (e.g. 3/4–1 with a HD-limited setup) shows its reason as
       text; tapping next to it opens the tooltip.

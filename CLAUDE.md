@@ -728,8 +728,9 @@ schrittweise verstellt. Das Ergebnis kann in einen Setup-Slot übernommen werden
   kommen als Parameter (`allNeedles`, `customTypes`), `storage.js` wird nie
   importiert. `calc.js` bleibt für dieses Feature unverändert. Getestet in
   `test/tuning.test.mjs` (inkl. transitiver Import-Prüfung).
-- `js/app.js` — UI: `renderTuning()` mit `renderTuningReference()`,
-  Status, `renderTuningRanges()`, `renderTuningSuggestions()`,
+- `js/app.js` — UI: `renderTuning()` mit `renderTuningSteps()`,
+  `renderTuningReference()`, `renderTuningFit()` (Einbau-Box),
+  `renderTuningRanges()`, `renderTuningSuggestions()`,
   `renderTuningJets()`, Übernahme-Banner und Aktionen; Klicks über
   `handleTuningClick()`.
 - Gemeinsam mit dem Rechner genutzt statt dupliziert: die Options-Builder
@@ -767,6 +768,29 @@ Grenze liegt deshalb zwischen 10 und 15 %. Werte über 100 % sind
 Extrapolation und fließen nie ein. Rasterpunkte werden über
 `Math.round(tp * 100)` zugeordnet, nie per Float-Vergleich. Der unterste
 Bereich trägt den Haupthebel „ND“ (`lever`), alle anderen die Nadel.
+
+### Hebel je Bereich (`rangeLevers()` / `leverDisplay()`)
+
+Welches Teil im **aktuellen** Stand den Kraftstoff dosiert, als Anteile
+der Bereichspunkte (Summe 1), direkt aus dem Modell:
+- `nd`: Mischgewicht der Leerlaufdüse an den Punkten ≤ 30 %
+  (`ND_BLEND_WEIGHTS`, gespiegelt aus `BLEND` in `calc.js` wie
+  `BLEND_END_PERCENT`; `test/tuning.test.mjs` leitet die Gewichte aus
+  `calcSetup()` ab und schlägt bei Abweichung fehl). Daraus immer
+  0–1/8 = ND 80 %, 1/8–1/4 = ND 23 %.
+- `needle` („Nadel/MR“): der Rest eines überblendeten Punkts und jeder
+  Punkt ≥ 35 % mit hdEquiv < HD — Nadel, Clip und Mischrohr wirken dort
+  gemeinsam über den Ringspalt.
+- `hd`: jeder Punkt ≥ 35 % mit hdEquiv ≥ HD (dieselbe Grenze wie
+  `hdLimited()`; `hd === 1` ⇔ HD-begrenzt).
+- Anzeige (`leverDisplay()`): Anteile unter `LEVER_MIN_SHARE` (5 %)
+  entfallen (z. B. ND 1 % in 1/4–1/2), der Rest wird auf ganze Prozent
+  mit Summe 100 normiert (größter Rest); bleibt ein Hebel, ohne Prozent
+  („wirkt: HD“). Entschieden 2026-10-28: Anteil der Messpunkte statt nur
+  Haupthebel oder Übergangspunkt — dieselbe Logik in allen Zeilen, und man
+  sieht, dass ein Nadelwechsel einen gemischten Bereich nur teilweise
+  ändert. Bezeichnung „Nadel/MR“ (EN „needle/atomizer“), damit das
+  Mischrohr immer mitgenannt ist.
 
 ### Schrittlogik (`rankNextSteps()`)
 
@@ -836,12 +860,14 @@ Prozentpunkten flow:
 - **`warning`**: side > `WARN_SIDE_RATIO` (3) · inc beim besten Vorschlag —
   die gewünschte Korrektur geht mit der Nadel nicht sauber. Die UI wendet
   dieselbe Regel auf die gerade übernommene Karte an und zeigt die Warnung
-  im Variantenbereich unter dessen Überschrift. Zusätzlich trägt jede
+  in der zweiten Zeile der Einbau-Box (`#tuning-warning`), daneben den
+  Sprung „Varianten ansehen (n) ↓“ zu den Karten. Zusätzlich trägt jede
   Bereichszeile außer dem Ziel des letzten Nadelschritts, deren flow sich
   durch diesen Schritt um ≥ `SIGNIFICANT` geändert hat (Vergleich mit dem
   Stand **vor** dem Schritt, `lastStep.flowBefore`, nicht mit der
-  Referenz), ein ⚠ im immer reservierten Platz der Δ-Zelle (`aria-label`
-  und Tooltip `tuning.warn.sideFlag`).
+  Referenz), in der Meta-Zeile unter dem Label den Chip „mitverschoben“
+  (`tuning.sideChip`, Tooltip `tuning.warn.sideFlag`) — früher ein ⚠, das
+  in mehreren Zeilen wie ein Fehler aussah.
 - **Schrittwirkung in den Karten:** Die Zielzelle (`is-target`) jeder
   Varianten-Karte zeigt unter dem Wert gegen die Referenz die Wirkung nur
   dieses Schritts („Schritt“ / „step“ und flow − `lastStep.flowBefore`,
@@ -872,16 +898,26 @@ wegfallende Karten die Tabelle bzw. den Düsenblock unter den Mauszeiger;
 der nächste Klick traf einen anderen Bereich (gemessen: bis 205 px auf dem
 Desktop, bis 507 px auf dem Handy).
 
-- **Reihenfolge** (Desktop und Mobil): Referenz → Statuszeile →
-  Bereichstabelle → Düsenblock → Aktionen, darunter das Meldungsfeld der
-  Übernahme → Variantenbereich (mit der Seiteneffekt-Warnung) →
-  Modellhinweis. Die Karten stehen bewusst nicht mehr direkt unter der
-  Tabelle; die klebende Statuszeile gibt die sofortige Rückmeldung.
+- **Reihenfolge** (Desktop und Mobil): Schritte-Leiste → Referenz →
+  Einbau-Box → Bereichstabelle → Düsenblock mit Erklärbox → Aktionen,
+  darunter das Meldungsfeld der Übernahme → Variantenbereich →
+  Modellhinweis. Die Karten stehen bewusst nicht direkt unter der
+  Tabelle; die klebende Einbau-Box gibt die sofortige Rückmeldung und
+  trägt Warnung und Sprung zu den Karten. (2026-10-28 erneut geprüft und
+  so entschieden, statt eines reservierten Kartenplatzes unter der
+  Tabelle oder einer gelockerten Regel.)
 - **Feste Plätze:**
-  - Statuszeile: eine Zeile, feste Höhe, Ellipsis, voller Text als `title`.
-  - Bereichszeile: Meta-Zeile unter dem Label (Haupthebel bzw. Badge
-    „HD-begrenzt“, `nowrap`), ⚠-Platz fester Breite in der Δ-Zelle und
-    die Hinweiszeile unter dem Balken sind immer vorhanden, auch leer.
+  - Schritte-Leiste: alle drei Erklärsätze liegen in derselben
+    Grid-Zelle, nur der aktuelle sichtbar — die Leiste ist immer so hoch
+    wie der längste. Der aktuelle Schritt nur farbig, nicht fetter, damit
+    die Titel in jedem Schritt gleich umbrechen.
+  - Einbau-Box: Zeile 1 (`#tuning-status`) eine Zeile fester Höhe mit
+    Ellipsis, ≤ 600 px zwei Zeilen (line-clamp) fester Höhe, voller Text
+    als `title`; Zeile 2 (`#tuning-fit-extra`) immer vorhanden, eine
+    Zeile.
+  - Bereichszeile: Meta-Zeile unter dem Label (Badge „HD-begrenzt“, Chip
+    „mitverschoben“, `nowrap`), die Hebel-Zeile „wirkt: …“ und die
+    Hinweiszeile unter dem Balken sind immer vorhanden, auch leer.
     Hinweiszeile: eine Zeile fester Höhe, im Grid-Layout über die volle
     Breite, im Tabellenlayout in der Balkenspalte (die schmalen festen
     Spalten lassen ihr bei 768 px ≥ 234 px). Texte (`tuningReasonLine()`): eine
@@ -901,8 +937,8 @@ Desktop, bis 507 px auf dem Handy).
     Anschlag-Hinweis um dieselbe Zeile konkurriert. Badges sind
     Tooltip-Schalter wie ⓘ (`role="button"`, `tabindex="0"`, Enter/Space,
     Tap) mit vergrößerter Trefferfläche.
-- **Bereichstabelle ≤ 767 px als Grid** (Label + Meta | flow + Ø; Ref ≙ |
-  Aktuell ≙; − | Balken | +; Hinweiszeile), mit gleich breiten
+- **Bereichstabelle ≤ 767 px als Grid** (Label + Meta | flow + Ø; Ref Ø |
+  Aktuell Ø; − | Balken | +; Hebel-Zeile; Hinweiszeile), mit gleich breiten
   `fr`-Spalten. Abweichung von der früheren Grenze 600 px: Zwischen 601
   und 767 px bliebe dem Balken in der Tabelle nur 50–90 px, zu wenig für
   Balken und Hinweis. Alle übrigen Mobil-Regeln gelten weiter ab ≤ 600 px.
@@ -929,8 +965,10 @@ Desktop, bis 507 px auf dem Handy).
   `min-height` für den Variantenbereich (mit horizontal scrollenden
   Karten auf dem Handy): keine dauerhafte Leerfläche, Karten auf dem
   Handy weiter untereinander lesbar.
-- **Ausnahme:** das bewusste Auf-/Zuklappen des manuellen
-  Referenzformulars im Referenzblock ganz oben.
+- **Ausnahmen:** das bewusste Auf-/Zuklappen des manuellen
+  Referenzformulars im Referenzblock ganz oben und der Erklärbox „So
+  rechnet der Rechner“ (`<details>`, statisches HTML, damit der
+  Offen-Zustand jedes Rendern übersteht).
 - Abgesichert durch `tuning.mjs`: „layout stability“ bei 1280 × 800,
   768 × 1024 (Deutsch) und 360 × 740 — Nadelschritt mit Warnung, „Schritt
   zurück“, zweimal HD +, Übernehmen, kein Bedienelement verschiebt sich um
@@ -939,6 +977,30 @@ Desktop, bis 507 px auf dem Handy).
   Nadel −, HD −), ±-Buttons bleiben stehen, Platzhalter nie höher als der
   bis dahin höchste Variantenbereich, 0 nach Hochscrollen, „Zurücksetzen“
   und Tab-Wechsel.
+
+### Nutzerführung (entschieden 2026-10-28)
+
+Anlass: Nutzer verstanden nicht, wie der Tab zu bedienen ist und wie ND,
+HD und Mischrohr in die Rechnung eingehen. Entscheidungen (Alexander):
+- **Schritte-Leiste 1–2–3** über der Referenz (`#tuning-steps`):
+  „Referenz wählen“ (keine Referenz) → „Bereich anpassen“ (current = ref)
+  → „Übernehmen“ (current ≠ ref); erledigte Schritte mit ✓, nur der
+  aktuelle Schritt mit Erklärsatz. Kein Symptom-Einstieg, kein Overlay.
+- **Einbau-Box** statt der früheren Statuszeile: „Einbauen: Nadel K27 →
+  K96 · Clip 3 → 5 · ND 50 · HD 128 · DQ 264“ — geänderte Teile als
+  „Ref → neu“, der neue Wert hervorgehoben; Zeile 2 „noch nichts
+  geändert“ bzw. Warnung + „Varianten ansehen (n) ↓“.
+- **Balken-Legende** „◀ magerer · Referenz · fetter ▶“ in den
+  Balkenfarben, im Tabellenkopf bzw. (Grid) über der Tabelle.
+- Spalten „Ref Ø“ / „Aktuell Ø“ (statt „≙“), ⓘ mit
+  `tuning.col.eq.tooltip` (äquivalente Düsengröße).
+- **Hebel-Zeile** „wirkt: ND 80 % · Nadel/MR 20 %“ je Bereich (siehe
+  „Hebel je Bereich“), Tooltip verweist auf die Erklärbox.
+- **Erklärbox** „So rechnet der Rechner“ zwischen Düsenblock und Aktionen:
+  Zonen-Grafik (0–30 % Mischung, ab 35 % Deckel) und je ein Satz zu
+  Nadel/MR (Ringspalt √(MR² − Nadel-Ø²)), ND (Gewichte), HD (Deckel) und
+  MR-Typ (lange Ausführung = Nadel 2 mm tiefer, magerer). Bei einer
+  Änderung von `calc.js` diese Texte mitprüfen.
 
 ### Zustand: `tuningState`
 
@@ -982,7 +1044,7 @@ Nur aktiv, wenn current von der Referenz abweicht; deaktivierte Buttons
 nennen den Grund sichtbar.
 - „In freien Slot übernehmen“: erster Slot mit `isSlotEmpty()`, Name aus
   `tuningSlotName()`: `tuning.needleClip` (z. B. „K96 C5“, dieselbe
-  Beschriftung wie in der Statuszeile) plus jede Düse, die von der
+  Beschriftung wie früher in der Statuszeile) plus jede Düse, die von der
   Referenz abweicht, in der Reihenfolge ND, HD, Mischrohr („K96 C5 ND49
   HD129 DQ266“); gekürzt auf `MAX_NAME_LENGTH`. Grund: Mehrere Ergebnisse
   mit derselben Nadel waren im Rechner sonst nicht zu unterscheiden.
@@ -1024,11 +1086,14 @@ nennen den Grund sichtbar.
 - Bereichstabelle ≤ 767 px als Grid aus festen Teilen (siehe
   „Layout-Stabilität“); darüber die Tabelle. Kein horizontaler Überlauf
   bis 320 px.
-- Statuszeile `position: sticky`, einzeilig mit fester Höhe und Ellipsis,
-  direkt unter der mobilen Tab-Leiste. Varianten-Karten stehen am Ende
+- Einbau-Box `position: sticky` mit fester Höhe, direkt unter der
+  mobilen Tab-Leiste. Varianten-Karten stehen am Ende
   des Tabs (siehe „Layout-Stabilität“). Kein automatisches Scrollen.
 - Alle ±-Buttons 44 × 44 px, `touch-action: manipulation`, ≥ 8 px
-  Abstand. Die ganze Varianten-Karte ist Trefferfläche ihres Buttons
+  Abstand. Ab 601 px steht unter dem Symbol die Richtung („magerer“ /
+  „fetter“, 10 px) — im Knopf selbst statt breiterer Knöpfe, sonst bliebe
+  der Balkenspalte bei 768 px keine 234 px. Darunter nur −/+, die
+  Balken-Legende über der Tabelle erklärt die Richtung. Die ganze Varianten-Karte ist Trefferfläche ihres Buttons
   (`::after`); Badges mit Tooltip liegen darüber.
 - Referenzformular ≤ 600 px einspaltig; die Controls sind `.cell-input`
   und erben dessen 16-px-/44-px-Regel (kein iOS-Zoom).

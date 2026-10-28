@@ -348,6 +348,9 @@
     <!-- Text set by app.js (renderBetaBanner), as in the setups card -->
     <div id="tuning-beta-banner" class="carb-beta-banner" hidden></div>
     <div class="card-body tuning-body">
+      <!-- Guided steps 1–2–3, always visible; rendered by app.js
+           (renderTuningSteps), fixed height whichever step is current -->
+      <nav id="tuning-steps" class="tuning-steps" data-i18n-aria-label="tuning.steps.label" aria-label="How fine tuning works"></nav>
       <!-- Reference picker (slot or manual entry) — always visible;
            rendered by app.js (renderTuningReference) -->
       <div id="tuning-ref" class="tuning-ref"></div>
@@ -356,19 +359,45 @@
            shown once a reference is loaded. Order matters: from the status
            line down to the action buttons nothing changes height through
            interaction; the apply message and the suggestions, which do,
-           come last (see CLAUDE.md, "Layout-Stabilität"). The status line
-           is sticky. -->
-      <p id="tuning-status" class="tuning-status" data-tuning-block aria-live="polite" hidden></p>
+           come last (see CLAUDE.md, "Layout-Stabilität"). The fitting box
+           is sticky and of fixed height: what to fit (#tuning-status) and
+           a second line for the side-effect warning / jump to the option
+           cards (renderTuningFit). -->
+      <div id="tuning-fit" class="tuning-fit" data-tuning-block hidden>
+        <p id="tuning-status" class="tuning-status" aria-live="polite"></p>
+        <p id="tuning-fit-extra" class="tuning-fit-extra"></p>
+      </div>
       <div id="tuning-ranges-scroll" class="tuning-ranges-scroll" data-tuning-block hidden>
         <p class="tuning-legend">
           <span data-i18n="tuning.legend">Δ against the reference: flow and Ø</span>
           <span class="cutaway-info" role="button" tabindex="0"
                 data-i18n-tooltip="tuning.legend.tooltip"
                 data-i18n-aria-label="tuning.legend.tooltip" aria-label="flow = fuel flow through the open area (≈ jet size²). Ø = change of the equivalent jet size.">ℹ</span>
+          <!-- Bar legend for the grid layout (≤ 767 px, table head hidden);
+               rendered by app.js (renderTuningRanges) -->
+          <span id="tuning-bar-legend" class="tuning-bar-legend-wrap"></span>
         </p>
         <table id="tuning-ranges" class="tuning-ranges"></table>
       </div>
       <div id="tuning-jets" class="tuning-jets" data-tuning-block hidden></div>
+      <!-- How ND, HD and the atomizer enter the model; part of the jets
+           block. Static, so its open state survives re-renders. Opening it
+           on purpose is the second exception of the layout rule. -->
+      <details id="tuning-explain" class="tuning-explain" data-tuning-block hidden>
+        <summary data-i18n="tuning.explain.title">How the calculator works</summary>
+        <div class="tuning-explain-zones" aria-hidden="true">
+          <span class="tuning-explain-zone is-blend" data-i18n="tuning.explain.zoneBlend">0–30 % throttle: ND + needle/atomizer blended</span>
+          <span class="tuning-explain-zone is-cap" data-i18n="tuning.explain.zoneCap">from 35 %: needle/atomizer or HD, the smaller one counts</span>
+        </div>
+        <div class="tuning-explain-axis" aria-hidden="true"><span>0 %</span><span>30 %</span><span>100 %</span></div>
+        <ul>
+          <li data-i18n="tuning.explain.gap">Needle/atomizer</li>
+          <li data-i18n="tuning.explain.nd">ND</li>
+          <li data-i18n="tuning.explain.hd">HD</li>
+          <li data-i18n="tuning.explain.type">Atomizer type</li>
+        </ul>
+        <p data-i18n="tuning.explain.rows">The “acts:” line in each range shows these shares for the current state.</p>
+      </details>
       <div id="tuning-actions" class="tuning-actions" data-tuning-block hidden></div>
       <!-- Message field of the action area, below its buttons: result or
            validation error of "apply to slot"; text and button visibility
@@ -380,8 +409,8 @@
         <button type="button" id="btn-tuning-apply-undo" class="btn-ghost" data-i18n="btn.undo" hidden>Undo</button>
         <button type="button" id="btn-tuning-apply-close" class="btn-icon" data-i18n-title="btn.close" title="Close" data-i18n-aria-label="btn.close" aria-label="Close">✕</button>
       </div>
-      <!-- Suggestion cards of the last needle step, incl. the side-effect
-           warning (renderTuningSuggestions) -->
+      <!-- Suggestion cards of the last needle step (renderTuningSuggestions);
+           their side-effect warning sits in the fitting box -->
       <div id="tuning-alternatives" class="tuning-alternatives" data-tuning-block hidden></div>
       <p id="tuning-note" class="tuning-note" data-i18n="tuning.modelNote">Percentages come from the calculation model: flow ≈ jet size², no dynamics (vacuum, cutaway). Always verify on the engine.</p>
       <!-- Height set by app.js (renderTuning): keeps the page long enough

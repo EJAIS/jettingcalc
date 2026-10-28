@@ -122,7 +122,25 @@ async function openTuningWithK27(page, { tap = false } = {}) {
 }
 
 const isVisible = (page, selector) => page.isVisible(selector);
-const status = page => page.textContent('#tuning-status');
+// The fitting box shows "Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 ·
+// HD 128 · DQ 264" (changed parts as "ref → new"). Most tests only care
+// about reference and current state, so this folds it into the compact
+// form "K27 C3 → K96 C5 · ND 50 · HD 128 · DQ 264" (current jet values).
+// The visible format itself is checked in "fitting box".
+const fitText = page => page.textContent('#tuning-status');
+const status = async page => {
+  const text = (await fitText(page)).replace(/^[^:]*:\s*/, '');
+  const pair = part => {
+    const [a, b] = part.split(' → ');
+    return [a, b ?? a];
+  };
+  const [needle, clip, nd, hd, atom] = text.split(' · ').map(pair);
+  const last = v => v.split(' ').at(-1);
+  const [refNeedle, curNeedle] = needle.map(last);
+  const [refClip, curClip] = clip.map(last);
+  // An unchanged atomizer reads "DQ 264"; a changed one "DQ 264 → DQ 266".
+  return `${refNeedle} C${refClip} → ${curNeedle} C${curClip} · ND ${last(nd[1])} · HD ${last(hd[1])} · ${atom[1]}`;
+};
 const cardTitles = page => page.$$eval('.tuning-sugg-pick', els => els.map(el => el.textContent.trim()));
 const flowText = (page, rangeKey) => page.textContent(`tr[data-range="${rangeKey}"] .tuning-flow`);
 const storedSetups = page => page.evaluate(() => JSON.parse(localStorage.getItem('dellorto_setups')));
@@ -594,6 +612,132 @@ test('0–1/8 row: without a reason the line says ± changes the needle — one 
   }
 });
 
+// ── Guidance: steps bar, fitting box, lever line, model explanation ─────────
+
+test('steps bar: 1 → 2 → 3 with ✓ for finished steps, same height in every step', async () => {
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 360, height: 740 }]) {
+    await withPage(async page => {
+      await openApp(page);
+      await createK27Setup(page);
+      await page.click('#tab-tuning');
+      const state = () => page.evaluate(() => ({
+        current: document.querySelector('#tuning-steps [aria-current="step"]')?.textContent,
+        done: document.querySelectorAll('#tuning-steps .tuning-step.is-done').length,
+        visibleText: [...document.querySelectorAll('.tuning-steps-text')]
+          .filter(p => getComputedStyle(p).visibility === 'visible').map(p => p.textContent),
+        height: document.getElementById('tuning-steps').getBoundingClientRect().height,
+      }));
+      const s1 = await state();
+      assert.match(s1.current, /^1Pick reference/);
+      assert.equal(s1.done, 0);
+      assert.deepEqual(s1.visibleText, ['Pick the setup that is in the carburetor right now.']);
+      await page.click('[data-tuning-source="1"]');
+      const s2 = await state();
+      assert.match(s2.current, /^2Adjust range/);
+      assert.equal(s2.done, 1);
+      assert.match(s2.visibleText[0], /^Is the engine too rich or too lean/);
+      await page.click('[data-tuning-step="1:1"]');
+      const s3 = await state();
+      assert.match(s3.current, /^3Apply/);
+      assert.equal(s3.done, 2);
+      await page.click('[data-tuning-action="reset"]');
+      const s4 = await state();
+      assert.match(s4.current, /^2/, 'back to step 2 after reset');
+      for (const s of [s2, s3, s4]) {
+        assert.ok(Math.abs(s.height - s1.height) <= 0.5, `${viewport.width}: steps bar ${s.height} vs ${s1.height}`);
+      }
+    }, { viewport });
+  }
+});
+
+test('fitting box: what to fit with ref → new for changed parts, note or jump to the cards', async () => {
+  await withPage(async page => {
+    await openTuningWithK27(page);
+    assert.equal(await fitText(page), 'Fit: Needle K27 · Clip 3 · ND 50 · HD 128 · DQ 264');
+    assert.equal(await page.textContent('#tuning-fit-extra'), 'nothing changed yet, same as the reference');
+    await page.click('[data-tuning-step="1:1"]');
+    assert.equal(await fitText(page), 'Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 · HD 128 · DQ 264');
+    assert.deepEqual(await page.$$eval('#tuning-status .is-changed', els => els.map(el => el.textContent)), ['K96', '5']);
+    assert.equal(await page.textContent('[data-tuning-action="viewOptions"]'), 'View options (3) ↓');
+    const y0 = await page.evaluate(() => window.scrollY);
+    await page.click('[data-tuning-action="viewOptions"]');
+    await page.waitForFunction(y => {
+      const r = document.getElementById('tuning-alternatives').getBoundingClientRect();
+      return window.scrollY > y && r.top >= 0 && r.top < innerHeight;
+    }, y0);
+    await page.click('[data-tuning-jet="nd:1"]');
+    assert.equal(await fitText(page), 'Fit: Needle K27 → K96 · Clip 3 → 5 · ND 50 → 51 · HD 128 · DQ 264');
+    assert.equal(await page.locator('[data-tuning-action="viewOptions"]').count(), 0, 'no cards after a jet step');
+  });
+});
+
+test('lever line: which part meters each range, from the model; fits one line at 320 and 768 px', async () => {
+  const expected = {
+    en: ['acts: ND 80 % · needle/atomizer 20 %', 'acts: ND 23 % · needle/atomizer 77 %',
+      'acts: needle/atomizer 60 % · HD 40 %', 'acts: HD', 'acts: HD'],
+    de: ['wirkt: ND 80 % · Nadel/MR 20 %', 'wirkt: ND 23 % · Nadel/MR 77 %',
+      'wirkt: Nadel/MR 60 % · HD 40 %', 'wirkt: HD', 'wirkt: HD'],
+  };
+  for (const lang of ['en', 'de']) {
+    for (const width of [320, 768, 1280]) {
+      await withPage(async page => {
+        await page.addInitScript(l => localStorage.setItem('dellorto_lang', l), lang);
+        await openTuningWithK27(page);
+        const lines = await page.$$eval('.tuning-lever', els => els.map(el =>
+          ({ text: el.textContent, fits: el.scrollWidth <= el.clientWidth })));
+        assert.deepEqual(lines.map(l => l.text), expected[lang], `${lang} ${width}`);
+        assert.ok(lines.every(l => l.fits), `${lang} ${width}: ${JSON.stringify(lines)}`);
+        // HD + far enough: in 3/4–1 the needle takes over from the HD.
+        const r4 = () => page.textContent('tr[data-range="r4"] .tuning-lever');
+        let steps = 0;
+        while (/HD$/.test(await r4()) && steps++ < 120) await page.click('[data-tuning-jet="hd:1"]');
+        assert.match(await r4(), lang === 'en' ? /^acts: needle\/atomizer \d+ % · HD \d+ %$/ : /^wirkt: Nadel\/MR \d+ % · HD \d+ %$/);
+      }, { viewport: { width, height: 800 } });
+    }
+  }
+});
+
+test('± buttons: direction word from 601 px on, symbol only on phones; Ø columns and bar legend', async () => {
+  for (const [width, words] of [[1280, true], [768, true], [601, true], [600, false], [360, false]]) {
+    await withPage(async page => {
+      await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+      await openTuningWithK27(page);
+      assert.equal(await page.isVisible('[data-tuning-step="1:1"] .tuning-step-word'), words, `${width}`);
+      if (words) assert.equal(await page.textContent('[data-tuning-step="1:-1"] .tuning-step-word'), 'magerer');
+      const box = await page.locator('[data-tuning-step="1:1"]').boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, `${width}: tap target ${box.width}×${box.height}`);
+      assert.equal(await page.isVisible('.tuning-bar-legend >> visible=true'), true, `${width}: a bar legend is visible`);
+      assert.equal(await noHorizontalOverflow(page), true, `${width}: overflow`);
+    }, { viewport: { width, height: 800 } });
+  }
+  await withPage(async page => {
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await openTuningWithK27(page);
+    const heads = await page.$$eval('#tuning-ranges thead th', els => els.map(el => el.textContent.trim()));
+    assert.equal(heads[1], 'Ref Ø');
+    assert.match(heads[2], /^Aktuell Ø/);
+    assert.match(heads[4], /◀ magerer.*Referenz.*fetter ▶/);
+    assert.ok(await page.getAttribute('#tuning-ranges thead .cutaway-info', 'data-tooltip'));
+  }, { viewport: { width: 1280, height: 800 } });
+});
+
+test('model explanation: closed by default in the jets block, survives re-renders when opened', async () => {
+  await withPage(async page => {
+    await page.addInitScript(() => localStorage.setItem('dellorto_lang', 'de'));
+    await openTuningWithK27(page);
+    assert.equal(await page.getAttribute('#tuning-explain', 'open'), null);
+    await page.click('#tuning-explain summary');
+    assert.match(await page.textContent('#tuning-explain'), /√\(MR² − Nadel-Ø²\)/);
+    await page.click('[data-tuning-jet="hd:1"]');
+    assert.notEqual(await page.getAttribute('#tuning-explain', 'open'), null, 'still open after a step');
+    const order = await page.evaluate(() => {
+      const top = id => document.getElementById(id).getBoundingClientRect().top;
+      return top('tuning-jets') < top('tuning-explain') && top('tuning-explain') < top('tuning-actions');
+    });
+    assert.equal(order, true, 'between jets and actions');
+  }, { viewport: { width: 1280, height: 800 } });
+});
+
 // updateUI() reads the needle data once per pass (readNeedleSnapshot() in
 // app.js) and hands it to every renderer; before, one pass read the custom
 // needles 15 (calculator), 19 (catalog) or 17 (fine tuning) times.
@@ -671,11 +815,12 @@ for (const [name, contextOptions, lang] of [
       // a) Needle step with side-effect warning: r3 leaner → K58 C2.
       await event('a) needle step with warning', '[data-tuning-step="3:-1"]');
       assert.match(await status(page), /K27 C3 → K58 C2/);
-      assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 1,
-        'warning sits in the suggestions area');
+      assert.equal(await page.locator('#tuning-fit #tuning-warning').count(), 1,
+        'warning sits in the fitting box');
+      assert.equal(await page.locator('#tuning-alternatives #tuning-warning').count(), 0);
       const flaggedRows = await page.$$eval('tr[data-range]:not(.is-last-step) .tuning-side-flag', els => els.length);
-      assert.ok(flaggedRows >= 1, 'a ⚠ marks at least one row besides the target');
-      assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no ⚠ on the target row');
+      assert.ok(flaggedRows >= 1, 'a "shifted too" chip marks at least one row besides the target');
+      assert.equal(await page.locator('tr.is-last-step .tuning-side-flag').count(), 0, 'no chip on the target row');
       assert.ok(await page.getAttribute('tr[data-range]:not(.is-last-step) .tuning-side-flag >> nth=0', 'aria-label'));
 
       // b) Step back: warning, cards and flags disappear.

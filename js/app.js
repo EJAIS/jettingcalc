@@ -11,7 +11,8 @@ import { t, getLang, setLang, applyTranslations } from './i18n.js';
 import { encodeShare, decodeShare, hasShareParams, stateKey, isSlotEmpty, isSlotDataEmpty, shareParamKeys,
          JET_MIN, ND_MAX, HD_MAX, JET_FIELD_BOUNDS, MAX_NAME_LENGTH } from './share.js';
 import { TUNING_RANGES, SIGNIFICANT, MIN_STEP, WARN_SIDE_RATIO, evaluateCandidates, rankNextSteps,
-         rangeSummary, stepJet, formatSignedPercent, validateTuningSetup } from './tuning.js';
+         rangeSummary, stepJet, formatSignedPercent, validateTuningSetup,
+         rangeLevers, leverDisplay } from './tuning.js';
 import { CATALOG_COLUMNS, buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
          sortCatalogRows, formatCatalogValue, CATALOG_EMPTY_VALUE } from './needlecatalog.js';
 
@@ -829,7 +830,9 @@ function getTuningEvaluation(snap) {
 
   // Read only on a cache miss (hence no default parameter).
   const { allNeedles, customTypes } = snap ?? readNeedleSnapshot();
-  const summary = rangeSummary(calcSetup(ref, allNeedles), calcSetup(current, allNeedles), current);
+  const currentResult = calcSetup(current, allNeedles);
+  const summary = rangeSummary(calcSetup(ref, allNeedles), currentResult, current);
+  const levers = rangeLevers(currentResult, current);
   const evaluated = evaluateCandidates({ allNeedles, ref, current });
   const options = {
     currentFlow: summary.map(r => r.flow),
@@ -842,7 +845,7 @@ function getTuningEvaluation(snap) {
   }));
 
   tuningState.evalKey = key;
-  tuningState.evalCache = { summary, rankings };
+  tuningState.evalCache = { summary, rankings, levers };
   return tuningState.evalCache;
 }
 
@@ -897,6 +900,7 @@ function renderTuning(snap = readNeedleSnapshot()) {
     const carbLabel = document.getElementById('tuning-carb-type');
     if (carbLabel) carbLabel.textContent = fillPlaceholder(t('tuning.carbType'), '{type}', carbType);
     renderBetaBanner(document.getElementById('tuning-beta-banner'));
+    renderTuningSteps();
     renderTuningReference(snap);
     renderTuningApplyBanner();
 
@@ -907,12 +911,12 @@ function renderTuning(snap = readNeedleSnapshot()) {
 
     if (!hasRef) return;
 
-    // Order in the tab (index.html): status, ranges, jets, actions + apply
-    // message, suggestions, model note. Everything whose height changes
+    // Order in the tab (index.html): fitting box, ranges, jets + model
+    // explanation, actions + apply message, suggestions, model note. Everything whose height changes
     // through interaction sits below the last control or in a slot of fixed
     // height, so no control moves under the pointer (see CLAUDE.md).
     const evaluation = getTuningEvaluation(snap);
-    renderTuningStatus();
+    renderTuningFit();
     renderTuningRanges(evaluation);
     renderTuningJets(evaluation);
     renderTuningActions();
@@ -1020,22 +1024,85 @@ function buildTuningManualForm(snap = readNeedleSnapshot()) {
     <button type="button" class="btn-primary tuning-load" data-tuning-action="loadManual"${complete ? '' : ' disabled'}>${escapeHtml(t('tuning.ref.load'))}</button>`;
 }
 
-// "K27 C3 → K96 C5 · ND 50 · HD 128 · DQ 264" — values that differ from
-// the reference are highlighted.
-function renderTuningStatus() {
-  const el = document.getElementById('tuning-status');
+// Guided steps 1–2–3 above the reference picker, always visible: 1 until
+// a reference is loaded, 2 while current equals it, 3 once it differs.
+// Every step's sentence is in the DOM and they share one grid cell (only
+// the current one visible), so the bar is as high as the longest sentence
+// whichever step is current — it never moves the controls below.
+function tuningCurrentStep() {
+  const { ref, current } = tuningState;
+  if (!ref) return 1;
+  return sameTuningFields(ref, current) ? 2 : 3;
+}
+
+function renderTuningSteps() {
+  const el = document.getElementById('tuning-steps');
   if (!el) return;
+  const active = tuningCurrentStep();
+  const steps = [1, 2, 3];
+  const items = steps.map(n => {
+    const state = n < active ? 'is-done' : n === active ? 'is-current' : '';
+    const mark = n < active ? '✓' : String(n);
+    const srState = n < active ? t('tuning.steps.done') : n === active ? t('tuning.steps.current') : '';
+    return `<li class="tuning-step ${state}"${n === active ? ' aria-current="step"' : ''}>`
+      + `<span class="tuning-step-num" aria-hidden="true">${mark}</span>`
+      + `<span class="tuning-step-title">${escapeHtml(t(`tuning.steps.${n}.title`))}</span>`
+      + (srState ? `<span class="visually-hidden"> (${escapeHtml(srState)})</span>` : '')
+      + `</li>`;
+  }).join('');
+  const texts = steps.map(n =>
+    `<p class="tuning-steps-text"${n === active ? '' : ' aria-hidden="true"'}>${escapeHtml(t(`tuning.steps.${n}.text`))}</p>`).join('');
+  el.innerHTML = `<ol class="tuning-steps-list">${items}</ol>`
+    + `<div class="tuning-steps-texts" data-active="${active}">${texts}</div>`;
+}
+
+// Fitting box (sticky, fixed height): what to fit — "Fit: needle K27 → K96
+// · clip 3 → 5 · ND 50 · HD 128 · DQ 264", parts that differ from the
+// reference as "ref → new" with the new value highlighted. Second line:
+// the side-effect warning of the step in use and a jump to its option
+// cards (which stay at the end of the tab, see CLAUDE.md), or "nothing
+// changed yet".
+function renderTuningFit() {
+  const el = document.getElementById('tuning-status');
+  const extra = document.getElementById('tuning-fit-extra');
+  if (!el || !extra) return;
   const { ref, current: cur } = tuningState;
-  const val = (text, changed) =>
-    `<span class="tuning-status-val${changed ? ' is-changed' : ''}">${escapeHtml(text)}</span>`;
-  el.innerHTML = [
-    `${val(tuningNeedleLabel(ref), false)} → ${val(tuningNeedleLabel(cur), ref.needleType !== cur.needleType || ref.clipPos !== cur.clipPos)}`,
-    val(`${t('col.nd')} ${cur.nd}`, cur.nd !== ref.nd),
-    val(`${t('col.hd')} ${cur.hd}`, cur.hd !== ref.hd),
-    val(`${cur.jetType} ${cur.needleJet}`, cur.jetType !== ref.jetType || cur.needleJet !== ref.needleJet),
+  const part = (format, refValue, curValue) => {
+    if (refValue === curValue) return `<span class="tuning-status-val">${escapeHtml(format(curValue))}</span>`;
+    return `<span class="tuning-status-val">${escapeHtml(format(refValue))} → `
+      + `<span class="is-changed">${escapeHtml(String(curValue))}</span></span>`;
+  };
+  const needle = v => fillPlaceholder(t('tuning.fit.needle'), '{needle}', v);
+  const clip = v => fillPlaceholder(t('tuning.fit.clip'), '{clip}', v);
+  const jet = key => v => `${t(key)} ${v}`;
+  const atomizer = s => `${s.jetType} ${s.needleJet}`;
+  el.innerHTML = `<span class="tuning-fit-label">${escapeHtml(t('tuning.fit.label'))}</span> ` + [
+    part(needle, ref.needleType, cur.needleType),
+    part(clip, ref.clipPos, cur.clipPos),
+    part(jet('col.nd'), ref.nd, cur.nd),
+    part(jet('col.hd'), ref.hd, cur.hd),
+    part(v => v, atomizer(ref), atomizer(cur)),
   ].join(' · ');
-  // One line of fixed height (ellipsis); the full text as tooltip.
+  // Fixed height (clamped); the full text as tooltip.
   el.title = el.textContent;
+
+  const parts = [];
+  if (sameTuningFields(ref, cur)) {
+    parts.push(`<span class="tuning-fit-note">${escapeHtml(t('tuning.fit.unchanged'))}</span>`);
+  } else {
+    const adopted = adoptedSuggestion();
+    // Same rule as rankNextSteps()' warning, applied to whichever
+    // suggestion is in use (for the best one both agree).
+    if (adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc) {
+      parts.push(`<span id="tuning-warning" class="tuning-fit-warning" role="status">${escapeHtml(t('tuning.fit.sideEffects'))}</span>`);
+    }
+    const count = tuningState.suggestions?.suggestions.length ?? 0;
+    if (count > 0) {
+      parts.push(`<button type="button" class="tuning-fit-link" data-tuning-action="viewOptions">`
+        + `${escapeHtml(fillPlaceholder(t('tuning.fit.viewOptions'), '{n}', count))}</button>`);
+    }
+  }
+  extra.innerHTML = parts.join(' ');
 }
 
 function tuningBar(flow) {
@@ -1050,7 +1117,9 @@ function tuningBar(flow) {
 function tuningStepCell(rangeIndex, dir, ranking, rangeLabel) {
   const label = fillPlaceholder(t(dir > 0 ? 'tuning.step.richer' : 'tuning.step.leaner'), '{range}', rangeLabel);
   const best = ranking.suggestions[0];
-  const symbol = dir > 0 ? '+' : '−';
+  // Symbol, plus the direction as a small second line from 601 px on (CSS).
+  const symbol = `<span class="tuning-step-sym">${dir > 0 ? '+' : '−'}</span>`
+    + `<span class="tuning-step-word" aria-hidden="true">${escapeHtml(t(dir > 0 ? 'tuning.btn.richer' : 'tuning.btn.leaner'))}</span>`;
   const cls = `tuning-step-cell ${dir > 0 ? 'is-rich' : 'is-lean'}`;
   if (best) {
     const title = `${label} → ${tuningNeedleLabel(best)}`;
@@ -1089,29 +1158,54 @@ function tuningReasonLine(rankings, rangeIndex) {
   return `<div class="tuning-reason">${escapeHtml(text)}</div>`;
 }
 
-function renderTuningRanges({ summary, rankings }) {
+// "acts: ND 80 % · needle/atomizer 20 %" — which part meters the fuel in
+// the range in the current state (rangeLevers()); one line of fixed height
+// under the bar, always present.
+function tuningLeverLine(levers) {
+  const list = leverDisplay(levers).map(({ lever, percent }) => {
+    const name = t(`tuning.lever.${lever}`);
+    return percent == null ? name
+      : fillPlaceholder(fillPlaceholder(t('tuning.lever.share'), '{lever}', name), '{percent}', percent);
+  }).join(' · ');
+  const text = fillPlaceholder(t('tuning.lever.prefix'), '{list}', list);
+  const tip = t('tuning.lever.tooltip');
+  return `<div class="tuning-lever" data-tooltip="${escapeHtml(tip)}" role="button" tabindex="0"`
+    + ` aria-label="${escapeHtml(`${text} — ${tip}`)}">${escapeHtml(text)}</div>`;
+}
+
+// Bar legend: "◀ leaner · reference · richer ▶" in the bar colours. In the
+// table head (table layout) and above the table (grid layout).
+function tuningBarLegend() {
+  return `<span class="tuning-bar-legend">`
+    + `<span class="is-lean">◀ ${escapeHtml(t('tuning.legend.lean'))}</span>`
+    + `<span class="is-ref">${escapeHtml(t('tuning.legend.ref'))}</span>`
+    + `<span class="is-rich">${escapeHtml(t('tuning.legend.rich'))} ▶</span></span>`;
+}
+
+function renderTuningRanges({ summary, rankings, levers }) {
   const table = document.getElementById('tuning-ranges');
   if (!table) return;
 
   // Flows before the last needle step: rows other than its target that
-  // moved by >= SIGNIFICANT get a ⚠ in a slot that is always reserved.
+  // moved by >= SIGNIFICANT get a "shifted too" chip in the meta line.
   const before = tuningState.lastStep?.flowBefore;
   const target = tuningState.lastStep?.rangeIndex;
   const sideTip = t('tuning.warn.sideFlag');
   const colgroup = `<colgroup><col class="tuning-col-range"><col class="tuning-col-eq"><col class="tuning-col-eq">`
     + `<col class="tuning-col-delta"><col class="tuning-col-step"><col><col class="tuning-col-step"></colgroup>`;
+  const eqTip = t('tuning.col.eq.tooltip');
+  const eqInfo = `<span class="cutaway-info" role="button" tabindex="0" data-tooltip="${escapeHtml(eqTip)}" aria-label="${escapeHtml(eqTip)}">ℹ</span>`;
   const head = `<thead><tr>
     <th scope="col">${escapeHtml(t('tuning.col.range'))}</th>
     <th scope="col" class="num">${escapeHtml(t('tuning.col.ref'))}</th>
-    <th scope="col" class="num">${escapeHtml(t('tuning.col.current'))}</th>
+    <th scope="col" class="num">${escapeHtml(t('tuning.col.current'))} ${eqInfo}</th>
     <th scope="col" class="num">${escapeHtml(t('tuning.col.delta'))}</th>
-    <th scope="col" colspan="3" class="tuning-step-head">${escapeHtml(t('tuning.col.step'))}</th>
+    <th scope="col" colspan="3" class="tuning-step-head"><span class="visually-hidden">${escapeHtml(t('tuning.col.step'))}</span>${tuningBarLegend()}</th>
   </tr></thead>`;
 
   const rows = TUNING_RANGES.map((range, i) => {
     const r = summary[i];
     const rangeLabel = t(`tuning.range.${range.key}`);
-    const lever = range.lever === 'nd' ? escapeHtml(t('tuning.lever.nd')) : '';
     const badgeTip = t('tuning.badge.hdLimited.tooltip');
     const badge = r.hdLimited
       ? `<span class="tuning-badge" data-tooltip="${escapeHtml(badgeTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.badge.hdLimited')} — ${badgeTip}`)}">${escapeHtml(t('tuning.badge.hdLimited'))}</span>`
@@ -1120,7 +1214,7 @@ function renderTuningRanges({ summary, rankings }) {
     const sideEffect = before && i !== target && r.flow != null && before[i] != null
       && Math.abs(r.flow - before[i]) >= SIGNIFICANT;
     const flag = sideEffect
-      ? `<span class="tuning-side-flag" data-tooltip="${escapeHtml(sideTip)}" role="button" tabindex="0" aria-label="${escapeHtml(sideTip)}">⚠</span>`
+      ? `<span class="tuning-side-flag" data-tooltip="${escapeHtml(sideTip)}" role="button" tabindex="0" aria-label="${escapeHtml(`${t('tuning.sideChip')} — ${sideTip}`)}">${escapeHtml(t('tuning.sideChip'))}</span>`
       : '';
     const diameter = fillPlaceholder(t('tuning.diameter'), '{value}', formatSignedPercent(r.diameter));
     const isLast = tuningState.lastStep?.rangeIndex === i;
@@ -1128,21 +1222,24 @@ function renderTuningRanges({ summary, rankings }) {
     return `<tr class="tuning-row${isLast ? ' is-last-step' : ''}" data-range="${range.key}">
       <th scope="row" class="tuning-range" tabindex="-1">
         <span class="tuning-range-label">${escapeHtml(rangeLabel)}</span>
-        <span class="tuning-range-meta">${lever}${badge}</span>
+        <span class="tuning-range-meta">${badge}${flag}</span>
       </th>
       <td class="num tuning-eq is-ref" data-label="${escapeHtml(t('tuning.col.ref'))}">${formatEq(r.eqRef)}</td>
       <td class="num tuning-eq is-cur" data-label="${escapeHtml(t('tuning.col.current'))}">${formatEq(r.eqCand)}</td>
       <td class="num tuning-delta">
-        <span class="tuning-flow-line"><span class="tuning-side-slot">${flag}</span><span class="tuning-flow${significant ? ' is-significant' : ''}">${escapeHtml(formatSignedPercent(r.flow))}</span></span>
+        <span class="tuning-flow-line"><span class="tuning-flow${significant ? ' is-significant' : ''}">${escapeHtml(formatSignedPercent(r.flow))}</span></span>
         <span class="tuning-diameter">${escapeHtml(diameter)}</span>
       </td>
       ${tuningStepCell(i, -1, rankings[i][-1], rangeLabel)}
-      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningReasonLine(rankings[i], i)}</td>
+      <td class="tuning-bar-cell">${tuningBar(r.flow)}${tuningLeverLine(levers[i])}${tuningReasonLine(rankings[i], i)}</td>
       ${tuningStepCell(i, 1, rankings[i][1], rangeLabel)}
     </tr>`;
   }).join('');
 
   table.innerHTML = `${colgroup}${head}<tbody>${rows}</tbody>`;
+  // Grid layout (thead hidden): the same legend above the table.
+  const legend = document.getElementById('tuning-bar-legend');
+  if (legend) legend.innerHTML = tuningBarLegend();
 }
 
 function tuningClipLabel(needleType, clipPos) {
@@ -1172,9 +1269,6 @@ function renderTuningSuggestions() {
   const target = tuningState.lastStep?.rangeIndex;
   const flowBefore = tuningState.lastStep?.flowBefore;
   const stepTip = t('tuning.stepDelta.tooltip');
-  // Same rule as rankNextSteps()' warning, applied to whichever suggestion
-  // is in use (for the best one both agree).
-  const warn = adopted && adopted.side > WARN_SIDE_RATIO * adopted.inc;
   let anyUnverified = false;
 
   const cards = ranking.suggestions.map((sugg, idx) => {
@@ -1222,7 +1316,6 @@ function renderTuningSuggestions() {
 
   el.innerHTML = `
     <h3 class="tuning-subhead">${escapeHtml(t('tuning.suggestions.title'))}</h3>
-    ${warn ? `<p id="tuning-warning" class="tuning-warning" role="status">${escapeHtml(t('tuning.warn.sideEffects'))}</p>` : ''}
     <p class="tuning-hint">${escapeHtml(t('tuning.suggestions.hint'))}</p>
     <div class="tuning-cards">${cards}</div>
     ${anyUnverified ? `<p class="tuning-hint">* ${escapeHtml(t('catalog.clipsDefault.tooltip'))}</p>` : ''}`;
@@ -1490,6 +1583,9 @@ function handleTuningClick(e) {
       document.getElementById(next)?.focus();
     }
     return; // applyTuningToSlot() already re-rendered via updateUI()
+  } else if (tuningAction === 'viewOptions') {
+    document.getElementById('tuning-alternatives')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
   } else if (tuningAction === 'undo') {
     if (tuningState.history.length === 0) return;
     tuningState.current = tuningState.history.pop();

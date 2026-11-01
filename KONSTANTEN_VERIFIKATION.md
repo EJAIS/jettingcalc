@@ -172,6 +172,10 @@ kein Datenfehler).
   bestätigt (PHBL nur bei 26mm gemessen, PHBH nur bei 30mm). Zur
   Klärung wäre jeweils eine zweite idlePos-Messung bei einer anderen
   Bohrungsgröße nötig (PHBL z.B. 20/22mm, PHBH z.B. 26/28mm).
+  **Recherche 2026-11-01:** keine externe Quelle für den Term gefunden. Er
+  ist eine eigene Heuristik des Excel-Autors — Versionshistorie in der
+  Original-Excel (`xl/comments1.xml`): „Version 1.4: … added basic carb
+  size compensation“. Damit bleibt nur die Messung.
 - minExposed für VHSx (K und U gemeinsam) — nie unabhängig gemessen,
   benötigt idlePos-Messung an einem realen VHSx-Vergaser.
 - **U-Nadel Nut-Geometrie (Priorität MITTEL):** Spannmaß und Oberkante-
@@ -192,11 +196,11 @@ kein Datenfehler).
   exponieren, bewusst nicht umgesetzt, da eine Nutzer-eingegebene
   Nut-Geometrie ohne Referenzmessung ohnehin nicht verifizierbar wäre).
 
-### K76 ØD — Abweichung vom Original-Excel (offen)
+### K76 ØD — Abweichung vom Original-Excel (belegt 2026-11-01)
 
 - **Datum:** 2026-09-23
-- **Status:** **offen** — Quelle für den in `NEEDLE_DB` verwendeten Wert
-  ist noch zu belegen. `NEEDLE_DB` bleibt bis dahin unverändert.
+- **Status:** **belegt (Eurocarb 2015)** — Recherche 2026-11-01, siehe
+  unten. `NEEDLE_DB` bleibt unverändert.
 - **Befund:** Beim Abgleich des Blatts "Needle Data" des Original-Excel
   (`original/Dellorto_Jetting_Gue.xlsx`, Zeile 69) gegen `NEEDLE_DB` ist K76
   die **einzige** Nadel mit abweichender Geometrie:
@@ -214,10 +218,21 @@ kein Datenfehler).
   weil ØD (Durchmesser am Übergang Taper 1/2) größer wäre als der
   Schaftdurchmesser ØA = 2.46. Eine Nadel verjüngt sich zur Spitze hin; ØD
   muss also ≤ ØA sein. Der Fehler liegt daher im Original.
-- **Offener Punkt:** Woher der Wert 2.1 in `NEEDLE_DB` stammt, ist nicht
-  dokumentiert. Gegen das offizielle Dellorto-Datenblatt "Dimensions
-  Aiguilles K" (dellorto.fr) und gegen Eurocarb 2015 gegenprüfen und das
-  Ergebnis hier nachtragen. Erst danach gilt der Wert als verifiziert.
+- **Quelle für 2.1 (Recherche 2026-11-01):** Die Eurocarb-Tabelle „SPILLI
+  CONICI SERIE 8530 X 08 K“ (K/U Needle charts, 2015,
+  https://www.dellorto.co.uk/wp-content/uploads/2015/05/K-U-Needle-charts.pdf)
+  führt K76 mit ØA 2.46, ØB 1.55, C 39, **ØD 2.10**, E 25, F 11 — exakt wie
+  `NEEDLE_DB`. Die Nachbarnadel K77 hat dort ØD 2.07. Dieselben Werte stehen
+  in der aus Eurocarb übernommenen Tabelle von Gregory Bender
+  (thisoldtractor.com, K-Slides, aktualisiert 2015-07-10).
+- **Einschränkung:** Beide Quellen gehen auf Eurocarb zurück, sind also
+  keine unabhängigen Zweitquellen. Das offizielle Dellorto-Datenblatt
+  „Dimensions Aiguilles K“ (dellorto.fr) war bei der Recherche nicht
+  auffindbar; ein Abgleich dagegen steht noch aus.
+- **Nebenbefund K75 (offen):** Beide Tabellen springen von K72 auf K76,
+  K75 fehlt. `NEEDLE_DB` führt K75 (A 2.50, B 0.60, C 38, D 2.00, E 18);
+  die Herkunft dieses Eintrags ist nicht belegt und sollte gegen das
+  dellorto.fr-PDF geprüft werden.
 
 ## Priorität MITTEL
 
@@ -230,8 +245,26 @@ kein Datenfehler).
 - Gegenargument: Die Cutaway-Empfehlung wurde an einem realen Setup
   verifiziert (Schieber 40 bestätigt), was gegen eine grobe
   Fehlanwendung spricht.
-- Status: offen — vor einer Änderung am Cutaway-Scope praktisch klären
-  (Schieberform am realen VHS-Vergaser prüfen).
+- **Recherche 2026-11-01 — Schiebertyp belegt:** Die VHS-Familie hat einen
+  **Flachschieber**. Bei Dellorto hat die ganze VH-Reihe flache, die
+  PH-Reihe (PHBH, PHBL) runde Schieber:
+  - Dell'Orto-Leitfaden (Laverdamania): „On the PH series (Piston
+    Horizontal) it is cylindrical; on the VH series (Valve) it is flat.“
+    https://uk.laverdamania.net/technical/f/guide-dell-orto-french/
+  - Green Flag Karting, Dellorto Tuner Guide (VHSB/VHSH): „plane or
+    guillotine flat slide“, Schieber mit verschiedenen Ausschnitthöhen,
+    wirksam bis ¼ Gas.
+    https://forums.kartpulse.com/uploads/short-url/xB4GYNsQGzHtFkwzVIStJTVTKb5.pdf
+  - TKART, Test VHSH 30: „The VHSH 30 has a flat valve“ (Vorgänger PHBE 30
+    mit Rundschieber).
+    https://tkart.it/en/magazine/under-review/dellorto-30-carburettor-kart-125-vhsh-with-flat-valve-float-bowl
+- Folge: Die Einordnung von VHSx in `ROUND_SLIDE_2STROKE` (`js/cutaway.js`)
+  ist sachlich falsch. Auch Flachschieber tragen aber nummerierte
+  Ausschnitte (z. B. 40 = 4.0 mm) mit derselben Wirkung bis ¼ Gas, und die
+  Empfehlung ist praktisch bestätigt (Schieber 40). Ob die
+  Forrest-Heuristik für Flachschieber gleich gut passt, ist nicht belegt.
+- Status: Schiebertyp geklärt; offen ist nur noch die Entscheidung über den
+  Cutaway-Scope für VHSx.
 - **Bis dahin bewusst KEINE Änderung am Cutaway-Scope.**
 
 ### Gasstellungsbereich über 100 % (105/110/115 %)
@@ -244,5 +277,11 @@ kein Datenfehler).
   Bohrungsöffnung hinaus fahren.
 - Praktisch prüfbar: Schieberhub bei voll gezogenem Gaszug messen und mit
   der Bohrungsweite vergleichen. Hub > Bohrung ⇒ echter Überhub.
+- **Recherche 2026-11-01:** keine öffentliche Angabe zum Schieberhub von
+  VHSx, PHBH oder PHBL gefunden. Dellortos Schieber-Nummern beschreiben nur
+  den Ausschnitt in 1/10 mm, nicht den Hub
+  (https://www.thisoldtractor.com/mg_manuals/dellorto_slide_numbers.pdf);
+  die geprüften Theorie-Leitfäden (Laverdamania, Green Flag) nennen ihn
+  ebenfalls nicht. Damit bleibt nur die Messung.
 - Bis dahin: Daten beibehalten, aber in UI und Charts als Extrapolation
   gekennzeichnet.

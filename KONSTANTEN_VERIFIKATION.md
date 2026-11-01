@@ -118,8 +118,9 @@ kein Datenfehler).
 - **PHBL:** 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel
   und AQ-Mischrohr (idlePos 31.70 mm bei Clip 1), gegen eine unabhängige
   Messkette gegengeprüft. Siehe Verifikationswert in `js/calc.js`.
-- **PHBH:** 26.4 mm — weiterhin von VHSx geerbt, NICHT unabhängig
-  verifiziert.
+- **PHBH:** 23.8 mm — gemessen 2026-08 an einem 30 mm PHBH mit X2-Nadel
+  und AS266-Mischrohr (idlePos 31.2 mm bei Clip 1); Details im Abschnitt
+  „X-Nadel-Länge und `minExposed` (PHBH) — Auflösung“.
 
 ### X-Nadel-Länge und `minExposed` (PHBH) — Auflösung
 
@@ -263,8 +264,10 @@ kein Datenfehler).
   Ausschnitte (z. B. 40 = 4.0 mm) mit derselben Wirkung bis ¼ Gas, und die
   Empfehlung ist praktisch bestätigt (Schieber 40). Ob die
   Forrest-Heuristik für Flachschieber gleich gut passt, ist nicht belegt.
-- Status: Schiebertyp geklärt; offen ist nur noch die Entscheidung über den
-  Cutaway-Scope für VHSx.
+- **Sichtprüfung 2026-11-01 (Alexander):** VHSx-Vergaser haben einen
+  Flachschieber — die Recherche ist damit am realen Teil bestätigt.
+- Status: Schiebertyp verifiziert; offen ist nur noch die Entscheidung über
+  den Cutaway-Scope für VHSx.
 - **Bis dahin bewusst KEINE Änderung am Cutaway-Scope.**
 
 ### Gasstellungsbereich über 100 % (105/110/115 %)

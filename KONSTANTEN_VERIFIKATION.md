@@ -259,16 +259,19 @@ kein Datenfehler).
   - TKART, Test VHSH 30: „The VHSH 30 has a flat valve“ (Vorgänger PHBE 30
     mit Rundschieber).
     https://tkart.it/en/magazine/under-review/dellorto-30-carburettor-kart-125-vhsh-with-flat-valve-float-bowl
-- Folge: Die Einordnung von VHSx in `ROUND_SLIDE_2STROKE` (`js/cutaway.js`)
-  ist sachlich falsch. Auch Flachschieber tragen aber nummerierte
+- Folge: Die frühere Einordnung von VHSx in `ROUND_SLIDE_2STROKE`
+  (`js/cutaway.js`) war sachlich falsch. Auch Flachschieber tragen aber nummerierte
   Ausschnitte (z. B. 40 = 4.0 mm) mit derselben Wirkung bis ¼ Gas, und die
   Empfehlung ist praktisch bestätigt (Schieber 40). Ob die
   Forrest-Heuristik für Flachschieber gleich gut passt, ist nicht belegt.
 - **Sichtprüfung 2026-11-01 (Alexander):** VHSx-Vergaser haben einen
   Flachschieber — die Recherche ist damit am realen Teil bestätigt.
-- Status: Schiebertyp verifiziert; offen ist nur noch die Entscheidung über
-  den Cutaway-Scope für VHSx.
-- **Bis dahin bewusst KEINE Änderung am Cutaway-Scope.**
+- **Entscheidung 2026-11-01 (Alexander):** Cutaway-Empfehlung für VHSx
+  bleibt. Die Liste heißt jetzt `SLIDE_CUTAWAY_2STROKE`
+  (`hasSlideCutaway2Stroke()`), README und Hinweistext
+  (`cutaway.disclaimer`) nennen VHSx als Flachschieber, für den die
+  Heuristik nicht gesondert geprüft ist.
+- Status: erledigt.
 
 ### Gasstellungsbereich über 100 % (105/110/115 %)
 - Bei tp = 1,0 ist der Schieber um genau eine Bohrungsweite angehoben, die

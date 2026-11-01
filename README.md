@@ -15,7 +15,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 - The **Needle Profile** chart shows needle diameter vs. throttle position (0–115%) for each active setup.
 - The **Carb Profile** chart shows the blended equivalent flow (Overall HD) across the throttle range.
 - Click any chart panel (or the ⛶ icon) to open a full-screen modal with a larger version of that chart. Close with ✕, a backdrop click, or Escape.
-- Expand **Calculation Results** to inspect the raw per-throttle-point data for each setup — useful for verifying against the original Excel "Calc Data" sheets. For 2-stroke round-slide carbs (VHSx, PHBH, PHBL), each active setup also shows a **recommended slide cutaway** estimate and the atomizer/main-jet area ratio. If the ratio falls outside the 0.45–0.80 target range, a warning is displayed instead of the cutaway value, indicating a likely atomizer / main jet mismatch. See the disclaimer note below.
+- Expand **Calculation Results** to inspect the raw per-throttle-point data for each setup — useful for verifying against the original Excel "Calc Data" sheets. For the 2-stroke slide carbs (VHSx with flat slide, PHBH and PHBL with round slide), each active setup also shows a **recommended slide cutaway** estimate and the atomizer/main-jet area ratio. If the ratio falls outside the 0.45–0.80 target range, a warning is displayed instead of the cutaway value, indicating a likely atomizer / main jet mismatch. See the disclaimer note below.
 - The **Carburetor cross-section** card visualizes the selected needle inside the venturi / atomizer bore for a chosen setup, driven by a throttle slider (0–115%) with a live-updated diagram, annulus-area readout, and needle position/diameter readout.
 - Use **Load Demo** to populate three example setups (K98-based).
 - Use **Reset** to clear all setups back to empty.
@@ -117,7 +117,7 @@ index.html          Main UI
 css/style.css       Styling (dark mode capable)
 js/needledb.js      Static needle database (read-only, 242 needles: K, U, X, D types)
 js/calc.js          Calculation engine (1:1 port from Excel formulas)
-js/cutaway.js       Slide cutaway heuristic (2-stroke round-slide carbs only)
+js/cutaway.js       Slide cutaway heuristic (2-stroke slide carbs: flat and round slide)
 js/storage.js       localStorage abstraction (setups + custom needles)
 js/charts.js        Chart.js diagram rendering
 js/i18n.js          EN/DE translations and language switching

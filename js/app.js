@@ -3,7 +3,7 @@
 
 import { loadSetups, saveSetups, loadCustomNeedles, saveCustomNeedles, getAllNeedles, loadCarbType, saveCarbType } from './storage.js';
 import { calcSetup } from './calc.js';
-import { calcCutaway, snapToSlide, isRoundSlide2Stroke } from './cutaway.js';
+import { calcCutaway, snapToSlide, hasSlideCutaway2Stroke } from './cutaway.js';
 import { renderCharts, openChartModal, closeChartModal, getColors } from './charts.js';
 import { NEEDLE_DB, CARB_TYPES, CARB_BORE_SIZES, VHSX_BORE_GROUPS, ATOMIZER_SIZES, resolveClipCount,
          getCustomNeedleLength, migrateCustomNeedles } from './needledb.js';
@@ -262,7 +262,7 @@ function renderTable(snap = readNeedleSnapshot()) {
 
     let cutawayCell = empty;
     const needle = allNeedles[s.needleType];
-    if (isRoundSlide2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
+    if (hasSlideCutaway2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
       const ca    = calcCutaway(s.carbSize, s.hd, s.needleJet, needle.A);
       const slide = ca.cutawayClamped != null ? snapToSlide(ca.cutawayClamped, carbType) : '—';
       if (ca.ratioOk) {
@@ -359,7 +359,7 @@ function renderCalcResults(snap = readNeedleSnapshot()) {
 
     let cutawayHTML = '';
     const needle = allNeedles[s.needleType];
-    if (isRoundSlide2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
+    if (hasSlideCutaway2Stroke(carbType) && needle && s.carbSize && s.hd && s.needleJet) {
       const ca = calcCutaway(s.carbSize, s.hd, s.needleJet, needle.A);
       const valueHTML = ca.ratioOk
         ? `<span class="cutaway-value">~${ca.cutawayClamped.toFixed(1)} mm

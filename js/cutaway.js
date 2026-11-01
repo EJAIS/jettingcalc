@@ -1,6 +1,7 @@
 // cutaway.js — Recommended slide cutaway calculation
 // Heuristic source: M. Forrest, dragonfly75.com (unverified — see disclaimer in i18n)
-// Scoped to 2-stroke round-slide carburetors only.
+// Scoped to 2-stroke slide carburetors: round slide (PHBH, PHBL) and flat
+// slide (VHSx). The heuristic is not separately verified for flat slides.
 // Copyright (C) 2014 GUE — GPL v2.0
 
 const RATIO_MIN = 0.45;
@@ -12,11 +13,13 @@ const SLIDE_SIZES = {
   PHBL: [30, 35, 40, 45, 50, 55, 60],
 };
 
-// Explicit allowlist — any future 4-stroke or flat-slide carb type is excluded by omission
-const ROUND_SLIDE_2STROKE = new Set(['VHSx', 'PHBH', 'PHBL']);
+// Explicit allowlist — any future carb type (e.g. 4-stroke) is excluded by omission.
+// VHSx has a flat slide (verified 2026-11-01, KONSTANTEN_VERIFIKATION.md); flat
+// slides carry numbered cutaways that act up to ¼ throttle like round slides.
+const SLIDE_CUTAWAY_2STROKE = new Set(['VHSx', 'PHBH', 'PHBL']);
 
-export function isRoundSlide2Stroke(carbType) {
-  return ROUND_SLIDE_2STROKE.has(carbType);
+export function hasSlideCutaway2Stroke(carbType) {
+  return SLIDE_CUTAWAY_2STROKE.has(carbType);
 }
 
 /**

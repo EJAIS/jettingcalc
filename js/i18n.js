@@ -99,7 +99,7 @@ export const TRANSLATIONS = {
     'cutaway.target':     'target: 0.6',
     'cutaway.closest':    'closest stock slide',
     'cutaway.warning':    '⚠ Ratio far from target — estimate unreliable',
-    'cutaway.disclaimer':   'Estimated using an unverified third-party heuristic (M. Forrest, dragonfly75.com). The 0.6 target ratio is not an official Dellorto specification and has no published derivation — treat this as a rough starting point, not a precise calculation. Confirm with real-world testing.',
+    'cutaway.disclaimer':   'Estimated using an unverified third-party heuristic (M. Forrest, dragonfly75.com). The 0.6 target ratio is not an official Dellorto specification and has no published derivation — treat this as a rough starting point, not a precise calculation. For flat-slide carbs (VHSx) it has not been checked separately. Confirm with real-world testing.',
     'cutaway.colWarning':   'Ratio ({ratio}) is far from the 0.6 target — this estimate may be unreliable. See {section} for details.',
 
     // Custom Needles
@@ -445,7 +445,7 @@ export const TRANSLATIONS = {
     'cutaway.target':     'Ziel: 0.6',
     'cutaway.closest':    'nächste Serienscheibe',
     'cutaway.warning':    '⚠ Verhältnis weit vom Zielwert entfernt — Schätzung unzuverlässig',
-    'cutaway.disclaimer':   'Geschätzt anhand einer nicht verifizierten Drittquellen-Heuristik (M. Forrest, dragonfly75.com). Das Zielverhältnis 0.6 ist keine offizielle Dellorto-Spezifikation und hat keine veröffentlichte Herleitung — als groben Anhaltspunkt verstehen, nicht als präzise Berechnung. Mit Praxistests bestätigen.',
+    'cutaway.disclaimer':   'Geschätzt anhand einer nicht verifizierten Drittquellen-Heuristik (M. Forrest, dragonfly75.com). Das Zielverhältnis 0.6 ist keine offizielle Dellorto-Spezifikation und hat keine veröffentlichte Herleitung — als groben Anhaltspunkt verstehen, nicht als präzise Berechnung. Für Flachschieber (VHSx) nicht gesondert geprüft. Mit Praxistests bestätigen.',
     'cutaway.colWarning':   'Verhältnis ({ratio}) liegt weit vom Zielwert 0.6 entfernt — diese Schätzung kann unzuverlässig sein. Details siehe {section}.',
 
     // Custom Needles

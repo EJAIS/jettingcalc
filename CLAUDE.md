@@ -106,7 +106,7 @@ js/calc.js                  Berechnungs-Engine (calcSetup)
 js/needledb.js              Statische Nadeldatenbank + Stammdaten (Längen, Clip-Geometrie, Düsen, Bohrungen)
 js/storage.js               localStorage-Abstraktion (Setups, Custom Needles, Vergasertyp)
 js/charts.js                Chart.js-Diagramme (Needle Profile, Carb Profile, Vollbild-Modal)
-js/cutaway.js               Schieber-Ausschnitt-Empfehlung für 2-Takt-Rundschieber
+js/cutaway.js               Schieber-Ausschnitt-Empfehlung für 2-Takt-Schieber (VHSx flach, PHBH/PHBL rund)
 js/share.js                 Share-Links kodieren/dekodieren (rein, ohne DOM/localStorage)
 js/needlecatalog.js         Nadelkatalog: Zeilen, Filter, Sortierung, Formatierung (rein)
 js/tuning.js                Feinabstimmung: Bereichs-Deltas, Kandidaten, Schritt-Ranking, Düsenschritte, Validierung (rein)

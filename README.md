@@ -131,6 +131,10 @@ manifest.json       PWA manifest
 icons/              PWA icons (192/512/maskable/apple-touch-icon)
 scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version from precached file content
 .githooks/          Optional pre-commit hook that runs the script above automatically (see CLAUDE.md)
+Dockerfile          Container image: unprivileged nginx + runtime files only (see "Docker")
+docker/nginx.conf   nginx config of that image (headers, /jettingcalc/ subpath)
+.dockerignore       Allowlist for the image's build context
+.github/workflows/  docker.yml — tests, builds and publishes the image to ghcr.io
 original/           Unmodified original Excel spreadsheet (for reference, see "Upstream copyright")
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
@@ -138,17 +142,19 @@ test-browser/       Playwright browser tests (optional, see TESTING.md)
 
 ## Deployment
 
-The app is static — copy the repo (minus `test/`, `test-browser/`,
-`node_modules/`, `package.json`) to any web server. It's currently
+The app is static — either run the container image (see "Docker" below,
+which already sets the headers described here) or copy the runtime files
+(`index.html`, `manifest.json`, `sw.js`, `css/`, `js/`, `icons/`) to any
+web server. It's currently
 deployed to a subdirectory on ejais.de, which is why `manifest.json`,
 `sw.js`, and every path inside them use relative URLs throughout (see
 `js/vendor/README.md` and `sw.js`'s own comments) rather than assuming a
 domain root.
 
 Two response headers matter for correct PWA behavior and are **server
-configuration, not something this repo's code controls** — there's no
-`.htaccess`/nginx config checked in here, so whoever configures the web
-server needs to set these explicitly:
+configuration, not something the app's code controls** — the container
+image sets them in `docker/nginx.conf`; any other web server needs them set
+explicitly:
 
 - **`manifest.json` → `Content-Type: application/manifest+json`.** Most
   default server configs (nginx included, unless a `.json` MIME type
@@ -184,6 +190,65 @@ server needs to set these explicitly:
     add_header Cache-Control "no-cache";
   }
   ```
+
+### Docker
+
+Every push to `main` builds a container image and publishes it to the
+GitHub Container Registry (`.github/workflows/docker.yml`):
+
+```
+ghcr.io/ejais/jettingcalc:latest
+```
+
+The image is unprivileged nginx (Alpine "slim", about 6 MB compressed,
+`linux/amd64` and `linux/arm64`) plus only the files the browser loads and
+`LICENSE` — no tests, docs, original spreadsheet or Node tooling. It listens
+on port **8080** as a non-root user and has a health check (`/healthz`).
+
+Tags: `latest` and `main` follow the `main` branch, `sha-<short>` pins one
+commit (for rollbacks), and a Git tag `v1.2.3` additionally publishes `1.2.3`
+and `1.2`. Pull requests build and smoke-test the image without publishing.
+
+The app is served both at `/` and under `/jettingcalc/`, so a reverse proxy
+on the server can either strip the `/jettingcalc` prefix or forward the path
+unchanged. `manifest.json` gets `application/manifest+json`, `sw.js` and
+the app shell get `Cache-Control: no-cache` (see above).
+
+**On the server** (`docker-compose.yml`):
+
+```yaml
+services:
+  jettingcalc:
+    image: ghcr.io/ejais/jettingcalc:latest
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      - "127.0.0.1:8080:8080"   # only reachable through the reverse proxy
+```
+
+```
+docker compose pull && docker compose up -d
+```
+
+updates to the newest image; `docker image prune -f` removes the old ones.
+Example for an nginx reverse proxy in front of it that forwards the path
+unchanged:
+
+```nginx
+location /jettingcalc/ {
+  proxy_pass http://127.0.0.1:8080;
+  proxy_set_header Host $host;
+}
+```
+
+**Package visibility:** GitHub creates a new container package as
+*private*. To pull without logging in, set it to public once under
+GitHub → Profile → Packages → `jettingcalc` → Package settings → Change
+visibility. If it stays private, log in on the server once with a personal
+access token (classic) that has only the `read:packages` scope:
+`echo <token> | docker login ghcr.io -u <github-user> --password-stdin`.
 
 ### Service worker cache versioning
 

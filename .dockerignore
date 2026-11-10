@@ -1,0 +1,16 @@
+# Allowlist: the build context holds only what the Dockerfile copies.
+# Everything else (tests, docs, original spreadsheet, node_modules, .git)
+# never reaches the image or the build context.
+*
+!Dockerfile
+!docker/nginx.conf
+!index.html
+!manifest.json
+!sw.js
+!LICENSE
+!css/
+!js/
+!icons/
+# Documentation inside a runtime directory (Chart.js keeps its MIT notice
+# in the banner of chart.umd.min.js itself).
+js/vendor/README.md

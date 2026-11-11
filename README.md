@@ -134,7 +134,7 @@ scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version 
 Dockerfile          Container image: unprivileged nginx + runtime files only (see "Docker")
 docker/nginx.conf   nginx config of that image (headers, /jettingcalc/ subpath)
 .dockerignore       Allowlist for the image's build context
-.github/          workflows/docker.yml — tests, builds and publishes the image (also weekly); dependabot.yml
+.github/          workflows/docker.yml — tests, builds and publishes the image; dependabot.yml (base image updates)
 original/           Unmodified original Excel spreadsheet (for reference, see "Upstream copyright")
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
@@ -210,13 +210,16 @@ commit (for rollbacks), and a Git tag `v1.2.3` additionally publishes `1.2.3`
 and `1.2`. Pull requests build and smoke-test the image without publishing.
 
 **Base image updates:** nginx and Alpine are part of the image, so they
-arrive as a new `latest`. A scheduled run rebuilds `main` every Monday
-with the current `nginx-unprivileged:1.29-alpine-slim` (patch releases and
-Alpine security fixes), runs the same tests and smoke test, and pushes it
-only if they pass; Portainer and `docker compose pull` then see an image
-update. A new nginx minor version (e.g. `1.30`) is never picked up
-silently: Dependabot (`.github/dependabot.yml`) opens a pull request for
-it, as it does for new versions of the GitHub Actions used here.
+arrive as a new `latest`. The `Dockerfile` pins the base image by tag and
+digest (`nginx-unprivileged:1.29-alpine-slim@sha256:…`). Dependabot
+(`.github/dependabot.yml`, checked daily) opens a pull request whenever a
+new build appears under the same tag (nginx patch, Alpine security fix:
+only the digest changes) or a new tag such as `1.30-alpine-slim` is
+released; it does the same weekly for the GitHub Actions used here. CI
+builds and smoke-tests every such pull request, nothing is merged
+automatically, and merging one publishes the rebuilt image like any other
+push to `main`; Portainer and `docker compose pull` then see an image
+update.
 
 The app is served both at `/` and under `/jettingcalc/`, so a reverse proxy
 on the server can either strip the `/jettingcalc` prefix or forward the path

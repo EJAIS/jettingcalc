@@ -7,7 +7,11 @@
 # Published to ghcr.io by .github/workflows/docker.yml; usage: README,
 # section "Docker".
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine-slim
+# Pinned by tag and digest. A new nginx/Alpine build under the same tag
+# changes the digest; Dependabot (.github/dependabot.yml) then opens a pull
+# request, and merging it publishes the rebuilt image. Builds stay
+# reproducible: the same commit always uses the same base image.
+FROM nginxinc/nginx-unprivileged:1.29-alpine-slim@sha256:59678856b05324b7f6371f26eb1520be7fcd8bdc8ab380fc4913db8503e5a842
 
 LABEL org.opencontainers.image.title="Dellorto Jetting Calculator" \
       org.opencontainers.image.description="Jetting calculator for Dellorto carburetors (static PWA served by nginx)" \

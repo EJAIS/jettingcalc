@@ -120,8 +120,8 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 Dockerfile                  Container-Image: nginx-unprivileged (alpine-slim) + nur Laufzeitdateien
 docker/nginx.conf           nginx-Konfiguration des Images (Header, /jettingcalc/-Pfad, /healthz)
 .dockerignore               Allowlist für den Build-Kontext
-.github/workflows/docker.yml  Tests, Build, Smoke-Test, Push nach ghcr.io (auch wöchentlich)
-.github/dependabot.yml      PRs für neue Basis-Image- und Action-Versionen
+.github/workflows/docker.yml  Tests, Build, Smoke-Test, Push nach ghcr.io
+.github/dependabot.yml      PRs für neue Basis-Image-Digests/-Tags und Action-Versionen
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
 test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs, setup-table.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
@@ -1231,12 +1231,14 @@ Ersetzt den manuellen Datei-Deploy auf dem VPS (Entscheidung Alexander,
   Image, kein separater nginx-Container mit Volume — sonst kämen die
   App-Dateien wieder von Hand oder über ein Kopier-Volume (veraltete
   Dateien, Startreihenfolge), und `docker/nginx.conf` gehört zur App.
-  Stattdessen baut der Workflow `main` jeden Montag neu (`schedule`,
-  `pull: true`), mit Tests und Smoke-Test; Patches unter dem Tag
-  `1.29-alpine-slim` landen so spätestens nach einer Woche in `latest`.
-  `sha-<kurz>` wird dabei nicht neu vergeben. Neue nginx-Minor-Versionen
-  und Action-Versionen kommen per Dependabot-PR (`.github/dependabot.yml`),
-  nie still.
+  Das `Dockerfile` pinnt Tag **und** Digest; Dependabot
+  (`.github/dependabot.yml`, Docker täglich, Actions wöchentlich) öffnet
+  einen PR bei neuem Digest unter demselben Tag (Patch, Alpine-Fix) und bei
+  neuem Tag (z. B. `1.30-alpine-slim`). **Kein Auto-Merge:** Alexander
+  mergt jeden PR selbst; Claude prüft täglich neue PRs und empfiehlt
+  (Impact-Analyse). Der Merge ist ein normaler Push auf `main` und
+  veröffentlicht das Image. Kein wöchentlicher Rebuild mehr (verworfen:
+  bis zu 7 Tage Verzögerung, nicht reproduzierbar).
 - **Sichtbarkeit:** Ein neues ghcr.io-Paket ist privat. Öffentlich
   schalten (Package settings) oder auf dem VPS mit einem Token mit
   `read:packages` einloggen — README, Abschnitt „Docker“.

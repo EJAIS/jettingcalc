@@ -1227,7 +1227,7 @@ Ersetzt den manuellen Datei-Deploy auf dem VPS (Entscheidung Alexander,
   `linux/amd64` und `linux/arm64`. Pull Requests bauen und testen nur.
   Tags: `latest`/`main` = Branch `main`, `sha-<kurz>` für Rollbacks,
   `v1.2.3` → `1.2.3` und `1.2`.
-- **Basis-Updates (2026-11-11):** nginx bleibt im
+- **Basis-Updates (Entscheidung Alexander, 2026-11-11):** nginx bleibt im
   Image, kein separater nginx-Container mit Volume — sonst kämen die
   App-Dateien wieder von Hand oder über ein Kopier-Volume (veraltete
   Dateien, Startreihenfolge), und `docker/nginx.conf` gehört zur App.

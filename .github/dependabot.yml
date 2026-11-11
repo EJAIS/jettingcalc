@@ -1,0 +1,14 @@
+# Opens pull requests for new versions of the container base image
+# (Dockerfile: nginx-unprivileged) and of the actions used in workflows.
+# Patch releases of the same base tag need no PR: the weekly scheduled
+# rebuild in .github/workflows/docker.yml picks them up.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

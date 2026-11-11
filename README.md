@@ -134,7 +134,7 @@ scripts/            sync-sw-cache-version.mjs — derives sw.js's cache version 
 Dockerfile          Container image: unprivileged nginx + runtime files only (see "Docker")
 docker/nginx.conf   nginx config of that image (headers, /jettingcalc/ subpath)
 .dockerignore       Allowlist for the image's build context
-.github/workflows/  docker.yml — tests, builds and publishes the image to ghcr.io
+.github/          workflows/docker.yml — tests, builds and publishes the image (also weekly); dependabot.yml
 original/           Unmodified original Excel spreadsheet (for reference, see "Upstream copyright")
 test/               Regression tests (Node's built-in test runner, zero dependencies)
 test-browser/       Playwright browser tests (optional, see TESTING.md)
@@ -208,6 +208,15 @@ on port **8080** as a non-root user and has a health check (`/healthz`).
 Tags: `latest` and `main` follow the `main` branch, `sha-<short>` pins one
 commit (for rollbacks), and a Git tag `v1.2.3` additionally publishes `1.2.3`
 and `1.2`. Pull requests build and smoke-test the image without publishing.
+
+**Base image updates:** nginx and Alpine are part of the image, so they
+arrive as a new `latest`. A scheduled run rebuilds `main` every Monday
+with the current `nginx-unprivileged:1.29-alpine-slim` (patch releases and
+Alpine security fixes), runs the same tests and smoke test, and pushes it
+only if they pass; Portainer and `docker compose pull` then see an image
+update. A new nginx minor version (e.g. `1.30`) is never picked up
+silently: Dependabot (`.github/dependabot.yml`) opens a pull request for
+it, as it does for new versions of the GitHub Actions used here.
 
 The app is served both at `/` and under `/jettingcalc/`, so a reverse proxy
 on the server can either strip the `/jettingcalc` prefix or forward the path

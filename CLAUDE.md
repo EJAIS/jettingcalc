@@ -120,7 +120,8 @@ scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CA
 Dockerfile                  Container-Image: nginx-unprivileged (alpine-slim) + nur Laufzeitdateien
 docker/nginx.conf           nginx-Konfiguration des Images (Header, /jettingcalc/-Pfad, /healthz)
 .dockerignore               Allowlist für den Build-Kontext
-.github/workflows/docker.yml  Tests, Build, Smoke-Test, Push nach ghcr.io
+.github/workflows/docker.yml  Tests, Build, Smoke-Test, Push nach ghcr.io (auch wöchentlich)
+.github/dependabot.yml      PRs für neue Basis-Image- und Action-Versionen
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
 test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs, setup-table.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
@@ -1226,6 +1227,16 @@ Ersetzt den manuellen Datei-Deploy auf dem VPS (Entscheidung Alexander,
   `linux/amd64` und `linux/arm64`. Pull Requests bauen und testen nur.
   Tags: `latest`/`main` = Branch `main`, `sha-<kurz>` für Rollbacks,
   `v1.2.3` → `1.2.3` und `1.2`.
+- **Basis-Updates (2026-11-11):** nginx bleibt im
+  Image, kein separater nginx-Container mit Volume — sonst kämen die
+  App-Dateien wieder von Hand oder über ein Kopier-Volume (veraltete
+  Dateien, Startreihenfolge), und `docker/nginx.conf` gehört zur App.
+  Stattdessen baut der Workflow `main` jeden Montag neu (`schedule`,
+  `pull: true`), mit Tests und Smoke-Test; Patches unter dem Tag
+  `1.29-alpine-slim` landen so spätestens nach einer Woche in `latest`.
+  `sha-<kurz>` wird dabei nicht neu vergeben. Neue nginx-Minor-Versionen
+  und Action-Versionen kommen per Dependabot-PR (`.github/dependabot.yml`),
+  nie still.
 - **Sichtbarkeit:** Ein neues ghcr.io-Paket ist privat. Öffentlich
   schalten (Package settings) oder auf dem VPS mit einem Token mit
   `read:packages` einloggen — README, Abschnitt „Docker“.

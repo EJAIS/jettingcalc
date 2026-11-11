@@ -4,6 +4,9 @@
 # - Pull requests: unit tests, image build and smoke test, no push.
 # - Push to main: same, then push :latest, :main and :sha-<short>.
 # - Tag v1.2.3: push :1.2.3, :1.2 (and :latest stays on main).
+# - Weekly schedule: rebuild main with the current base image, so nginx and
+#   Alpine patches reach :latest/:main even without a commit. The
+#   sha-<short> tag is left alone then, so it keeps pinning one build.
 name: Docker image
 
 on:
@@ -12,6 +15,8 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'   # Mondays 03:17 UTC
   workflow_dispatch:
 
 concurrency:
@@ -53,12 +58,13 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
+            type=sha,format=short,enable=${{ github.event_name != 'schedule' }}
 
       - name: Build for smoke test
         uses: docker/build-push-action@v6
         with:
           context: .
+          pull: true
           load: true
           tags: jettingcalc:smoke
           cache-from: type=gha
@@ -103,6 +109,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          pull: true
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

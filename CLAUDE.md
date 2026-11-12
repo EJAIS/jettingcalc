@@ -20,7 +20,8 @@ Code auseinanderlaufen, gilt der Code; die Aussage hier wird korrigiert.
   „PWA / Service Worker“).
 - **Deployment:** statisch, in einem Unterverzeichnis von ejais.de
   (ejais.de/jettingcalc). Deshalb sind alle Pfade in `index.html`,
-  `manifest.json` und `sw.js` relativ. Details zu Server-Headern: README,
+  `manifest.json` und `sw.js` relativ. Ausgeliefert als Container-Image
+  über ghcr.io (siehe „Container-Image“). Details zu Server-Headern: README,
   Abschnitt „Deployment“.
 - **Lizenz:** GPL-2.0, da Portierung eines GPL-2.0-Werks (siehe
   „Copyright & Attribution“ und `LICENSE`).
@@ -116,6 +117,11 @@ icons/                      PWA-Icons
 scripts/                    sync-sw-cache-version.mjs — erzeugt JETTINGCALC_CACHE_VERSION
 .githooks/                  pre-commit-Hook, der das Skript oben ausführt
 .gitattributes              LF für Textdateien verbindlich, Binärdateien markiert
+Dockerfile                  Container-Image: nginx-unprivileged (alpine-slim) + nur Laufzeitdateien
+docker/nginx.conf           nginx-Konfiguration des Images (Header, /jettingcalc/-Pfad, /healthz)
+.dockerignore               Allowlist für den Build-Kontext
+.github/workflows/docker.yml  Tests, Build, Smoke-Test, Push nach ghcr.io
+.github/dependabot.yml      PRs für neue Basis-Image-Digests/-Tags und Action-Versionen
 test/                       Unit-Tests (node --test, ohne Abhängigkeiten)
 test-browser/               Playwright-Browsertests (pwa.mjs, catalog.mjs, custom-needles.mjs, carb-selector.mjs, tuning.mjs, header.mjs, setup-table.mjs)
 original/                   Unveränderte Original-Excel (siehe „Copyright & Attribution“)
@@ -1191,13 +1197,62 @@ Hash nicht zum Commit. Der Hook ist nur Bequemlichkeit; er lässt sich mit
 
 ---
 
+## Container-Image (ghcr.io)
+
+Ersetzt den manuellen Datei-Deploy auf dem VPS (Entscheidung Alexander,
+2026-11-10). Nutzung auf dem Server: README, Abschnitt „Docker“.
+
+- **Inhalt nur, was der Browser lädt:** `index.html`, `manifest.json`,
+  `sw.js`, `css/`, `js/` (ohne `js/vendor/README.md`), `icons/`, dazu
+  `LICENSE` (GPL-2.0 verlangt den Lizenztext bei Weitergabe). Kein
+  Build-Stage, weil es keinen Build-Schritt gibt. Basis
+  `nginxinc/nginx-unprivileged:*-alpine-slim`: Port 8080, Benutzer 101,
+  läuft auch mit `read_only` + `tmpfs: /tmp`.
+- **Zwei Listen, eine Prüfung:** Die `COPY`-Zeilen im `Dockerfile` und die
+  Allowlist in `.dockerignore` sind handgeschrieben. `test/docker.test.mjs`
+  schlägt fehl, sobald eine Datei aus `PRECACHE_URLS` (oder `sw.js`) nicht
+  im Image landen würde. Neue Laufzeitdatei außerhalb von `css/`, `js/`,
+  `icons/` → beide Listen ergänzen.
+- **nginx (`docker/nginx.conf`):** setzt die Header aus README
+  „Deployment“ (`application/manifest+json`, `Cache-Control: no-cache` für
+  `sw.js` und die App-Shell), gzip, `absolute_redirect off` (Redirects
+  bleiben hinter dem Reverse Proxy korrekt). Die App liegt unter `/` und
+  per internem Rewrite unter `/jettingcalc/` — der Reverse Proxy darf das
+  Präfix abschneiden oder durchreichen. Kein SPA-Fallback: ein vertippter
+  Pfad bleibt 404 (siehe „PWA / Service Worker“). Kein IPv6-`listen`, weil
+  Container ohne IPv6 sonst nicht starten.
+- **Workflow (`.github/workflows/docker.yml`):** `node --test`, Build,
+  Smoke-Test (jede Datei aus `PRECACHE_URLS` unter `/` und
+  `/jettingcalc/`, Header, `package.json` = 404), dann Push für
+  `linux/amd64` und `linux/arm64`. Pull Requests bauen und testen nur.
+  Tags: `latest`/`main` = Branch `main`, `sha-<kurz>` für Rollbacks,
+  `v1.2.3` → `1.2.3` und `1.2`.
+- **Basis-Updates (Entscheidung Alexander, 2026-11-11):** nginx bleibt im
+  Image, kein separater nginx-Container mit Volume — sonst kämen die
+  App-Dateien wieder von Hand oder über ein Kopier-Volume (veraltete
+  Dateien, Startreihenfolge), und `docker/nginx.conf` gehört zur App.
+  Das `Dockerfile` pinnt Tag **und** Digest; Dependabot
+  (`.github/dependabot.yml`, Docker täglich, Actions wöchentlich) öffnet
+  einen PR bei neuem Digest unter demselben Tag (Patch, Alpine-Fix) und bei
+  neuem Tag (z. B. `1.30-alpine-slim`). **Kein Auto-Merge:** Alexander
+  mergt jeden PR selbst; Claude prüft täglich neue PRs und empfiehlt
+  (Impact-Analyse). Der Merge ist ein normaler Push auf `main` und
+  veröffentlicht das Image. Kein wöchentlicher Rebuild mehr (verworfen:
+  bis zu 7 Tage Verzögerung, nicht reproduzierbar).
+- **Sichtbarkeit:** Ein neues ghcr.io-Paket ist privat. Öffentlich
+  schalten (Package settings) oder auf dem VPS mit einem Token mit
+  `read:packages` einloggen — README, Abschnitt „Docker“.
+
+---
+
 ## Tests
 
 - **Unit-Tests:** `node --test` (bzw. `npm test`) führt alle
   `test/*.test.mjs` aus — Node-Testrunner, keine Abhängigkeiten. Abgedeckt
   sind unter anderem Berechnung (`calc`), Share-Links (`share`), Service
   Worker (`sw`), Nadelkatalog (`needlecatalog`), Feinabstimmung
-  (`tuning`) und die EN/DE-Vollständigkeit (`i18n`).
+  (`tuning`), die Dateiliste des Container-Images (`docker`) und die
+  EN/DE-Vollständigkeit (`i18n`).
 - **Browsertests:** `node --test test-browser/*.mjs` (Playwright,
   Chromium). Einrichtung: `npm install`, dann `npx playwright install
   chromium` — nach jedem Playwright-Update erneut, denn jede Version

@@ -1,0 +1,15 @@
+# Container base image (Dockerfile): pinned by tag and digest. Dependabot
+# opens a pull request both for a new build under the same tag (nginx
+# patch, Alpine security fix: digest changes) and for a new tag such as
+# 1.30-alpine-slim. Nothing is merged automatically; merging publishes the
+# rebuilt image via .github/workflows/docker.yml.
+version: 2
+updates:
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

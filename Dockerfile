@@ -11,7 +11,7 @@
 # changes the digest; Dependabot (.github/dependabot.yml) then opens a pull
 # request, and merging it publishes the rebuilt image. Builds stay
 # reproducible: the same commit always uses the same base image.
-FROM nginxinc/nginx-unprivileged:1.29-alpine-slim@sha256:59678856b05324b7f6371f26eb1520be7fcd8bdc8ab380fc4913db8503e5a842
+FROM nginxinc/nginx-unprivileged:1.31-alpine-slim@sha256:a8cb0f33d51fa107c96fd2bd3a71aaf564ec131e9d2bdf8700944f0ed8b170d7
 
 LABEL org.opencontainers.image.title="Dellorto Jetting Calculator" \
       org.opencontainers.image.description="Jetting calculator for Dellorto carburetors (static PWA served by nginx)" \

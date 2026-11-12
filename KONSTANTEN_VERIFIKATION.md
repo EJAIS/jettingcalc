@@ -303,5 +303,11 @@ kein Datenfehler).
   (https://www.thisoldtractor.com/mg_manuals/dellorto_slide_numbers.pdf);
   die geprüften Theorie-Leitfäden (Laverdamania, Green Flag) nennen ihn
   ebenfalls nicht. Damit bleibt nur die Messung.
-- Bis dahin: Daten beibehalten, aber in UI und Charts als Extrapolation
-  gekennzeichnet.
+- Daten beibehalten, in UI und Charts als Extrapolation gekennzeichnet.
+- **Entscheidung 2026-11-12 (Alexander):** Ob ein Schieber über die volle
+  Bohrung hinaus fährt, hängt vom Modell ab und lässt sich nicht für einen
+  Vergasertyp festlegen. Der Bereich 105–115 % bleibt als
+  kalkulatorischer Faktor in der App (unverändert, weiter als
+  Extrapolation gekennzeichnet; maxHD und Feinabstimmung nutzen ihn
+  nicht). Eine Messung des Schieberhubs ist nicht mehr vorgesehen.
+- Status: erledigt (kein offener Verifikationspunkt mehr).

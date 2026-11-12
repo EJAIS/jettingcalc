@@ -210,8 +210,8 @@ localStorage (siehe „Custom Needles“).
 
 **Clip-Anzahl:** `getClipCount()` nimmt den `clips`-Wert der Nadel, sonst
 `DEFAULT_CLIPS_BY_PREFIX` nach Präfix. Welche Präfix-Defaults physisch
-verifiziert sind, steht in `VERIFIED_DEFAULT_CLIP_PREFIXES` (derzeit nur D);
-die übrigen Defaults sind Platzhalter. **Einzige Stelle** der Auflösung
+verifiziert sind, steht in `VERIFIED_DEFAULT_CLIP_PREFIXES` (D, X, U —
+also alle; eine neue Serie kommt erst nach einer Messung hinein). **Einzige Stelle** der Auflösung
 „eigenes `clips` der Nadel, sonst `getClipCount()`“ ist
 `resolveNeedleClips(type, needle)` (`needledb.js`); `resolveClipCount(type,
 allNeedles)` schlägt die Nadel nur nach und ruft sie auf. Setup-Tabelle,
@@ -683,11 +683,12 @@ hinwies. Abgesichert in `catalog.mjs` (360 px).
 ### Clip-Anzahl
 
 `clipsSource` je Zeile: `'verified'` (per-Nadel-Wert aus `NEEDLE_DB` oder
-Serie in `VERIFIED_DEFAULT_CLIP_PREFIXES`, derzeit nur D), `'custom'`
-(Custom Needle) oder `'default'` (unverifizierter Serien-Platzhalter, X und
-U). `'default'` wird in der Tabelle mit "*" gekennzeichnet
-(`.catalog-unverified`, Tooltip `catalog.clipsDefault.tooltip`, Erklärung in
-der Fußnote).
+Serie in `VERIFIED_DEFAULT_CLIP_PREFIXES`, derzeit D, X, U), `'custom'`
+(Custom Needle) oder `'default'` (unverifizierter Serien-Platzhalter; seit
+2026-11-12 keine Nadel in `NEEDLE_DB`). `'default'` wird in der Tabelle mit
+"*" gekennzeichnet (`.catalog-unverified`, Tooltip
+`catalog.clipsDefault.tooltip`); die Fußnote erklärt das „*“ nicht mehr,
+solange keine Serie unverifiziert ist.
 
 ### i18n
 

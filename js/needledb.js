@@ -318,9 +318,8 @@ export function getTaperCount(needle) {
 // Fallback clip-position count for needle types without per-needle data
 // yet (all except K, which has verified per-needle counts from the
 // official Dellorto datasheet — see NEEDLE_DB entries).
-// D: verified via physical measurement (KONSTANTEN_VERIFIKATION.md).
-// X, U: NOT yet verified per-needle — placeholder pending physical
-// PHBH measurement (X) / dedicated research (U). Do not treat as final.
+// D, X, U: verified via physical measurement — 4 grooves counted on D36,
+// X2, X13 and U16 (KONSTANTEN_VERIFIKATION.md).
 const DEFAULT_CLIPS_BY_PREFIX = {
   D: 4,
   X: 4,
@@ -328,9 +327,10 @@ const DEFAULT_CLIPS_BY_PREFIX = {
 };
 
 // Prefixes whose DEFAULT_CLIPS_BY_PREFIX value is physically verified and
-// can be presented as such. D is verified (KONSTANTEN_VERIFIKATION.md);
-// X and U are placeholders and must stay out of this list until verified.
-export const VERIFIED_DEFAULT_CLIP_PREFIXES = ['D'];
+// can be presented as such (KONSTANTEN_VERIFIKATION.md). A new series
+// added to DEFAULT_CLIPS_BY_PREFIX stays out of this list until its groove
+// count has been measured; the catalog then marks it with "*".
+export const VERIFIED_DEFAULT_CLIP_PREFIXES = ['D', 'X', 'U'];
 
 // Clip-groove geometry by groove count, measured on K needles (2026-09):
 // spacing = pitch between adjacent grooves; topOffset = distance from the

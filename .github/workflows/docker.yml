@@ -42,7 +42,7 @@ jobs:
       - name: Unit tests
         run: node --test
 
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
 
       - name: Image metadata

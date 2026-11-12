@@ -88,6 +88,30 @@ kein Datenfehler).
   ohne ØD/F, im Modell nicht darstellbar, als Datenblatt-Inkonsistenz
   dokumentiert.
 
+### U- und X-Nadeln: Nut-Geometrie und Nut-Anzahl (2026-11-12)
+
+- **Datum:** 2026-11-12
+- **Methode:** Direktmessung mit Messschieber (Alexander), gleiche Methode
+  wie bei den K-Nadeln (Spannmaß Außenkante oberste → unterste Nut,
+  Nutbreite, Oberkante → Nut 1).
+- **U16:** Gesamtlänge 68,0 mm (Zuordnung U statt K damit gesichert),
+  4 Nuten, Spannmaß 4,10 mm, Nutbreite 0,50 mm, Oberkante → Nut 1
+  1,60 mm. Nutabstand (4,10 − 0,50) / 3 = 1,20 mm — identisch mit der
+  4-Nut-K-Geometrie. Keine Override-Felder `clipSpacing` /
+  `clipTopOffset` für U-Nadeln nötig; `minExposed.VHSx` gilt für K und U
+  ohne Versatz.
+- **X13:** Gesamtlänge 55,0 mm (bestätigt `NEEDLE_LENGTHS["X"]` an einer
+  zweiten X-Nadel nach X2), 4 Nuten, Spannmaß 4,10 mm, Nutbreite 0,50 mm.
+  Nutabstand 1,20 mm — bestätigt `spacing = 1,2` für PHBH. X13 statt X2
+  gemessen; die Messanleitung lässt jede X-Nadel zu.
+- **Folge:** Mit X2 (2026-08) und X13 sowie U16 ist die Nut-Anzahl 4 für
+  beide Serien gezählt. `VERIFIED_DEFAULT_CLIP_PREFIXES` in
+  `js/needledb.js` enthält jetzt D, X und U; das „*“ für unverifizierte
+  Clip-Anzahlen erscheint im Katalog und in der Feinabstimmung bei keiner
+  Nadel aus `NEEDLE_DB` mehr.
+- **Einschränkung:** je Serie eine bzw. zwei Nadeln gemessen; dass alle
+  U- und X-Nadeln 4 Nuten haben, ist eine Serienannahme wie bei D.
+
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
 - **Datum:** 2026-08
@@ -179,16 +203,6 @@ kein Datenfehler).
   size compensation“. Damit bleibt nur die Messung.
 - minExposed für VHSx (K und U gemeinsam) — nie unabhängig gemessen,
   benötigt idlePos-Messung an einem realen VHSx-Vergaser.
-- **U-Nadel Nut-Geometrie (Priorität MITTEL):** Spannmaß und Oberkante-
-  Offset an U16 messen. Relevant, weil `minExposed.VHSx` für K und U
-  gemeinsam gilt — weicht die U-Geometrie von der 4-Nut-K-Geometrie
-  (1,2 / 1,60) ab, sind alle U-Nadeln um die Differenz versetzt. Ergebnis
-  ggf. als Override-Felder `clipSpacing` / `clipTopOffset` an den
-  U-Einträgen hinterlegen.
-- **X-Nadel Nutabstand (Priorität NIEDRIG):** Spannmaß an X2 messen, um
-  `spacing = 1,2` für PHBH zu bestätigen (bisher Annahme). Der
-  Oberkante-Offset ist für X irrelevant, da `minExposed.PHBH` direkt
-  mit X2 gemessen wurde.
 - **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles — gelöst (2026-09):**
   `getClipGeometry()` wendet die K-Nadel-Korrektur nur noch auf Nadeln
   aus `NEEDLE_DB` an. Custom Needles verwenden unabhängig von ihrer

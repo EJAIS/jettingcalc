@@ -12,7 +12,7 @@ import { NEEDLE_DB, CARB_TYPES } from '../js/needledb.js';
 import {
   CATALOG_COLUMNS, CATALOG_EMPTY_VALUE, getNeedleSeries, compareNeedleTypes,
   buildCatalogRows, getSeriesList, countByTaper, filterCatalogRows,
-  sortCatalogRows, formatCatalogValue,
+  sortCatalogRows, formatCatalogValue, getClipsSource,
 } from '../js/needlecatalog.js';
 
 // The three example setups from the original spreadsheet's Chart sheet
@@ -101,12 +101,14 @@ test('length: K 73.5, U 68.0, X1 55.0, X37 override 56.2, D36 52.0', () => {
 test('clips and clipsSource', () => {
   const vhsx = rowsFor('VHSx', { allNeedles: { ...NEEDLE_DB, K99: CUSTOM_K99 }, customTypes: ['K99'] });
   assert.deepEqual([rowOf(vhsx, 'K98').clips, rowOf(vhsx, 'K98').clipsSource], [5, 'verified']);
-  assert.deepEqual([rowOf(vhsx, 'U1').clips, rowOf(vhsx, 'U1').clipsSource], [4, 'default']);
+  assert.deepEqual([rowOf(vhsx, 'U1').clips, rowOf(vhsx, 'U1').clipsSource], [4, 'verified']);
   assert.deepEqual([rowOf(vhsx, 'K99').clips, rowOf(vhsx, 'K99').clipsSource], [3, 'custom']);
   const d36 = rowOf(rowsFor('PHBL'), 'D36');
   assert.deepEqual([d36.clips, d36.clipsSource], [4, 'verified']);
   const x1 = rowOf(rowsFor('PHBH'), 'X1');
-  assert.deepEqual([x1.clips, x1.clipsSource], [4, 'default']);
+  assert.deepEqual([x1.clips, x1.clipsSource], [4, 'verified']);
+  // A series without a measured default (none in NEEDLE_DB today) stays 'default'.
+  assert.equal(getClipsSource('Z1', false), 'default');
 });
 
 // --- Custom needles ----------------------------------------------------------

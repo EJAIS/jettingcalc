@@ -339,7 +339,7 @@ test('VHSx K27 C3: r1 richer → K96 C5, U7 C3, K97 C3', () => {
   assertSuggestion(first, 'K96', 5, [0.0, 2.9, 3.4, 0.0, 0.0]);
   assertSuggestion(second, 'U7', 3);
   assert.equal(second.tags.seriesChange, true);
-  assert.equal(second.tags.clipsUnverified, true);
+  assert.equal(second.tags.clipsUnverified, false);
   assertSuggestion(third, 'K97', 3, [1.9, 6.3, 2.9, 0.0, 0.0]);
 
   assert.deepEqual(first.tags, { clipOnly: false, seriesChange: false, custom: false, clipsUnverified: false });

@@ -144,19 +144,16 @@ kein Datenfehler).
   bestätigten Relativmaße (K/U-Versatz, Nadellängen, Nut-Geometrie).
   Ein unabhängiger Absolutwert liegt weiterhin nicht vor. Der DP/DQ-Offset (2 mm)
   wurde mangels DP-Mischrohr nicht geprüft.
-- **K98 (5 Nuten) hängt 0,3 mm tiefer als modelliert — Einzelabweichung:**
-  Das Modell rechnet für 5-Nut-Nadeln mit 1,50 mm Oberkante → Nut 1
-  (4 Nuten: 1,60 mm), also +0,1 mm gegenüber K24. Gemessen am Überstand
-  +0,4 mm. Direktmessung Oberkante → Nut 1 (gleicher Messschieber, gleiche
-  Methode): K24 1,5 mm, K98 1,1 mm, K57 (5 Nuten) 1,5 mm. Die
-  K98-Abweichung ist damit in sich konsistent (beide Messwege 0,4 mm),
-  K57 zeigt sie aber nicht; die Differenz 5-Nut ↔ 4-Nut von ≈ 0,1 mm aus
-  der Messung 2026-09 bleibt plausibel. **Folge (2026-11-14):** Alexander
-  hatte die Korrektur an eine Bestätigung durch K57 geknüpft; die blieb
-  aus. Deshalb keine Änderung an `CLIP_GEOMETRY_BY_COUNT` und kein
-  Per-Nadel-Override für K98 — eine einzelne Nadel kann Fertigungs- oder
-  Exemplarstreuung sein. Eine zweite K98 würde klären, ob es typbedingt
-  ist.
+- **Oberkante → Nut 1 (Direktmessung, gleicher Messschieber):** K24
+  (4 Nuten) 1,5 mm, K57 (5 Nuten) 1,5 mm, K98 (5 Nuten) 1,5 mm (eine
+  erste Messung von 1,1 mm an K98 erwies sich bei der Wiederholung als
+  Messfehler). Die Messung 2026-09 ergab 1,60 / 1,50 mm (4 / 5 Nuten);
+  die Differenz von 0,1 mm liegt innerhalb der Messgenauigkeit.
+  `CLIP_GEOMETRY_BY_COUNT` bleibt unverändert.
+- **Offen (gering):** Beim Nadelüberstand hängt K98 0,4 mm tiefer als
+  K24, das Modell erwartet 0,1 mm. Die Nut-Geometrie erklärt das nicht;
+  mögliche Ursachen sind Exemplarstreuung der Gesamtlänge oder der Sitz
+  des Clips. Keine Änderung.
 
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
@@ -250,8 +247,6 @@ kein Datenfehler).
 - ~~minExposed für VHSx~~ — erledigt 2026-11-14 per Entscheidung
   (Absolutwert nicht messbar, Relativmaße bestätigt), siehe Abschnitt
   „VHSH 30: Nadelüberstand, K57 und `minExposed.VHSx`“.
-- Optional: zweite K98 messen (Oberkante → Nut 1), um die
-  Einzelabweichung von 0,3 mm einzuordnen — siehe derselbe Abschnitt.
 - **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles — gelöst (2026-09):**
   `getClipGeometry()` wendet die K-Nadel-Korrektur nur noch auf Nadeln
   aus `NEEDLE_DB` an. Custom Needles verwenden unabhängig von ihrer

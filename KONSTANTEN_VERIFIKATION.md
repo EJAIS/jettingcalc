@@ -112,6 +112,47 @@ kein Datenfehler).
 - **Einschränkung:** je Serie eine bzw. zwei Nadeln gemessen; dass alle
   U- und X-Nadeln 4 Nuten haben, ist eine Serienannahme wie bei D.
 
+### VHSH 30: Nadelüberstand, K57 und `minExposed.VHSx` (2026-11-14)
+
+- **Datum:** 2026-11-14
+- **Vergaser:** VHSH 30 (Bohrung nachgemessen: 30,0 mm), Mischrohre
+  DQ266 und DQ267 (gleich lang), kein DP vorhanden.
+- **Methode:** Nadel mit Clip in Nut 1 im Schieber, Tiefenmaß
+  Schieberunterkante → Nadelspitze (Überstand Ü), Messschieber
+  (Alexander).
+
+  | Nadel | Nuten | Ü gemessen | Δ zu K24 gemessen | Δ zu K24 Modell |
+  |-------|-------|------------|-------------------|-----------------|
+  | K24   | 4     | 47,8 mm    | —                 | —               |
+  | K98   | 5     | 48,2 mm    | +0,4 mm           | +0,1 mm         |
+  | U16   | 4     | 42,3 mm    | −5,5 mm           | −5,5 mm         |
+
+  Ü1 und Ü2 wurden auf Nachfrage wiederholt, beide unverändert.
+- **K-/U-Versatz bestätigt:** U16 − K24 = −5,5 mm entspricht exakt der
+  Längendifferenz (68,0 vs. 73,5 mm). `minExposed.VHSx` gilt damit für
+  K- und U-Nadeln gleichermaßen, wie im Modell angenommen.
+- **K57:** 5 Nuten, Gesamtlänge 73,5 mm — bestätigt `clips: 5` und
+  `NEEDLE_LENGTHS["K"]`.
+- **DQ266 / DQ267:** gleich lang; die Mischrohr-Größe ändert nur die
+  Innenbohrung, nicht den Offset.
+- **`minExposed.VHSx` (26,4 mm) — Absolutwert nicht messbar:** Die Tiefe
+  der Mischrohr-Oberkante gegenüber der Schieber-Auflage (T) ließ sich
+  nicht messen; das Mischrohr ragt im VHSH sichtbar in die Bohrung
+  (Foto im Projekt-Thread). Aus K24 folgt minExposed = 25,7 mm + T; das
+  Modell entspricht T ≈ 0,7 mm. **Entscheidung 2026-11-14 (Alexander):**
+  Wert bleibt 26,4 mm und gilt als bestätigt, gestützt auf die
+  bestätigten Relativmaße (K/U-Versatz, Nadellängen, Nut-Geometrie).
+  Ein unabhängiger Absolutwert liegt weiterhin nicht vor. Der DP/DQ-Offset (2 mm)
+  wurde mangels DP-Mischrohr nicht geprüft.
+- **Offen — K98 (5 Nuten) hängt 0,3 mm tiefer als modelliert:** Das
+  Modell rechnet für 5-Nut-Nadeln mit 1,50 mm Oberkante → Nut 1
+  (4 Nuten: 1,60 mm), also +0,1 mm gegenüber K24. Gemessen +0,4 mm;
+  das entspräche etwa 1,20 mm Oberkante → Nut 1 bei K98. Noch nicht
+  geändert: Klärung durch direkte Messung Oberkante → Nut 1 an K98
+  (und K24 zum Vergleich). Bestätigt sich der Wert, ändert sich der
+  Oberkanten-Offset in `CLIP_GEOMETRY_BY_COUNT` für alle 33
+  5-Nut-K-Nadeln.
+
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
 - **Datum:** 2026-08
@@ -201,8 +242,11 @@ kein Datenfehler).
   ist eine eigene Heuristik des Excel-Autors — Versionshistorie in der
   Original-Excel (`xl/comments1.xml`): „Version 1.4: … added basic carb
   size compensation“. Damit bleibt nur die Messung.
-- minExposed für VHSx (K und U gemeinsam) — nie unabhängig gemessen,
-  benötigt idlePos-Messung an einem realen VHSx-Vergaser.
+- ~~minExposed für VHSx~~ — erledigt 2026-11-14 per Entscheidung
+  (Absolutwert nicht messbar, Relativmaße bestätigt), siehe Abschnitt
+  „VHSH 30: Nadelüberstand, K57 und `minExposed.VHSx`“.
+- Oberkante → Nut 1 bei 5-Nut-K-Nadeln (K98 gemessen +0,3 mm tiefer als
+  modelliert) — siehe derselbe Abschnitt.
 - **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles — gelöst (2026-09):**
   `getClipGeometry()` wendet die K-Nadel-Korrektur nur noch auf Nadeln
   aus `NEEDLE_DB` an. Custom Needles verwenden unabhängig von ihrer

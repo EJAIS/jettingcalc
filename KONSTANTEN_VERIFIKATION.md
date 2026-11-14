@@ -144,14 +144,18 @@ kein Datenfehler).
   bestätigten Relativmaße (K/U-Versatz, Nadellängen, Nut-Geometrie).
   Ein unabhängiger Absolutwert liegt weiterhin nicht vor. Der DP/DQ-Offset (2 mm)
   wurde mangels DP-Mischrohr nicht geprüft.
-- **Offen — K98 (5 Nuten) hängt 0,3 mm tiefer als modelliert:** Das
-  Modell rechnet für 5-Nut-Nadeln mit 1,50 mm Oberkante → Nut 1
-  (4 Nuten: 1,60 mm), also +0,1 mm gegenüber K24. Gemessen +0,4 mm;
-  das entspräche etwa 1,20 mm Oberkante → Nut 1 bei K98. Noch nicht
-  geändert: Klärung durch direkte Messung Oberkante → Nut 1 an K98
-  (und K24 zum Vergleich). Bestätigt sich der Wert, ändert sich der
-  Oberkanten-Offset in `CLIP_GEOMETRY_BY_COUNT` für alle 33
-  5-Nut-K-Nadeln.
+- **K98 (5 Nuten) hängt 0,3 mm tiefer als modelliert — Einzelabweichung:**
+  Das Modell rechnet für 5-Nut-Nadeln mit 1,50 mm Oberkante → Nut 1
+  (4 Nuten: 1,60 mm), also +0,1 mm gegenüber K24. Gemessen am Überstand
+  +0,4 mm. Direktmessung Oberkante → Nut 1 (gleicher Messschieber, gleiche
+  Methode): K24 1,5 mm, K98 1,1 mm, K57 (5 Nuten) 1,5 mm. Die
+  K98-Abweichung ist damit in sich konsistent (beide Messwege 0,4 mm),
+  K57 zeigt sie aber nicht; die Differenz 5-Nut ↔ 4-Nut von ≈ 0,1 mm aus
+  der Messung 2026-09 bleibt plausibel. **Entscheidung 2026-11-14
+  (Alexander):** keine Änderung an `CLIP_GEOMETRY_BY_COUNT` und kein
+  Per-Nadel-Override für K98 — eine einzelne Nadel kann Fertigungs- oder
+  Exemplarstreuung sein. Eine zweite K98 würde klären, ob es typbedingt
+  ist.
 
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
@@ -245,8 +249,8 @@ kein Datenfehler).
 - ~~minExposed für VHSx~~ — erledigt 2026-11-14 per Entscheidung
   (Absolutwert nicht messbar, Relativmaße bestätigt), siehe Abschnitt
   „VHSH 30: Nadelüberstand, K57 und `minExposed.VHSx`“.
-- Oberkante → Nut 1 bei 5-Nut-K-Nadeln (K98 gemessen +0,3 mm tiefer als
-  modelliert) — siehe derselbe Abschnitt.
+- Optional: zweite K98 messen (Oberkante → Nut 1), um die
+  Einzelabweichung von 0,3 mm einzuordnen — siehe derselbe Abschnitt.
 - **`CLIP_GEOMETRY_BY_COUNT` bei Custom Needles — gelöst (2026-09):**
   `getClipGeometry()` wendet die K-Nadel-Korrektur nur noch auf Nadeln
   aus `NEEDLE_DB` an. Custom Needles verwenden unabhängig von ihrer

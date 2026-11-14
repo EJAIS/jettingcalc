@@ -151,8 +151,9 @@ kein Datenfehler).
   Methode): K24 1,5 mm, K98 1,1 mm, K57 (5 Nuten) 1,5 mm. Die
   K98-Abweichung ist damit in sich konsistent (beide Messwege 0,4 mm),
   K57 zeigt sie aber nicht; die Differenz 5-Nut ↔ 4-Nut von ≈ 0,1 mm aus
-  der Messung 2026-09 bleibt plausibel. **Entscheidung 2026-11-14
-  (Alexander):** keine Änderung an `CLIP_GEOMETRY_BY_COUNT` und kein
+  der Messung 2026-09 bleibt plausibel. **Folge (2026-11-14):** Alexander
+  hatte die Korrektur an eine Bestätigung durch K57 geknüpft; die blieb
+  aus. Deshalb keine Änderung an `CLIP_GEOMETRY_BY_COUNT` und kein
   Per-Nadel-Override für K98 — eine einzelne Nadel kann Fertigungs- oder
   Exemplarstreuung sein. Eine zweite K98 würde klären, ob es typbedingt
   ist.

@@ -6,7 +6,10 @@ import { NEEDLE_DB, JET_OFFSETS, getClipGeometry, CLIP_TOP_OFFSET_REF,
          getNeedleLength, getTaperCount } from './needledb.js';
 
 // Minimum exposed needle length at idle (mm), by carburetor family.
-// VHSx: 26.4 — from the original GUE spreadsheet (K/U needles).
+// VHSx: 26.4 — from the original GUE spreadsheet (K/U needles); kept as
+//              confirmed 2026-11-14 after a VHSH 30 check (K/U offset
+//              measured, absolute value not measurable, see
+//              KONSTANTEN_VERIFIKATION.md).
 // PHBL: 16.3 — measured 2026-08 on a 26 mm PHBL with D36 needle + AQ
 //              atomizer (idlePos 31.7 mm at clip 1, cross-verified against
 //              an independent measurement chain).

@@ -405,7 +405,6 @@ function renderCalcResults(snap = readNeedleSnapshot()) {
 
 // Beta-banner translation key by carb type — carb types not listed here show no banner.
 const BETA_BANNER_KEY = {
-  PHBH: 'carbType.phbhBetaBanner',
   PHBL: 'carbType.phblBetaBanner',
 };
 

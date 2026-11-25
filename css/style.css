@@ -2396,18 +2396,21 @@ footer a:hover { color: #ea7a82; text-decoration: underline; }
     padding: 14px;
   }
 
+  /* VHSx and PHBH stacked, each in full width */
+  .carb-type-main { flex-direction: column; }
+
   .carb-type-main .carb-type-option {
     flex: 1;
     min-width: 0;
     min-height: 44px;
   }
 
-  /* Beta heading on its own row, PHBH and PHBL side by side below it.
-     Column gap 12px (not 8px): the info icon's 12px hit area then ends in
-     the gap instead of under the neighbouring option. */
+  /* Beta heading on its own row, PHBL with its info icon below it.
+     Column gap 12px (not 8px): should a second beta option join, the info
+     icon's 12px hit area ends in the gap instead of under the neighbour. */
   .carb-type-beta {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px 12px;
     padding-left: 0;
     border-left: none;

@@ -13,16 +13,35 @@ import { NEEDLE_DB, JET_OFFSETS, getClipGeometry, CLIP_TOP_OFFSET_REF,
 // PHBL: 16.3 — measured 2026-08 on a 26 mm PHBL with D36 needle + AQ
 //              atomizer (idlePos 31.7 mm at clip 1, cross-verified against
 //              an independent measurement chain).
-// PHBH: 23.8 — measured 2026-08 on a 30 mm PHBH with X2 needle (4 clip
-//              positions) + AS266 atomizer (idlePos 31.2 mm at clip 1).
-//              Needle length independently confirmed at 55.0 mm via
-//              direct caliper measurement (see NEEDLE_LENGTHS["X"]).
+// PHBH: 23.2 — measured 2026-11-25 directly on a 28 mm and a 30 mm PHBH
+//              with X2 needle at clip 1, AV and AS atomizers (idlePos
+//              28 mm: 31.9 / 34.0, 30 mm: 31.6 / 33.8; mean of the four,
+//              spread ±0.2 mm). Calibrated together with a bore term of 0
+//              (see BORE_TERM_BY_CARB_TYPE). Supersedes the indirect
+//              2026-08 value 23.8 (with bore term). Needle length 55.0 mm
+//              confirmed by caliper (see NEEDLE_LENGTHS["X"]).
 const MIN_EXPOSED_BY_CARB_TYPE = {
   VHSx: 26.4,
-  PHBH: 23.8,
+  PHBH: 23.2,
   PHBL: 16.3,
 };
 const MIN_EXPOSED_DEFAULT = 26.4;
+
+// Bore-size compensation of the idle position: idlePos shifts by
+// coefficient × (carbSize − 34) mm. The ½ comes from the original GUE
+// spreadsheet (v1.4 "basic carb size compensation", a heuristic).
+// PHBH: 0 — measured 2026-11-25: idlePos is the same at 28 and 30 mm
+//       (AV 31.9 vs 31.6, AS 34.0 vs 33.8); the closed slide rests on
+//       the bore floor in both. Coupled with MIN_EXPOSED_BY_CARB_TYPE —
+//       change both only together and only after a measurement.
+// VHSx, PHBL: ½ kept, not measured at a second bore size.
+const BORE_REFERENCE = 34;
+const BORE_TERM_BY_CARB_TYPE = {
+  VHSx: 0.5,
+  PHBH: 0,
+  PHBL: 0.5,
+};
+const BORE_TERM_DEFAULT = 0.5;
 
 const THROTTLE_POINTS = [
   0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45,
@@ -77,11 +96,12 @@ export function calcSetup(setup, needleSource) {
   //   calibrated with. 4-groove needles → correction 0.
   const { spacing, topOffset } = getClipGeometry(needle, needleType);
   const minExposed = MIN_EXPOSED_BY_CARB_TYPE[needle.carbType] ?? MIN_EXPOSED_DEFAULT;
+  const boreTerm = BORE_TERM_BY_CARB_TYPE[needle.carbType] ?? BORE_TERM_DEFAULT;
   const idlePos = needleLength - minExposed
     - (topOffset - CLIP_TOP_OFFSET_REF)
     - (clipPos - 1) * spacing
     + needleOffset
-    + (carbSize - 34) / 2;
+    + boreTerm * (carbSize - BORE_REFERENCE);
 
   const curve = THROTTLE_POINTS.map(tp => {
     const pos = idlePos - tp * carbSize;

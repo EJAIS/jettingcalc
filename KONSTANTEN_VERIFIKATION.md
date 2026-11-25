@@ -155,6 +155,53 @@ kein Datenfehler).
   mögliche Ursachen sind Exemplarstreuung der Gesamtlänge oder der Sitz
   des Clips. Keine Änderung.
 
+### PHBH 28 und 30: Leerlaufposition, Bohrungsterm, Mischrohr-Offset (2026-11-25)
+
+- **Datum:** 2026-11-21 (PHBH 28, AV) und 2026-11-25 (Rest)
+- **Vergaser:** PHBH 28 mit Dellorto-Schieber (Höhe 36,9 mm), PHBH 30 mit
+  Nachbau-Schieber YSN (Höhe 36,3 mm); Bohrungen nachgemessen. Nadel in
+  beiden X2, Clip in Nut 1. Leerlaufanschlag-Schraube heraus, Schieber
+  sitzt auf.
+- **Methode (direkt, Messschieber, Alexander):** alles von der
+  Gehäuse-Oberkante (Dichtfläche des Schieberdeckels):
+  N = Schieber-Oberkante → Nadelspitze (Schieber ausgebaut),
+  H1 = Gehäuse-Oberkante → Rand des Mischrohrs (Schieber ausgebaut),
+  H2 = Gehäuse-Oberkante → Schieber-Oberkante (Schieber ganz unten).
+  idlePos = H2 + N − H1.
+
+  | Vergaser | Mischrohr | N | H1 | H2 | idlePos |
+  |---|---|---|---|---|---|
+  | PHBH 28 | AV | 72,4 | 71,3 | 30,8 | 31,9 |
+  | PHBH 28 | AS | 72,4 | 69,2 | 30,8 | 34,0 |
+  | PHBH 30 | AV | 71,6 | 73,8 | 33,8 | 31,6 |
+  | PHBH 30 | AS | 71,6 | 71,6 | 33,8 | 33,8 |
+
+- **Nadelüberstand unter dem Schieber** (N − Schieberhöhe): 35,5 mm
+  (Dellorto) bzw. 35,3 mm (YSN) — die Nadel sitzt in beiden Schiebern
+  praktisch gleich.
+- **Mischrohr-Offset AS = AV + 2 mm bestätigt:** AS ist 2 mm länger
+  (lose gemessen); im Einbau 2,1 mm (28) bzw. 2,2 mm (30).
+- **Bohrungsterm gilt für PHBH nicht:** Das Modell verschob idlePos um
+  ½ × (Bohrung − 34), also +1,0 mm von 28 auf 30 mm; gemessen −0,3 mm
+  (AV) bzw. −0,2 mm (AS), also gleich. Der geschlossene Schieber sitzt
+  in beiden Größen auf dem Bohrungsboden.
+  `BORE_TERM_BY_CARB_TYPE.PHBH = 0` (`js/calc.js`).
+- **`minExposed.PHBH` = 23,2 mm:** 55,0 − idlePos + Offset ergibt 23,1 /
+  23,0 (28 mm, AV / AS) und 23,4 / 23,2 (30 mm), Mittel 23,2 ± 0,2 mm.
+  Modell danach: X2 Clip 1 = 31,8 mm (AV) / 33,8 mm (AS) für jede
+  PHBH-Bohrung.
+- **Schieber:** rund (Rundschieber bestätigt), Schieber 28er Nr. 40.
+- **Folgen für die Rechnung:** Die Nadel liegt im Modell 2,6 mm (30 mm)
+  bis 4,6 mm (26 mm) tiefer als vorher. PHBH-Setups rechnen im
+  Teillastbereich magerer; Max HD sinkt typischerweise von ~266 (Nadel
+  rechnerisch vor Vollgas aus dem Mischrohr) auf ~185–192, weil die Nadel
+  bei 100 % Gasstellung noch im Mischrohr steht (X2, AS, 30 mm: 3,8 mm).
+- **Regressionsschutz:** `test/calc.test.mjs` prüft alle vier Messwerte
+  (±0,25 mm), die Unabhängigkeit von der Bohrung bei PHBH und den
+  unveränderten Term ½ für VHSx und PHBL.
+- **Entscheidung 2026-11-25 (Alexander):** Werte übernehmen, PHBH verlässt
+  den Beta-Status.
+
 ### `NEEDLE_LENGTHS["D"]` = 52.0 mm
 
 - **Datum:** 2026-08
@@ -185,9 +232,11 @@ kein Datenfehler).
 - **PHBL:** 16.3 mm — gemessen 2026-08 an einem 26 mm PHBL mit D36-Nadel
   und AQ-Mischrohr (idlePos 31.70 mm bei Clip 1), gegen eine unabhängige
   Messkette gegengeprüft. Siehe Verifikationswert in `js/calc.js`.
-- **PHBH:** 23.8 mm — gemessen 2026-08 an einem 30 mm PHBH mit X2-Nadel
-  und AS266-Mischrohr (idlePos 31.2 mm bei Clip 1); Details im Abschnitt
-  „X-Nadel-Länge und `minExposed` (PHBH) — Auflösung“.
+- **PHBH:** 23.2 mm (mit Bohrungsterm 0) — direkt gemessen 2026-11-25
+  an einem 28- und einem 30-mm-PHBH mit X2-Nadel, AV- und AS-Mischrohr;
+  Details im Abschnitt „PHBH 28 und 30: Leerlaufposition, Bohrungsterm,
+  Mischrohr-Offset“. Der frühere Wert 23.8 mm (2026-08, indirekt, mit
+  Bohrungsterm ½) ist überholt.
 
 ### X-Nadel-Länge und `minExposed` (PHBH) — Auflösung
 
@@ -205,7 +254,12 @@ kein Datenfehler).
   "Length: 55mm"). Erklärt zugleich die X37-Fußnote "56,2mm" als
   55mm Basis + 1,2mm Clip-Spacing.
 - `MIN_EXPOSED_BY_CARB_TYPE.PHBH` korrigiert von 26,4mm (von VHSx
-  geerbt) auf **23,8mm**.
+  geerbt) auf **23,8mm**. **Überholt 2026-11-25:** Die direkte Messung
+  an zwei Vergasern ergibt idlePos 33,8 mm statt 31,2 mm (X2, AS, 30 mm)
+  und keinen Bohrungsterm; neuer Wert 23,2 mm. Die indirekte Messung von
+  2026-08 lag also rund 2,6 mm zu niedrig. Die Nadellänge 55,0 mm bleibt
+  gültig; die Plausibilitätsprüfung unten (Nadel löst sich bei ~98,5 %)
+  gilt für die neuen Werte nicht mehr, siehe dort.
 - **Plausibilitätsprüfung:** alle 2088 geprüften X-Nadel-Kombinationen
   (87 Nadeln × AV/AS × 3 PHBH-Bohrungen × 4 Clip-Positionen) gegen
   negative Nadelposition bei Volllast durchgerechnet. Mit den neuen
@@ -214,6 +268,9 @@ kein Datenfehler).
   Vollgas), keine Kombination unterschreitet 85% Gasstellung. Zum
   Vergleich: mit den alten Werten blieb die Nadel rechnerisch bis
   über 100% hinaus wirksam (Median 134,7%), was eher untypisch ist.
+  **Nachtrag 2026-11-25:** Die direkte Messung widerlegt diese
+  Plausibilitätsannahme — die Nadel steht bei 100 % noch im Mischrohr.
+  Die Prüfung war eine Heuristik, keine Messung.
 - **Clip-Anzahl X-Nadel:** an der X2-Nadel wurden 4 Kerben gezählt —
   bestätigt die bisherige Fallback-Annahme (`DEFAULT_CLIPS_BY_PREFIX.X
   = 4`) für mindestens diese eine Nadel.
@@ -236,10 +293,11 @@ kein Datenfehler).
   die Original-Excel-Formeln verifiziert, nicht gegen eine unabhängige
   Zweitquelle.
 - Vergasergrößen-Term `(carbSize − 34)/2` — Koeffizient ½ von VHSx
-  geerbt, weder für PHBL noch für PHBH bei mehreren Bohrungsgrößen
-  bestätigt (PHBL nur bei 26mm gemessen, PHBH nur bei 30mm). Zur
-  Klärung wäre jeweils eine zweite idlePos-Messung bei einer anderen
-  Bohrungsgröße nötig (PHBL z.B. 20/22mm, PHBH z.B. 26/28mm).
+  geerbt. **PHBH erledigt 2026-11-25:** gemessen bei 28 und 30 mm, der
+  Term ist dort 0 (siehe „PHBH 28 und 30“). **PHBL weiter offen** (nur
+  bei 26 mm gemessen); zur Klärung eine zweite idlePos-Messung bei 20/22
+  mm, am besten mit derselben direkten Methode (H2 + N − H1). Da der Term
+  bei PHBH nicht gilt, ist auch für PHBL Faktor 0 wahrscheinlich.
   **Recherche 2026-11-01:** keine externe Quelle für den Term gefunden. Er
   ist eine eigene Heuristik des Excel-Autors — Versionshistorie in der
   Original-Excel (`xl/comments1.xml`): „Version 1.4: … added basic carb

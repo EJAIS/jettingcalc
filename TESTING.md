@@ -153,27 +153,27 @@ in EN and once in DE:
 `test-browser/carb-selector.mjs` covers the carburetor type selector
 (service workers blocked as above), each case in EN and DE:
 
-- **Portrait 412×915** — the "Beta" heading sits above PHBH and PHBL;
-  PHBH and PHBL share one row (same y ± 2 px), side by side; each ⓘ sits
-  right of its option in the same row; VHSx spans the selector's content
-  box; all three options are ≥ 44 px tall; no element sticks out of the
-  selector and the page has no horizontal overflow.
-- **Narrow 320×640** — no horizontal overflow, PHBH and PHBL still in
-  one row.
-- **Landscape 915×412 and desktop 1280×800** — VHSx, beta label, PHBH and
-  PHBL in one row, in the order VHSx, PHBH, ⓘ, PHBL, ⓘ (layout as before).
+- **Portrait 412×915** — VHSx above PHBH, both spanning the selector's
+  content box; the "Beta" heading sits below PHBH and above PHBL; the ⓘ
+  sits right of PHBL in the same row; all three options are ≥ 44 px
+  tall; no element sticks out of the selector and the page has no
+  horizontal overflow.
+- **Narrow 320×640** — no horizontal overflow, the ⓘ still in the row of
+  PHBL.
+- **Landscape 915×412 and desktop 1280×800** — VHSx, PHBH, beta label and
+  PHBL in one row, in the order VHSx, PHBH, Beta, PHBL, ⓘ.
   All three options share the same `offsetTop`. Between 601 and 1023 px
   the selector, the beta group and the options use less padding and gap,
   so the row also fits with fonts wider than Segoe UI (Noto Sans on
   Linux, Roboto on Android, Inter); the 915 px case failed there before
   by up to ~20 px.
-- **Tap area** — the point 15 px right of the PHBH ⓘ's centre hit-tests to
+- **Tap area** — the point 15 px right of the PHBL ⓘ's centre hit-tests to
   the icon (`elementFromPoint`; a tap alone isn't proof, since Chromium's
   touch adjustment snaps taps to nearby targets), and a touch tap there
-  opens its tooltip. A tap on PHBL's left edge still selects PHBL; at
-  915×412 (reduced padding/gap) and 1280×800 the edges of PHBH and PHBL
-  next to the ⓘ still hit the options, and mouse hover still opens the
-  tooltip.
+  opens its tooltip. A tap on PHBL's right edge (next to the ⓘ) still
+  selects PHBL; at 915×412 (reduced padding/gap) and 1280×800 the right
+  edges of PHBH and PHBL still hit the options, and mouse hover still
+  opens the tooltip.
 - **Stored language on first load** — with `dellorto_lang = 'de'` set
   before loading, `<html lang>` is `de` right away, without the language
   button.
@@ -186,7 +186,7 @@ in EN and once in DE:
   tooltip, Escape closes it, Space toggles it without scrolling.
 - **No raw i18n keys** — no `view.`/`catalog.`/`svg.`/`carbType.`/`col.`/
   `btn.` key in the text, `title`, `aria-label`, `placeholder` or
-  `data-tooltip` of the selector and the custom needle list; the PHBH ⓘ
+  `data-tooltip` of the selector and the custom needle list; the PHBL ⓘ
   and the delete button carry the expected translated labels.
 
 `test-browser/header.mjs` covers the header controls (language, Load

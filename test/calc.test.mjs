@@ -58,9 +58,44 @@ test('regression: D36 (PHBL) idlePos at clip 1 is unchanged at 31.7 mm', () => {
   assertClose(pos, 31.7, 'D36 clip 1 idlePos');
 });
 
-test('regression: X2 (PHBH) idlePos at clip 1 is unchanged at 31.2 mm', () => {
-  const pos = idlePos('X2', 1, { carbSize: 30, jetType: 'AS' });
-  assertClose(pos, 31.2, 'X2 clip 1 idlePos');
+// PHBH calibration (2026-11-25): direct measurements on a 28 mm and a
+// 30 mm PHBH, X2 at clip 1. Model: 55.0 - 23.2 + offset (AV 0, AS 2),
+// no bore term. Every measurement must lie within 0.25 mm of the model.
+const PHBH_MEASURED = [
+  { carbSize: 28, jetType: 'AV', measured: 31.9 },
+  { carbSize: 28, jetType: 'AS', measured: 34.0 },
+  { carbSize: 30, jetType: 'AV', measured: 31.6 },
+  { carbSize: 30, jetType: 'AS', measured: 33.8 },
+];
+
+test('regression: X2 (PHBH) idlePos at clip 1 is 31.8 mm (AV) / 33.8 mm (AS)', () => {
+  assertClose(idlePos('X2', 1, { carbSize: 30, jetType: 'AV' }), 31.8, 'X2 AV 30 mm');
+  assertClose(idlePos('X2', 1, { carbSize: 30, jetType: 'AS' }), 33.8, 'X2 AS 30 mm');
+});
+
+test('PHBH: idlePos matches the 2026-11-25 measurements within 0.25 mm', () => {
+  for (const { carbSize, jetType, measured } of PHBH_MEASURED) {
+    const pos = idlePos('X2', 1, { carbSize, jetType });
+    assert.ok(
+      Math.abs(pos - measured) <= 0.25,
+      `X2 ${jetType} ${carbSize} mm: model ${pos.toFixed(2)}, measured ${measured}`,
+    );
+  }
+});
+
+test('PHBH: idlePos does not depend on the bore size (bore term 0)', () => {
+  for (const jetType of ['AV', 'AS']) {
+    const [a, b, c] = [26, 28, 30].map(carbSize => idlePos('X2', 1, { carbSize, jetType }));
+    assertClose(a, c, `X2 ${jetType} 26 vs 30 mm`);
+    assertClose(b, c, `X2 ${jetType} 28 vs 30 mm`);
+  }
+});
+
+test('VHSx and PHBL keep the bore term of 1/2', () => {
+  const k = [30, 34].map(carbSize => idlePos('K24', 1, { carbSize, jetType: 'DP' }));
+  assertClose(k[1] - k[0], 2, 'K24 34 vs 30 mm');
+  const d = [22, 26].map(carbSize => idlePos('D36', 1, { carbSize, jetType: 'AQ' }));
+  assertClose(d[1] - d[0], 2, 'D36 26 vs 22 mm');
 });
 
 // Custom needles are not covered by the K-needle groove measurements, so

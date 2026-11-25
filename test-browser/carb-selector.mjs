@@ -1,7 +1,7 @@
 // test-browser/carb-selector.mjs — Browser-driven layout tests for the
 // carburetor type selector (#carb-type-selector): stacked layout in portrait
-// (≤ 600px), unchanged single row on wider screens, enlarged tap area of the
-// beta info icons, and translated attribute texts — plus the app-wide
+// (≤ 600px), single row on wider screens, enlarged tap area of the beta
+// info icon, and translated attribute texts — plus the app-wide
 // tooltip behaviour for touch and keyboard (row action buttons, ⓘ).
 // Copyright (C) 2014 GUE — GPL v2.0
 //
@@ -95,13 +95,12 @@ async function withPage(lang, contextOptions, fn, storage = {}) {
   }
 }
 
-const PHBH_INFO = '[data-i18n-tooltip="carbType.phbhBetaDisclaimer"]';
 const PHBL_INFO = '[data-i18n-tooltip="carbType.phblBetaDisclaimer"]';
 
 // Bounding boxes of the selector's parts, plus its content box (inside
 // border and padding) and a list of descendants sticking out of it.
 function measure(page) {
-  return page.evaluate(([phbhInfo, phblInfo]) => {
+  return page.evaluate(phblInfo => {
     const box = el => {
       const r = el.getBoundingClientRect();
       return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom, cy: r.y + r.height / 2 };
@@ -126,13 +125,12 @@ function measure(page) {
       VHSx: box(option('VHSx')),
       PHBH: box(option('PHBH')),
       PHBL: box(option('PHBL')),
-      infoPHBH: box(sel.querySelector(phbhInfo)),
       infoPHBL: box(sel.querySelector(phblInfo)),
       overflowing,
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
     };
-  }, [PHBH_INFO, PHBL_INFO]);
+  }, PHBL_INFO);
 }
 
 const near = (a, b, tol = 2) => Math.abs(a - b) <= tol;
@@ -143,25 +141,24 @@ function assertNoOverflow(m, where) {
 }
 
 for (const lang of ['en', 'de']) {
-  test(`${lang}: 412×915 portrait — beta heading above PHBH | PHBL, info icons beside their option, VHSx full width`, async () => {
+  test(`${lang}: 412×915 portrait — VHSx and PHBH stacked in full width, beta heading above PHBL, info icon beside it`, async () => {
     await withPage(lang, { viewport: { width: 412, height: 915 } }, async page => {
       const m = await measure(page);
       const where = `${lang} 412`;
 
-      // Heading on its own row above both options
-      assert.ok(m.betaLabel.bottom <= m.PHBH.y && m.betaLabel.bottom <= m.PHBL.y, `${where}: beta heading not above the options`);
-      // PHBH and PHBL side by side in one row
-      assert.ok(near(m.PHBH.y, m.PHBL.y), `${where}: PHBH y ${m.PHBH.y} vs PHBL y ${m.PHBL.y}`);
-      assert.ok(m.PHBL.x >= m.PHBH.right, `${where}: PHBL does not start right of PHBH`);
-      // Each info icon right of its option, vertically centred in the same row
-      for (const [opt, info] of [['PHBH', 'infoPHBH'], ['PHBL', 'infoPHBL']]) {
-        assert.ok(m[info].x >= m[opt].right, `${where}: ${info} not right of ${opt}`);
-        assert.ok(near(m[info].cy, m[opt].cy), `${where}: ${info} not in the row of ${opt}`);
+      // VHSx above PHBH, both spanning the selector's content box
+      assert.ok(m.VHSx.bottom <= m.PHBH.y, `${where}: VHSx not above PHBH`);
+      for (const opt of ['VHSx', 'PHBH']) {
+        assert.ok(near(m[opt].x, m.content.left, 1) && near(m[opt].right, m.content.right, 1),
+          `${where}: ${opt} ${m[opt].x}–${m[opt].right} vs content ${m.content.left}–${m.content.right}`);
       }
-      assert.ok(m.infoPHBH.right <= m.PHBL.x, `${where}: PHBH info overlaps PHBL`);
-      // VHSx spans the selector's content box; touch targets ≥ 44px
-      assert.ok(near(m.VHSx.x, m.content.left, 1) && near(m.VHSx.right, m.content.right, 1),
-        `${where}: VHSx ${m.VHSx.x}–${m.VHSx.right} vs content ${m.content.left}–${m.content.right}`);
+      // Beta heading on its own row below PHBH and above PHBL
+      assert.ok(m.PHBH.bottom <= m.betaLabel.y, `${where}: beta heading not below PHBH`);
+      assert.ok(m.betaLabel.bottom <= m.PHBL.y, `${where}: beta heading not above PHBL`);
+      // Info icon right of PHBL, vertically centred in the same row
+      assert.ok(m.infoPHBL.x >= m.PHBL.right, `${where}: info not right of PHBL`);
+      assert.ok(near(m.infoPHBL.cy, m.PHBL.cy), `${where}: info not in the row of PHBL`);
+      // Touch targets ≥ 44px
       for (const opt of ['VHSx', 'PHBH', 'PHBL']) assert.ok(m[opt].h >= 44, `${where}: ${opt} height ${m[opt].h} < 44`);
       assertNoOverflow(m, where);
     });
@@ -171,19 +168,19 @@ for (const lang of ['en', 'de']) {
     await withPage(lang, { viewport: { width: 320, height: 640 } }, async page => {
       const m = await measure(page);
       assertNoOverflow(m, `${lang} 320`);
-      assert.ok(near(m.PHBH.y, m.PHBL.y), `${lang} 320: PHBH and PHBL not in one row`);
+      assert.ok(near(m.infoPHBL.cy, m.PHBL.cy), `${lang} 320: PHBL info not in the row of PHBL`);
     });
   });
 
   for (const [width, height] of [[915, 412], [1280, 800]]) {
-    test(`${lang}: ${width}×${height} — VHSx, PHBH and PHBL in one row as before`, async () => {
+    test(`${lang}: ${width}×${height} — VHSx, PHBH, beta label and PHBL in one row`, async () => {
       await withPage(lang, { viewport: { width, height } }, async page => {
         const m = await measure(page);
         const where = `${lang} ${width}`;
         assert.ok(near(m.VHSx.cy, m.PHBH.cy) && near(m.PHBH.cy, m.PHBL.cy), `${where}: options not in one row`);
-        assert.ok(near(m.betaLabel.cy, m.PHBH.cy), `${where}: beta label not inline with the options`);
-        assert.ok(m.VHSx.right < m.PHBH.x && m.PHBH.right < m.infoPHBH.x && m.infoPHBH.right < m.PHBL.x
-          && m.PHBL.right < m.infoPHBL.x, `${where}: unexpected order VHSx, PHBH, ⓘ, PHBL, ⓘ`);
+        assert.ok(near(m.betaLabel.cy, m.PHBL.cy), `${where}: beta label not inline with the options`);
+        assert.ok(m.VHSx.right < m.PHBH.x && m.PHBH.right < m.betaLabel.x && m.betaLabel.right < m.PHBL.x
+          && m.PHBL.right < m.infoPHBL.x, `${where}: unexpected order VHSx, PHBH, Beta, PHBL, ⓘ`);
         // Single row, strictly: all three options share offsetParent and offsetTop.
         const tops = await page.evaluate(() => [...document.querySelectorAll('#carb-type-selector .carb-type-option')]
           .map(o => ({ top: o.offsetTop, parent: o.offsetParent?.tagName + '#' + (o.offsetParent?.id ?? '') })));
@@ -194,46 +191,46 @@ for (const lang of ['en', 'de']) {
     });
   }
 
-  test(`${lang}: tapping 15px right of the PHBH ⓘ opens its tooltip; the options keep their own taps`, async () => {
+  test(`${lang}: tapping 15px right of the PHBL ⓘ opens its tooltip; PHBL keeps its own taps`, async () => {
     await withPage(lang, { viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true }, async page => {
-      const info = await page.locator(PHBH_INFO).boundingBox();
+      const info = await page.locator(PHBL_INFO).boundingBox();
       const [x, y] = [info.x + info.width / 2 + 15, info.y + info.height / 2];
       // Hit test first: Chromium's touch adjustment may snap a tap to a
       // nearby target anyway, so the tap alone doesn't prove the hit area.
-      assert.equal(await page.evaluate(([x, y, sel]) => !!document.elementFromPoint(x, y)?.closest(sel), [x, y, PHBH_INFO]),
+      assert.equal(await page.evaluate(([x, y, sel]) => !!document.elementFromPoint(x, y)?.closest(sel), [x, y, PHBL_INFO]),
         true, 'point 15px right of the icon centre belongs to the icon');
       await page.touchscreen.tap(x, y);
-      const expected = await page.getAttribute(PHBH_INFO, 'data-tooltip');
-      assert.ok(expected.includes('PHBH'), 'PHBH tooltip text rendered');
+      const expected = await page.getAttribute(PHBL_INFO, 'data-tooltip');
+      assert.ok(expected.includes('PHBL'), 'PHBL tooltip text rendered');
       assert.equal(await page.evaluate(() => {
         const tip = document.querySelector('.tooltip-box');
         return tip.hidden ? null : tip.textContent;
       }), expected, 'tooltip opened by a tap beside the icon');
 
-      // The hit area ends in the grid gap: PHBL's left edge still selects PHBL.
+      // The option lies above the icon's hit area: PHBL's right edge still selects PHBL.
       const phbl = await page.locator('input[name="carbType"][value="PHBL"]').evaluate(el => {
         const r = el.closest('label').getBoundingClientRect();
-        return { x: r.x, cy: r.y + r.height / 2 };
+        return { right: r.right, cy: r.y + r.height / 2 };
       });
-      await page.touchscreen.tap(phbl.x + 2, phbl.cy);
+      await page.touchscreen.tap(phbl.right - 2, phbl.cy);
       assert.equal(await page.isChecked('input[name="carbType"][value="PHBL"]'), true, 'tap on PHBL edge selects PHBL');
     });
   });
 
   // 915 × 412 is inside the 601–1023 px range with the tighter padding/gap.
-  for (const [width, height] of [[915, 412], [1280, 800]]) test(`${lang}: ${width}×${height} — the ⓘ hit area never covers the neighbouring options, hover still opens the tooltip`, async () => {
+  for (const [width, height] of [[915, 412], [1280, 800]]) test(`${lang}: ${width}×${height} — the ⓘ hit area never covers the options, hover still opens the tooltip`, async () => {
     await withPage(lang, { viewport: { width, height } }, async page => {
       const opts = await page.evaluate(() => ['PHBH', 'PHBL'].map(v => {
         const r = document.querySelector(`input[name="carbType"][value="${v}"]`).closest('label').getBoundingClientRect();
         return { v, left: r.left, right: r.right, cy: r.y + r.height / 2 };
       }));
-      // Right edge of PHBH (left of its ⓘ) and left edge of PHBL (right of the PHBH ⓘ).
-      for (const [x, y, v] of [[opts[0].right - 2, opts[0].cy, 'PHBH'], [opts[1].left + 2, opts[1].cy, 'PHBL']]) {
-        const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y).closest('label')?.querySelector('input')?.value, [x, y]);
-        assert.equal(hit, v, `point (${x}, ${y}) should hit the ${v} option`);
+      // Right edges of PHBH and of PHBL (left of its ⓘ).
+      for (const { right, cy, v } of opts) {
+        const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y).closest('label')?.querySelector('input')?.value, [right - 2, cy]);
+        assert.equal(hit, v, `point (${right - 2}, ${cy}) should hit the ${v} option`);
       }
       // Mouse hover still opens the tooltip (hover listens to pointerover).
-      await page.hover(PHBH_INFO);
+      await page.hover(PHBL_INFO);
       assert.equal(await page.evaluate(() => !document.querySelector('.tooltip-box').hidden), true, 'hover opens the tooltip');
     });
   });
@@ -261,10 +258,10 @@ for (const lang of ['en', 'de']) {
       assert.deepEqual([...new Set(offenders)], [], `${lang}: raw keys found`);
 
       const EXPECTED = {
-        en: { phbh: 'PHBH beta notes', del: 'Delete K98-MOD' },
-        de: { phbh: 'Hinweise zur PHBH-Beta', del: 'K98-MOD löschen' },
+        en: { phbl: 'PHBL beta notes', del: 'Delete K98-MOD' },
+        de: { phbl: 'Hinweise zur PHBL-Beta', del: 'K98-MOD löschen' },
       }[lang];
-      assert.equal(await page.getAttribute(PHBH_INFO, 'aria-label'), EXPECTED.phbh);
+      assert.equal(await page.getAttribute(PHBL_INFO, 'aria-label'), EXPECTED.phbl);
       assert.equal(await page.getAttribute('#cn-list .btn-delete-needle', 'aria-label'), EXPECTED.del);
       assert.equal(await page.getAttribute('#cn-list .btn-delete-needle', 'title'), EXPECTED.del);
     }, { dellorto_custom_needles: customNeedles });
@@ -344,8 +341,8 @@ test('keyboard: Enter / Space toggle an ⓘ tooltip, Escape closes it', async ()
       const box = document.querySelector('.tooltip-box');
       return box.hidden ? null : box.textContent;
     });
-    const expected = await page.getAttribute(PHBH_INFO, 'data-tooltip');
-    await page.focus(PHBH_INFO);
+    const expected = await page.getAttribute(PHBL_INFO, 'data-tooltip');
+    await page.focus(PHBL_INFO);
     assert.equal(await tooltip(), null, 'focus alone does not open an ⓘ');
 
     await page.keyboard.press('Enter');

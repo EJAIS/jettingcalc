@@ -8,7 +8,7 @@ Open `index.html` in any modern browser. No build step, no server required.
 
 > **Note:** Because the JS files use ES modules, browsers block them over `file://`. Serve locally with e.g. `python3 -m http.server 8080` and open `http://localhost:8080`.
 
-- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), or, under **Beta Features**, **PHBH** (needles X, atomizers AV/AS) and **PHBL** (needles D, atomizer AQ). PHBH and PHBL are experimental — see the ℹ disclaimer next to each and the warning banner shown in the Setups section. This filters the available needle and atomizer options throughout the app.
+- Select the **Carburetor Type** at the top: **VHSx** (VHSA / VHSB / VHSC / VHSH, needles K/U, atomizers DP/DQ), **PHBH** (needles X, atomizers AV/AS), or, under **Beta Features**, **PHBL** (needles D, atomizer AQ). PHBL is experimental — see the ℹ disclaimer next to it and the warning banner shown in the Setups section. PHBH left beta on 2026-11-25 after direct measurements on a 28 mm and a 30 mm PHBH (see [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md)). This filters the available needle and atomizer options throughout the app.
 - Fill in up to 5 setups in the table: the framed fields under **Inputs** (Name, Needle, Clip, Carb Ø, Atomizer Type, Atomizer, ND, HD). The tinted columns under **Results (calculated)** — Max HD and Cutaway — are filled in automatically. On a phone the table scrolls sideways while the name column stays in place.
   - The **Clip** dropdown only offers the positions that actually exist on the selected needle. K-needles have 3, 4, or 5 positions depending on the specific needle, per the official Dellorto datasheet — not a uniform range. D (PHBL), X (PHBH) and U (VHSx) needles use a 4-position series default, physically verified by counting the grooves (D36, X2, X13, U16). See [KONSTANTEN_VERIFIKATION.md](KONSTANTEN_VERIFIKATION.md).
   - Use the ⧉ / ↺ icons on each row to duplicate a completed setup into the next empty slot, or reset a row back to empty.
@@ -308,9 +308,12 @@ into `calcSetup()`'s idle-position formula) against the values verified in
 - 5-groove needles (K98) use 1.0 mm clip spacing, so idlePos(clip 5) −
   idlePos(clip 1) is −4.0 mm (was −4.8 mm before the groove-count-aware
   geometry).
-- The previously verified PHBL (D36) and PHBH (X2) idle positions — both
-  4-groove reference needles — are unchanged, guarding against regressions
-  in the already-measured `minExposed` / needle-length constants.
+- The previously verified PHBL (D36) idle position is unchanged, and the
+  PHBH (X2) idle positions match the four direct measurements of
+  2026-11-25 (28 and 30 mm, AV and AS) within 0.25 mm — guarding the
+  measured `minExposed` / needle-length constants against regressions.
+- The bore term: PHBH idle positions do not depend on the bore (term 0,
+  measured), VHSx and PHBL keep the ½ from the original spreadsheet.
 
 `test/share.test.mjs` covers `js/share.js` in isolation (it has no DOM or
 localStorage dependency, so it runs directly under `node --test` like

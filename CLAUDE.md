@@ -8,7 +8,7 @@ Code auseinanderlaufen, gilt der Code; die Aussage hier wird korrigiert.
 
 - **Zweck:** Web-Portierung und Weiterentwicklung des Excel-Tools
   *"Calculate Jetting for Dellorto Carbs v1.5"*: Jetting-Rechner für
-  Dellorto-Vergaser (VHSx, dazu PHBH und PHBL als Beta) mit bis zu 5
+  Dellorto-Vergaser (VHSx und PHBH, dazu PHBL als Beta) mit bis zu 5
   parallelen Setups, Diagrammen, Custom Needles, Share-Links und
   Nadelkatalog.
 - **Stack:** reines HTML/CSS/JavaScript (ES-Module), kein Build-Tool, kein
@@ -258,7 +258,9 @@ rechnen und plausible, aber falsche Kurven erzeugen).
   minus Oberkanten-Korrektur der Nut-Geometrie relativ zur
   4-Nuten-Referenz (`getClipGeometry()`, `CLIP_TOP_OFFSET_REF`) minus
   (Clip-Position − 1) × Nutabstand plus Mischrohr-Offset (`JET_OFFSETS`)
-  plus halbe Abweichung der Bohrung von 34 mm.
+  plus Bohrungsterm × (Bohrung − 34 mm); der Faktor kommt aus
+  `BORE_TERM_BY_CARB_TYPE` nach `carbType` der Nadel (VHSx, PHBL ½ wie im
+  Excel, PHBH 0).
 - **Taper-Anzahl:** `getTaperCount()` — 3 bei gesetztem `F`, 2 bei `E`,
   sonst 1 (Truthy-Prüfung wie im Excel).
 - **Kennlinie:** für jeden Gasstellungspunkt (0 bis 115 % in 5-%-Schritten)
@@ -285,7 +287,13 @@ b) **`minExposed` familienspezifisch** (`MIN_EXPOSED_BY_CARB_TYPE`, aufgelöst
    über `carbType` der Nadel, nicht über den Namenspräfix und nicht über den
    globalen Vergasertyp). Werte und Messbedingungen:
    `KONSTANTEN_VERIFIKATION.md`.
-c) **HD-Äquivalent nie `NaN`.** Ist der Nadeldurchmesser größer als das
+c) **Bohrungsterm familienspezifisch** (`BORE_TERM_BY_CARB_TYPE`). Das
+   Excel verschiebt die Leerlaufposition für jede Bohrung um die halbe
+   Abweichung von 34 mm (Heuristik aus v1.4). Für PHBH ist der Faktor 0:
+   gemessen 2026-11-25, die Leerlaufposition ist bei 28 und 30 mm gleich
+   (der geschlossene Schieber sitzt in beiden auf dem Bohrungsboden).
+   Faktor und `minExposed` sind gekoppelt — nur gemeinsam ändern.
+d) **HD-Äquivalent nie `NaN`.** Ist der Nadeldurchmesser größer als das
    Mischrohr, klemmt `calcSetup()` den Wurzel-Radikanden auf 0
    (`Math.max(0, …)`), wo das Excel einen Fehlerwert liefern würde.
 
@@ -306,27 +314,33 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
 
 ---
 
-## Beta-Status PHBH / PHBL
+## Beta-Status PHBL (PHBH seit 2026-11-25 verifiziert)
 
-- Beide Typen stehen in der UI in der Gruppe „Beta Features“ (BETA-Badge,
-  Info-Tooltip, Warnbanner im Setups-Bereich); VHSx steht allein in der
-  primären Gruppe.
+- PHBL steht in der UI in der Gruppe „Beta Features“ (BETA-Badge,
+  Info-Tooltip, Warnbanner im Setups-Bereich); VHSx und PHBH stehen in der
+  primären Gruppe. Welche Typen Beta sind, steuert `BETA_BANNER_KEY`
+  (`app.js`: Warnbanner, Badge im Katalog) zusammen mit der Gruppe in
+  `index.html`.
+- **PHBH verließ Beta am 2026-11-25** (Entscheidung Alexander): an einem
+  28- und einem 30-mm-PHBH direkt gemessen — Mischrohr-Offset AS = AV +
+  2 mm, Bohrungsterm 0, `minExposed` 23.2 mm, Rundschieber. Details:
+  `KONSTANTEN_VERIFIKATION.md`.
 - **Regel:** Die gekoppelten Konstanten eines Vergasertyps — Nadellänge
-  (`NEEDLE_LENGTHS`) und `MIN_EXPOSED_BY_CARB_TYPE` — nie einzeln ändern,
-  sondern nur gemeinsam und nur nach physischer Messung. Stand und
-  Messbedingungen: `KONSTANTEN_VERIFIKATION.md`.
+  (`NEEDLE_LENGTHS`), `MIN_EXPOSED_BY_CARB_TYPE` und
+  `BORE_TERM_BY_CARB_TYPE` — nie einzeln ändern, sondern nur gemeinsam
+  und nur nach physischer Messung. Stand und Messbedingungen:
+  `KONSTANTEN_VERIFIKATION.md`.
 - **Maßgeblich sind die Werte in `js/calc.js` und `js/needledb.js`.**
-  Frühere Annahmen (X-Nadellänge 68 mm, PHBH-`minExposed` 26.4 mm) sind
-  überholt.
+  Frühere Annahmen (X-Nadellänge 68 mm, PHBH-`minExposed` 26.4 mm bzw.
+  23.8 mm mit Bohrungsterm ½) sind überholt.
 
 ### Vergasertyp-Auswahl (`#carb-type-selector`)
 
 - Jede Beta-Option steht mit ihrem ⓘ in einem `.carb-type-beta-item`, damit
   beide nie getrennt umbrechen.
-- **> 600 px** (Desktop, Querformat): eine Zeile — VHSx | Beta-Label,
-  PHBH ⓘ, PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht dem der
+- **> 600 px** (Desktop, Querformat): eine Zeile — VHSx, PHBH | Beta-Label,
+  PHBL ⓘ. Der `gap` von `.carb-type-beta-item` entspricht dem der
   Gruppe.
-  - **Ab 1024 px** sind die Maße identisch zum Stand vor dem Wrapper.
   - **601–1023 px:** Abstände sind reduziert — Box 14 px / 12 px
     Innenabstand und 10 px Lücke (statt 18 px / 16 px), Beta-Gruppe 10 px
     Einzug, Optionen 8 px / 10 px Innenabstand —, damit die Auswahl auch
@@ -337,16 +351,15 @@ geht auf Punkt a) zurück. Referenztabelle: README, Abschnitt „Verification“
     über der ⓘ-Trefferfläche.
   - Abgesichert bei 915 × 412 und 1280 × 800: alle Optionen mit gleichem
     `offsetTop`, kein Überlauf, Treffertest an den Rändern neben den ⓘ.
-- **≤ 600 px** (Hochformat): gestapelt — VHSx in voller Breite, darunter
-  das Beta-Label als Zwischenüberschrift mit Linie, darunter PHBH und PHBL
-  nebeneinander (zweispaltiges Grid), jeweils mit ⓘ; Tippziele ≥ 44 px,
-  kein horizontaler Überlauf bis 320 px (dort bricht das BETA-Badge unter
-  den Namen).
+- **≤ 600 px** (Hochformat): gestapelt — VHSx und PHBH untereinander in
+  voller Breite, darunter das Beta-Label als Zwischenüberschrift mit
+  Linie, darunter PHBL mit ⓘ (einspaltiges Grid); Tippziele ≥ 44 px,
+  kein horizontaler Überlauf bis 320 px.
 - Die ⓘ in dieser Box haben per `::after` eine Trefferfläche von ca.
   37 × 37 px. Die Optionen liegen darüber (`z-index`, per `isolation`
   auf die Box begrenzt), damit die Fläche nie einen Tap auf eine Option
-  abfängt; im Hochformat ist der Spaltenabstand deshalb 12 px, so endet
-  die Fläche in der Lücke. Andere `.cutaway-info` (z. B. Max HD) sind
+  abfängt; der Spaltenabstand im Hochformat bleibt 12 px, damit die
+  Fläche bei einer zweiten Beta-Option in der Lücke endet. Andere `.cutaway-info` (z. B. Max HD) sind
   davon nicht betroffen.
 - **Tooltips** (`data-tooltip`, Block im `DOMContentLoaded` von `app.js`):
   - Hover hört auf `pointerover` und ignoriert Touch: Ein Tap löst erst

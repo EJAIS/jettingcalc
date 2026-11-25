@@ -29,9 +29,6 @@ export const TRANSLATIONS = {
     'carbType.betaBadge': 'BETA',
     'carbType.phblBetaDisclaimer': 'PHBL support is experimental. The needle-exposure constant (16.3 mm) was measured on a 26 mm PHBL with a D36 needle and AQ atomizer. It is not yet confirmed whether the carburetor-size scaling term applies to PHBL — needle positions for smaller PHBL sizes (20–24 mm) may deviate by up to ~3 mm. Verify against real-world testing.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL calculations are experimental and not fully verified.',
-    'carbType.phbhBetaDisclaimer': 'PHBH support is experimental. The needle length (55 mm) and needle-exposure constant (23.8 mm) were measured together on a 30 mm PHBH with an X2 needle and AS266 atomizer. It is not yet confirmed whether the carburetor-size scaling term applies equally to other PHBH bore sizes — needle positions for smaller/larger PHBH sizes may deviate. Verify against real-world testing.',
-    'carbType.phbhBetaBanner': '⚠ Beta: PHBH calculations are experimental and not fully verified.',
-    'carbType.phbhInfo.aria': 'PHBH beta notes',
     'carbType.phblInfo.aria': 'PHBL beta notes',
 
     // Setups table
@@ -375,9 +372,6 @@ export const TRANSLATIONS = {
     'carbType.betaBadge': 'BETA',
     'carbType.phblBetaDisclaimer': 'Die PHBL-Unterstützung ist experimentell. Die Konstante für die Nadel-Exposition (16.3 mm) wurde an einem 26-mm-PHBL mit D36-Nadel und AQ-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für PHBL gilt, ist noch nicht bestätigt — bei kleineren PHBL-Größen (20–24 mm) kann die Nadelposition um bis zu ~3 mm abweichen. Durch Praxistests bestätigen.',
     'carbType.phblBetaBanner': '⚠ Beta: PHBL-Berechnungen sind experimentell und nicht vollständig verifiziert.',
-    'carbType.phbhBetaDisclaimer': 'Die PHBH-Unterstützung ist experimentell. Die Nadellänge (55 mm) und die Konstante für die Nadel-Exposition (23.8 mm) wurden gemeinsam an einem 30-mm-PHBH mit X2-Nadel und AS266-Mischrohr gemessen. Ob der Vergasergrößen-Term auch für andere PHBH-Bohrungsgrößen gilt, ist noch nicht bestätigt — bei kleineren/größeren PHBH-Größen kann die Nadelposition abweichen. Durch Praxistests bestätigen.',
-    'carbType.phbhBetaBanner': '⚠ Beta: PHBH-Berechnungen sind experimentell und nicht vollständig verifiziert.',
-    'carbType.phbhInfo.aria': 'Hinweise zur PHBH-Beta',
     'carbType.phblInfo.aria': 'Hinweise zur PHBL-Beta',
 
     // Setups table
